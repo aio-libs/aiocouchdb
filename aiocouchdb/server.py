@@ -35,3 +35,14 @@ class Server(object):
         resp = yield from self.resource.get()
         yield from maybe_raise_error(resp)
         return (yield from resp.json())
+
+    @asyncio.coroutine
+    def active_tasks(self):
+        """Returns list of :ref:`active tasks <api/server/active_tasks>`
+        which runs on server.
+
+        :rtype: list
+        """
+        resp = yield from self.resource.get('_active_tasks')
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json())

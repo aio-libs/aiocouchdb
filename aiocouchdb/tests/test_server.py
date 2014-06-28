@@ -38,3 +38,7 @@ class ServerFunctionalTestCase(unittest.TestCase):
         result = self.loop.run_until_complete(self.server.info())
         self.assertIn('couchdb', result)
         self.assertIn('version', result)
+
+    def test_active_tasks(self):
+        result = self.loop.run_until_complete(self.server.active_tasks())
+        self.assertIsInstance(result, list)
