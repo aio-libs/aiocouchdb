@@ -9,7 +9,76 @@
 
 import asyncio
 import aiohttp
+import json
+import logging
 import urllib.parse
+
+
+class HttpRequest(aiohttp.client.ClientRequest):
+    """:class:`aiohttp.client.ClientRequest` class with CouchDB specifics."""
+
+    #: Default HTTP request headers.
+    DEFAULT_HEADERS = {
+        'ACCEPT': 'application/json',
+        'ACCEPT-ENCODING': 'gzip, deflate',
+        'CONTENT-TYPE': 'application/json'
+    }
+
+    def update_body_from_data(self, data):
+        """Encodes ``data`` as JSON if `Content-Type`
+        is :mimetype:`application/json`."""
+        if self.headers.get('CONTENT-TYPE') == 'application/json':
+            data = json.dumps(data)
+        return super().update_body_from_data(data)
+
+
+class HttpResponse(aiohttp.client.ClientResponse):
+    """:class:`aiohttp.client.ClientResponse` class with CouchDB specifics."""
+
+    @asyncio.coroutine
+    def read(self):
+        """Read response payload.
+        Unlike :meth:`aiohttp.client.ClientResponse.read` doesn't decodes
+        the response."""
+        if self._content is None:
+            buf = []
+            total = 0
+            try:
+                while True:
+                    chunk = yield from self.content.read()
+                    size = len(chunk)
+                    buf.append((chunk, size))
+                    total += size
+            except aiohttp.EofStream:
+                pass
+
+            self._content = bytearray(total)
+
+            idx = 0
+            content = memoryview(self._content)
+            for chunk, size in buf:
+                content[idx:idx+size] = chunk
+                idx += size
+
+        return self._content
+
+    @asyncio.coroutine
+    def read_and_close(self):
+        """Read response payload and then close response."""
+        super().read_and_close()
+
+    @asyncio.coroutine
+    def json(self):
+        """Reads and decodes JSON response."""
+        if self._content is None:
+            yield from self.read()
+
+        ctype = self.headers.get('CONTENT-TYPE', '').lower()
+        if not ctype.startswith('application/json'):
+            logging.warning(
+                'Attempt to decode JSON with unexpected mimetype: %s', ctype)
+
+        return json.loads(self._content.decode('utf-8'))
 
 
 class Resource(object):
@@ -27,8 +96,15 @@ class Resource(object):
     'http://localhost:5984/foo/bar%2Fbaz'
     """
 
-    def __init__(self, url):
+    request_class = HttpRequest
+    response_class = HttpResponse
+
+    def __init__(self, url, *, request_class=None, response_class=None):
         self.url = url
+        if request_class is not None:
+            self.request_class = request_class
+        if response_class is not None:
+            self.response_class = response_class
 
     def __call__(self, *path):
         return type(self)(urljoin(self.url, *path))
@@ -90,6 +166,8 @@ class Resource(object):
                                           data=data,
                                           headers=headers,
                                           params=params,
+                                          request_class=self.request_class,
+                                          response_class=self.response_class,
                                           **options)
         return resp
 

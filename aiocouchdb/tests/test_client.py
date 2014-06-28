@@ -8,8 +8,10 @@
 #
 
 import asyncio
+import aiohttp
 import unittest
 import unittest.mock as mock
+from io import BytesIO
 
 import aiocouchdb.client
 
@@ -99,3 +101,51 @@ class ResourceTestCase(unittest.TestCase):
         args, _ = self.request.call_args
         self.assertTrue(self.request.called)
         self.assertEquals(('get', URL + '/foo%2Fbar'), args)
+
+
+class HttpRequestTestCase(unittest.TestCase):
+
+    def test_encode_json_body(self):
+        req = aiocouchdb.client.HttpRequest('post', URL, data={'foo': 'bar'})
+        self.assertEqual(b'{"foo": "bar"}', req.body)
+
+
+class HttpResponseTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_read_body(self):
+        content = BytesIO(b'{"couchdb": "Welcome!"}')
+        def read():
+            data = content.read()
+            if data:
+                fut = asyncio.Future(loop=self.loop)
+                fut.set_result(data)
+                return fut
+            raise aiohttp.EofStream
+        resp = aiocouchdb.client.HttpResponse('get', URL)
+        resp.content = mock.Mock()
+        resp.content.read = read
+        result = self.loop.run_until_complete(resp.read())
+        self.assertEqual(b'{"couchdb": "Welcome!"}', result)
+
+    def test_decode_json_body(self):
+        content = BytesIO(b'{"couchdb": "Welcome!"}')
+        def read():
+            data = content.read()
+            if data:
+                fut = asyncio.Future(loop=self.loop)
+                fut.set_result(data)
+                return fut
+            raise aiohttp.EofStream
+        resp = aiocouchdb.client.HttpResponse('get', URL)
+        resp.headers = {'CONTENT-TYPE': 'application/json'}
+        resp.content = mock.Mock()
+        resp.content.read = read
+        result = self.loop.run_until_complete(resp.json())
+        self.assertEqual({'couchdb': 'Welcome!'}, result)
