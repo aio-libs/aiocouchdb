@@ -7,7 +7,13 @@ Welcome to aiocouchdb's documentation!
 Server
 ======
 
-.. automodule:: aiocouchdb.server
+.. autoclass:: aiocouchdb.server.Server
+  :members:
+
+Configuration
+-------------
+
+.. autoclass:: aiocouchdb.server.Config
   :members:
 
 Client

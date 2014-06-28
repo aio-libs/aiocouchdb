@@ -46,3 +46,42 @@ class ServerFunctionalTestCase(unittest.TestCase):
     def test_all_dbs(self):
         result = self.loop.run_until_complete(self.server.all_dbs())
         self.assertIsInstance(result, list)
+
+
+class ServerConfigFunctionalTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.server = aiocouchdb.server.Server(URL)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_config(self):
+        result = self.loop.run_until_complete(self.server.config.get())
+        self.assertIsInstance(result, dict)
+        self.assertIn('couchdb', result)
+
+    def test_config_get_section(self):
+        result = self.loop.run_until_complete(
+            self.server.config.get('couchdb'))
+        self.assertIsInstance(result, dict)
+        self.assertIn('uuid', result)
+
+    def test_config_get_option(self):
+        result = self.loop.run_until_complete(
+            self.server.config.get('couchdb', 'uuid'))
+        self.assertIsInstance(result, str)
+
+    def test_config_set_option(self):
+        result = self.loop.run_until_complete(
+            self.server.config.update('test', 'aiocouchdb', 'passed'))
+        self.assertEqual('', result)
+
+    def test_config_del_option(self):
+        self.loop.run_until_complete(
+            self.server.config.update('test', 'aiocouchdb', 'passed'))
+        result = self.loop.run_until_complete(
+            self.server.config.remove('test', 'aiocouchdb'))
+        self.assertEqual('passed', result)
