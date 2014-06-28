@@ -42,3 +42,7 @@ class ServerFunctionalTestCase(unittest.TestCase):
     def test_active_tasks(self):
         result = self.loop.run_until_complete(self.server.active_tasks())
         self.assertIsInstance(result, list)
+
+    def test_all_dbs(self):
+        result = self.loop.run_until_complete(self.server.all_dbs())
+        self.assertIsInstance(result, list)

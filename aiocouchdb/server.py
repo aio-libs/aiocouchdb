@@ -46,3 +46,14 @@ class Server(object):
         resp = yield from self.resource.get('_active_tasks')
         yield from maybe_raise_error(resp)
         return (yield from resp.json())
+
+    @asyncio.coroutine
+    def all_dbs(self):
+        """Returns list of available :ref:`databases <api/server/all_dbs>`
+        on server.
+
+        :rtype: list
+        """
+        resp = yield from self.resource.get('_all_dbs')
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json())
