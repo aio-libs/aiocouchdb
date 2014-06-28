@@ -10,6 +10,12 @@ Client
 .. automodule:: aiocouchdb.client
   :members:
 
+Errors
+======
+
+.. automodule:: aiocouchdb.errors
+  :members:
+
 License
 =======
 
