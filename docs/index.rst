@@ -22,6 +22,12 @@ Client
 .. automodule:: aiocouchdb.client
   :members:
 
+Feeds
+=====
+
+.. automodule:: aiocouchdb.feeds
+  :members:
+
 Errors
 ======
 
