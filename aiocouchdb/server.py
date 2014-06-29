@@ -96,6 +96,25 @@ class Server(object):
         else:
             return (yield from resp.json())
 
+    @asyncio.coroutine
+    def log(self, *, bytes=None, offset=None):
+        """Returns a chunk of data from the tail of :ref:`CouchDB's log
+        <api/server/log>` file.
+
+        :param int bytes: Bytes to return
+        :param int offset: Offset in bytes where the log tail should be started
+
+        :rtype: str
+        """
+        params = {}
+        if bytes:
+            params['bytes'] = bytes
+        if offset:
+            params['offset'] = offset
+        resp = yield from self.resource.get('_log', params=params)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.read()).decode('utf-8')
+
 
 class Config(object):
     """Implements :ref:`/_config/* <api/config>` API. Should be used thought

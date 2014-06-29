@@ -105,6 +105,10 @@ class ServerFunctionalTestCase(unittest.TestCase):
         result = self.loop.run_until_complete(self.server.all_dbs())
         self.assertIsInstance(result, list)
 
+    def test_log(self):
+        result = self.loop.run_until_complete(self.server.log())
+        self.assertIsInstance(result, str)
+
 
 class ServerConfigFunctionalTestCase(unittest.TestCase):
 
