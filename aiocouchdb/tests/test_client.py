@@ -109,6 +109,13 @@ class HttpRequestTestCase(unittest.TestCase):
         req = aiocouchdb.client.HttpRequest('post', URL, data={'foo': 'bar'})
         self.assertEqual(b'{"foo": "bar"}', req.body)
 
+    def test_correct_encode_boolean_params(self):
+        req = aiocouchdb.client.HttpRequest('get', URL, params={'foo': True})
+        self.assertEqual('/?foo=true', req.path)
+
+        req = aiocouchdb.client.HttpRequest('get', URL, params={'bar': False})
+        self.assertEqual('/?bar=false', req.path)
+
 
 class HttpResponseTestCase(unittest.TestCase):
 

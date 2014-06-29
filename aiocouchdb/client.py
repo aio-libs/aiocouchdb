@@ -31,6 +31,16 @@ class HttpRequest(aiohttp.client.ClientRequest):
             data = json.dumps(data)
         return super().update_body_from_data(data)
 
+    def update_path(self, params, data):
+        if isinstance(params, dict):
+            params = params.copy()
+            for key, value in params.items():
+                if value is True:
+                    params[key] = 'true'
+                elif value is False:
+                    params[key] = 'false'
+        return super().update_path(params, data)
+
 
 class HttpResponse(aiohttp.client.ClientResponse):
     """:class:`aiohttp.client.ClientResponse` class with CouchDB specifics."""
