@@ -198,6 +198,16 @@ class Server(object):
         yield from maybe_raise_error(resp)
         return (yield from resp.json())
 
+    @asyncio.coroutine
+    def restart(self):
+        """:ref:`Restarts <api/server/restart>` server instance.
+
+        :rtype: dict
+        """
+        resp = yield from self.resource.post('_restart')
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json())
+
 
 class Config(object):
     """Implements :ref:`/_config/* <api/config>` API. Should be used thought

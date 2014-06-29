@@ -119,7 +119,16 @@ class ServerTestCase(unittest.TestCase):
             data = kwargs['data']
             expected = {'source': 'source', 'target': 'target', key: value}
             self.assertEqual(expected, data)
-        
+
+    def test_restart(self):
+        resp = self.make_mock_response(200, BytesIO(b'{"ok": true}'),
+                                       {'CONTENT-TYPE': 'application/json'})
+        post = self.server.resource.post = mock.Mock()
+        post.return_value = self.make_future(resp)
+
+        result = self.loop.run_until_complete(self.server.restart())
+        self.assertEqual({'ok': True}, result)
+
 
 class ServerFunctionalTestCase(unittest.TestCase):
 
