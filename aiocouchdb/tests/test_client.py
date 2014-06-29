@@ -149,3 +149,19 @@ class HttpResponseTestCase(unittest.TestCase):
         resp.content.read = read
         result = self.loop.run_until_complete(resp.json())
         self.assertEqual({'couchdb': 'Welcome!'}, result)
+
+    def test_decode_json_from_empty_body(self):
+        def read():
+            data = content.read()
+            if data:
+                fut = asyncio.Future(loop=self.loop)
+                fut.set_result(data)
+                return fut
+            raise aiohttp.EofStream
+        content = BytesIO(b'\n')
+        resp = aiocouchdb.client.HttpResponse('get', URL)
+        resp.headers = {'CONTENT-TYPE': 'application/json'}
+        resp.content = mock.Mock()
+        resp.content.read = read
+        result = self.loop.run_until_complete(resp.json())
+        self.assertEqual(None, result)

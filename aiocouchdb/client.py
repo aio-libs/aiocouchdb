@@ -78,6 +78,9 @@ class HttpResponse(aiohttp.client.ClientResponse):
             logging.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)
 
+        if not self._content.strip():
+            return None
+
         return json.loads(self._content.decode('utf-8'))
 
 
