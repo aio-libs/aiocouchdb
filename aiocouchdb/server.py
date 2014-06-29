@@ -11,6 +11,7 @@ import asyncio
 
 from .client import Resource
 from .errors import maybe_raise_error
+from .feeds import Feed, JsonFeed
 
 
 class Server(object):
@@ -63,6 +64,37 @@ class Server(object):
     def config(self):
         """Proxy to the related :class:`~aiocouchdb.server.Config` instance."""
         return self._config
+
+    @asyncio.coroutine
+    def db_updates(self, *, feed=None, timeout=None, heartbeat=None):
+        """Emits :ref:`databases events <api/server/db_updates>` for
+        the related server instance.
+
+        :param str feed: Feed type
+        :param int timeout: Timeout in milliseconds
+        :param bool heartbeat: Whenever use heartbeats to keep connection alive
+
+        Depending on feed type returns:
+
+        - :class:`dict` - for default or ``longpoll`` feed
+        - :class:`aiocouchdb.feeds.JsonFeed` - for ``continuous`` feed
+        - :class:`aiocouchdb.feeds.Feed` - for ``eventsource`` feed
+        """
+        params = {}
+        if feed:
+            params['feed'] = feed
+        if timeout:
+            params['timeout'] = timeout
+        if heartbeat:
+            params['heartbeat'] = heartbeat
+        resp = yield from self.resource.get('_db_updates', params=params)
+        yield from maybe_raise_error(resp)
+        if feed == 'continuous':
+            return JsonFeed(resp.content)
+        elif feed == 'eventsource':
+            return Feed(resp.content)
+        else:
+            return (yield from resp.json())
 
 
 class Config(object):

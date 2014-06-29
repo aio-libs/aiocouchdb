@@ -8,11 +8,69 @@
 #
 
 import asyncio
+import aiohttp
 import unittest
+import unittest.mock as mock
+from io import BytesIO
 
+import aiocouchdb.client
+import aiocouchdb.feeds
 import aiocouchdb.server
 
 URL = 'http://localhost:5984'
+
+
+class ServerTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.server = aiocouchdb.server.Server(URL)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def make_future(self, obj):
+        fut = asyncio.Future(loop=self.loop)
+        fut.set_result(obj)
+        return fut
+
+    def make_mock_response(self, status, content, headers):
+        def read():
+            data = content.read()
+            if data:
+                return self.make_future(data)
+            raise aiohttp.EofStream
+        resp = aiocouchdb.client.HttpResponse('get', URL)
+        resp.content = mock.Mock()
+        resp.content.read = read
+        resp.status = status
+        resp.headers = headers
+        return resp
+
+    def test_db_updates(self):
+        resp = self.make_mock_response(200, BytesIO(b'{}'),
+                                       {'CONTENT-TYPE': 'application/json'})
+        self.server.resource = mock.Mock()
+        self.server.resource.get.return_value = self.make_future(resp)
+        result = self.loop.run_until_complete(self.server.db_updates())
+        self.assertIsInstance(result, dict)
+
+    def test_db_updates_feed_continuous(self):
+        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
+        self.server.resource = mock.Mock()
+        self.server.resource.get.return_value = self.make_future(resp)
+        result = self.loop.run_until_complete(
+            self.server.db_updates(feed='continuous'))
+        self.assertIsInstance(result, aiocouchdb.feeds.JsonFeed)
+
+    def test_db_updates_feed_eventsource(self):
+        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
+        self.server.resource = mock.Mock()
+        self.server.resource.get.return_value = self.make_future(resp)
+        result = self.loop.run_until_complete(
+            self.server.db_updates(feed='eventsource'))
+        self.assertIsInstance(result, aiocouchdb.feeds.Feed)
 
 
 class ServerFunctionalTestCase(unittest.TestCase):
