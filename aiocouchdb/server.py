@@ -115,6 +115,89 @@ class Server(object):
         yield from maybe_raise_error(resp)
         return (yield from resp.read()).decode('utf-8')
 
+    @asyncio.coroutine
+    def replicate(self, source, target, *,
+                  auth=None,
+                  cancel=None,
+                  continuous=None,
+                  create_target=None,
+                  doc_ids=None,
+                  filter=None,
+                  headers=None,
+                  proxy=None,
+                  query_params=None,
+                  since_seq=None,
+                  checkpoint_interval=None,
+                  connection_timeout=None,
+                  http_connections=None,
+                  retries_per_request=None,
+                  socket_options=None,
+                  use_checkpoints=None,
+                  worker_batch_size=None,
+                  worker_processes=None):
+        """:ref:`Runs a replication <api/server/replicate>` from ``source``
+        to ``target``.
+
+        :param str source: Source database name or URL
+        :param str target: Target database name or URL
+
+        :param dict auth: Authorization object for the target database
+        :param bool cancel: Cancels active replication
+        :param bool continuous: Runs continuous replication
+        :param bool create_target: Creates target database if it not exists
+        :param list doc_ids: List of specific document ids to replicate
+        :param str filter: Filter function name
+        :param dict headers: Custom replication request headers
+        :param str proxy: Proxy server URL
+        :param dict query_params: Custom query parameters for filter function
+        :param since_seq: Start replication from specified sequence number
+
+        :param int checkpoint_interval: Tweaks `checkpoint_interval`_ option
+        :param int connection_timeout: Tweaks `connection_timeout`_ option
+        :param int http_connections: Tweaks `http_connections`_ option
+        :param int retries_per_request: Tweaks `retries_per_request`_ option
+        :param str socket_options: Tweaks `socket_options`_ option
+        :param bool use_checkpoints: Tweaks `use_checkpoints`_ option
+        :param int worker_batch_size: Tweaks `worker_batch_size`_ option
+        :param int worker_processes: Tweaks `worker_processes`_ option
+
+        :rtype: dict
+
+        .. _checkpoint_interval: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/checkpoint_interval
+        .. _connection_timeout: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/connection_timeout
+        .. _http_connections: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/http_connections
+        .. _retries_per_request: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/retries_per_request
+        .. _socket_options: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/socket_options
+        .. _use_checkpoints: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/use_checkpoints
+        .. _worker_batch_size: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/worker_batch_size
+        .. _worker_processes: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/worker_processes
+
+        """
+        doc = {'source': source, 'target': target}
+        maybe_set_param = (
+            lambda doc, *kv: (None if kv[1] is None else doc.update([kv])))
+        maybe_set_param(doc, 'auth', auth)
+        maybe_set_param(doc, 'cancel', cancel)
+        maybe_set_param(doc, 'continuous', continuous)
+        maybe_set_param(doc, 'create_target', create_target)
+        maybe_set_param(doc, 'doc_ids', doc_ids)
+        maybe_set_param(doc, 'filter', filter)
+        maybe_set_param(doc, 'headers', headers)
+        maybe_set_param(doc, 'proxy', proxy)
+        maybe_set_param(doc, 'query_params', query_params)
+        maybe_set_param(doc, 'since_seq', since_seq)
+        maybe_set_param(doc, 'checkpoint_interval', checkpoint_interval)
+        maybe_set_param(doc, 'connection_timeout', connection_timeout)
+        maybe_set_param(doc, 'http_connections', http_connections)
+        maybe_set_param(doc, 'retries_per_request', retries_per_request)
+        maybe_set_param(doc, 'socket_options', socket_options)
+        maybe_set_param(doc, 'use_checkpoints', use_checkpoints)
+        maybe_set_param(doc, 'worker_batch_size', worker_batch_size)
+        maybe_set_param(doc, 'worker_processes', worker_processes)
+        resp = yield from self.resource.post('_replicate', data=doc)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json())
+
 
 class Config(object):
     """Implements :ref:`/_config/* <api/config>` API. Should be used thought

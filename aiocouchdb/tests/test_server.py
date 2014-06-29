@@ -72,6 +72,54 @@ class ServerTestCase(unittest.TestCase):
             self.server.db_updates(feed='eventsource'))
         self.assertIsInstance(result, aiocouchdb.feeds.Feed)
 
+    def test_replicate(self):
+        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
+        post = self.server.resource.post = mock.Mock()
+        post.return_value = self.make_future(resp)
+
+        coro = self.server.replicate('source', 'target')
+        self.loop.run_until_complete(coro)
+
+        _, kwargs = post.call_args
+        data = kwargs['data']
+        self.assertEqual({'source': 'source', 'target': 'target'}, data)
+
+    def test_replicate_kwargs(self):
+        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
+        post = self.server.resource.post = mock.Mock()
+        post.return_value = self.make_future(resp)
+
+        all_kwargs = {
+            'auth': {'oauth': {}},
+            'cancel': True,
+            'continuous': True,
+            'create_target': False,
+            'doc_ids': ['foo', 'bar', 'baz'],
+            'filter': '_design/filter',
+            'headers': {'X-Foo': 'bar'},
+            'proxy': 'http://localhost:8080',
+            'query_params': {'test': 'passed'},
+            'since_seq': 0,
+            'checkpoint_interval': 5000,
+            'connection_timeout': 60000,
+            'http_connections': 10,
+            'retries_per_request': 10,
+            'socket_options': '[]',
+            'use_checkpoints': True,
+            'worker_batch_size': 200,
+            'worker_processes': 4
+        }
+
+        for key, value in all_kwargs.items():
+            kwarg = {key: value}
+            coro = self.server.replicate('source', 'target', **kwarg)
+            self.loop.run_until_complete(coro)
+
+            _, kwargs = post.call_args
+            data = kwargs['data']
+            expected = {'source': 'source', 'target': 'target', key: value}
+            self.assertEqual(expected, data)
+        
 
 class ServerFunctionalTestCase(unittest.TestCase):
 
