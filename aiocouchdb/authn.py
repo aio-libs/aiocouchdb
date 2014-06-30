@@ -173,7 +173,8 @@ class CookieAuthProvider(AuthProvider):
 
         :param response: :class:`aiocouchdb.client.HttpResponse` instance
         """
-        self._cookies = response.cookies
+        if response.cookies:
+            self._cookies = response.cookies
 
 
 class OAuthProvider(AuthProvider):

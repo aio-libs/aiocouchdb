@@ -71,6 +71,17 @@ class CookieAuthProviderTestCase(unittest.TestCase):
         self.auth.update(self.resp)
         self.assertIs(self.auth._cookies, self.resp.cookies)
 
+    def test_dont_erase_cookies(self):
+        self.assertIsNone(self.auth._cookies)
+        self.auth.update(self.resp)
+        self.assertIs(self.auth._cookies, self.resp.cookies)
+
+        # another response
+        resp = mock.Mock(spec=aiocouchdb.client.HttpResponse)
+        resp.cookies = http.cookies.SimpleCookie()
+        self.auth.update(resp)
+        self.assertIs(self.auth._cookies, self.resp.cookies)
+
     def test_reset(self):
         self.auth.update(self.resp)
         self.auth.reset()
