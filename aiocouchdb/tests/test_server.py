@@ -9,10 +9,12 @@
 
 import asyncio
 import aiohttp
+import http.cookies
 import unittest
 import unittest.mock as mock
 from io import BytesIO
 
+import aiocouchdb.authn
 import aiocouchdb.client
 import aiocouchdb.feeds
 import aiocouchdb.server
@@ -206,3 +208,54 @@ class ServerConfigFunctionalTestCase(unittest.TestCase):
         result = self.loop.run_until_complete(
             self.server.config.remove('test', 'aiocouchdb'))
         self.assertEqual('passed', result)
+
+
+class SessionTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        resp = self.resp = aiocouchdb.client.HttpResponse('get', URL)
+        resp.status = 200
+        resp.headers = {'CONTENT-TYPE': 'application/json'}
+        resp._content = b'{"ok": true}'
+        resp.read = mock.Mock(return_value=self.make_future(b'{"ok": true}'))
+
+        self.patch = mock.patch('aiohttp.request')
+        self.request = self.patch.start()
+        self.request.return_value = self.make_future(resp)
+
+        self.server = aiocouchdb.server.Server(URL)
+
+    def tearDown(self):
+        self.patch.stop()
+        self.loop.close()
+
+    def make_future(self, obj):
+        fut = asyncio.Future(loop=self.loop)
+        fut.set_result(obj)
+        return fut
+
+    def test_open_session(self):
+        self.resp.cookies = http.cookies.SimpleCookie({'AuthSession': 'secret'})
+        auth = self.loop.run_until_complete(
+            self.server.session.open('username', 'password'))
+
+        self.assertIsInstance(auth, aiocouchdb.authn.CookieAuthProvider)
+        self.assertIs(auth._cookies, self.resp.cookies)
+
+        args, kwargs = self.request.call_args
+        self.assertEqual(('POST', URL + '/_session'), args)
+        self.assertEqual({'name': 'username', 'password': 'password'},
+                         kwargs['data'])
+
+    def test_session_info(self):
+        self.loop.run_until_complete(self.server.session.info())
+        args, _ = self.request.call_args
+        self.assertEqual(('GET', URL + '/_session'), args)
+
+    def test_close_session(self):
+        self.loop.run_until_complete(self.server.session.close())
+        args, _ = self.request.call_args
+        self.assertEqual(('DELETE', URL + '/_session'), args)

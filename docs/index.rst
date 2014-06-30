@@ -16,6 +16,12 @@ Configuration
 .. autoclass:: aiocouchdb.server.Config
   :members:
 
+Session
+-------
+
+.. autoclass:: aiocouchdb.server.Session
+  :members:
+
 Client
 ======
 
