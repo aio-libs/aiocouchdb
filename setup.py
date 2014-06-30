@@ -20,5 +20,8 @@ setup(
     description='CouchDB client built on top of aiohttp (asyncio)',
     install_requires=[
         'aiohttp>=0.8'
-    ]
+    ],
+    extras_require={
+        'oauth':  ['oauthlib>=0.6.3']
+    }
 )

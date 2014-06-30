@@ -22,6 +22,12 @@ Client
 .. automodule:: aiocouchdb.client
   :members:
 
+Authentication Providers
+========================
+
+.. automodule:: aiocouchdb.authn
+  :members:
+
 Feeds
 =====
 
