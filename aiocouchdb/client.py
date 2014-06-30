@@ -170,7 +170,7 @@ class Resource(object):
 
     @asyncio.coroutine
     def request(self, method, path=None, data=None, headers=None, params=None,
-                **options):
+                auth=None, **options):
         """Makes a HTTP request to the resource.
 
         :param str method: HTTP method
@@ -178,11 +178,18 @@ class Resource(object):
         :param bytes data: POST/PUT request payload data
         :param dict headers: Custom HTTP request headers
         :param dict params: Custom HTTP request query parameters
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
         :param options: Additional options for :func:`aiohttp.request` function
 
         :returns: :class:`aiocouchdb.client.HttpResponse` instance
         """
         url = urljoin(self.url, path) if path else self.url
+        headers = headers or {}
+        params = params or {}
+
+        if auth is not None:
+            self.apply_auth(auth, url, headers)
+
         resp = yield from aiohttp.request(method, url,
                                           data=data,
                                           headers=headers,
@@ -190,7 +197,27 @@ class Resource(object):
                                           request_class=self.request_class,
                                           response_class=self.response_class,
                                           **options)
+        if auth is not None:
+            self.update_auth(auth, resp)
+
         return resp
+
+    def apply_auth(self, auth_provider, url, headers):
+        """Applies authentication routines on further request.
+
+        :param auth_provider: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str url: Request URL
+        :param dict headers: Request headers
+        """
+        auth_provider.sign(url, headers)
+
+    def update_auth(self, auth_provider, response):
+        """Updates authentication provider state from the HTTP response data.
+
+        :param auth_provider: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param response: :class:`aiocouchdb.client.HttpResponse` instance
+        """
+        auth_provider.update(response)
 
 
 def urljoin(base, *path):

@@ -13,6 +13,7 @@ import unittest
 import unittest.mock as mock
 from io import BytesIO
 
+import aiocouchdb.authn
 import aiocouchdb.client
 
 URL = 'http://localhost:5984'
@@ -101,6 +102,30 @@ class ResourceTestCase(unittest.TestCase):
         args, _ = self.request.call_args
         self.assertTrue(self.request.called)
         self.assertEquals(('get', URL + '/foo%2Fbar'), args)
+
+    def test_dont_sign_request_none_auth(self):
+        res = aiocouchdb.client.Resource(URL)
+        res.apply_auth = mock.Mock()
+        self.loop.run_until_complete(res.request('get'))
+        self.assertFalse(res.apply_auth.called)
+
+    def test_dont_update_none_auth(self):
+        res = aiocouchdb.client.Resource(URL)
+        res.update_auth = mock.Mock()
+        self.loop.run_until_complete(res.request('get'))
+        self.assertFalse(res.update_auth.called)
+
+    def test_sing_request(self):
+        res = aiocouchdb.client.Resource(URL)
+        auth = mock.Mock(spec=aiocouchdb.authn.AuthProvider)
+        self.loop.run_until_complete(res.request('get', auth=auth))
+        self.assertTrue(auth.sign.called)
+
+    def test_update_auth(self):
+        res = aiocouchdb.client.Resource(URL)
+        auth = mock.Mock(spec=aiocouchdb.authn.AuthProvider)
+        self.loop.run_until_complete(res.request('get', auth=auth))
+        self.assertTrue(auth.update.called)
 
 
 class HttpRequestTestCase(unittest.TestCase):
