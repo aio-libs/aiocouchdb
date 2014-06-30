@@ -18,14 +18,14 @@ class Feed(object):
 
     def __init__(self, resp, *, loop=None):
         self._queue = asyncio.Queue(loop=loop)
-        self._eof = False
+        self._active = True
         self._resp = resp
         asyncio.Task(self._loop(), loop=loop)
 
     @asyncio.coroutine
     def _loop(self):
         try:
-            while True:
+            while self._active:
                 chunk = yield from self._resp.content.read()
                 chunk = chunk.strip()
                 if not chunk:
@@ -52,12 +52,21 @@ class Feed(object):
         return item
 
     def is_active(self):
-        """Checks if the feed is still able to emit any data."""
-        return not (self._eof and self._queue.empty())
+        """Checks if the feed is still able to emit any data.
+
+        :rtype: bool
+        """
+        return self._active or not self._queue.empty()
 
     def close(self, force=False):
+        """Closes feed and the related request connection.
+
+        :param bool force: In case of True, close connection instead of release.
+                           See :meth:`aiohttp.client.ClientResponse.close` for
+                           the details
+        """
         self._queue.put_nowait(None)
-        self._eof = True
+        self._active = False
         self._resp.close(force=force)
 
 
