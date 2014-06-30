@@ -107,7 +107,7 @@ def maybe_raise_error(resp):
     if resp.status < 400:
         return
     exc_cls = HTTP_ERROR_BY_CODE[resp.status]
-    data = yield from resp.json()
+    data = yield from resp.json(close=True)
     if isinstance(data, dict):
         error, reason = data.get('error', ''), data.get('reason', '')
         exc = exc_cls(error, reason, resp.headers)

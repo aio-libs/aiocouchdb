@@ -16,23 +16,26 @@ class Feed(object):
     """Wrapper over :class:`HttpResponse` content to stream continuous response
     by emitted chunks."""
 
-    def __init__(self, content, *, loop=None):
+    def __init__(self, resp, *, loop=None):
         self._queue = asyncio.Queue(loop=loop)
         self._eof = False
-        asyncio.Task(self._loop(content), loop=loop)
+        self._resp = resp
+        asyncio.Task(self._loop(), loop=loop)
 
     @asyncio.coroutine
-    def _loop(self, content):
+    def _loop(self):
         try:
             while True:
-                chunk = yield from content.read()
+                chunk = yield from self._resp.content.read()
                 chunk = chunk.strip()
                 if not chunk:
                     continue
                 self._queue.put_nowait(chunk)
         except aiohttp.EofStream:
-            self._queue.put_nowait(None)
-            self._eof = True
+            self.close()
+        except Exception as exc:
+            self._queue.put_nowait(exc)
+            self.close(True)
 
     @asyncio.coroutine
     def next(self):
@@ -42,11 +45,20 @@ class Feed(object):
         """
         if not self.is_active():
             return None
-        return (yield from self._queue.get())
+        item = yield from self._queue.get()
+        if isinstance(item, BaseException):
+            yield from self._queue.get()
+            raise item from None
+        return item
 
     def is_active(self):
         """Checks if the feed is still able to emit any data."""
         return not (self._eof and self._queue.empty())
+
+    def close(self, force=False):
+        self._queue.put_nowait(None)
+        self._eof = True
+        self._resp.close(force=force)
 
 
 class JsonFeed(Feed):

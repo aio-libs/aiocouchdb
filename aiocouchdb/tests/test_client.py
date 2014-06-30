@@ -126,6 +126,52 @@ class HttpResponseTestCase(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    def test_read_and_close(self):
+        def side_effect(*args, **kwargs):
+            def second_call(*args, **kwargs):
+                raise aiohttp.EofStream
+            fut = asyncio.Future(loop=self.loop)
+            fut.set_result(b'{"couchdb": "Welcome!"}')
+            content.read.side_effect = second_call
+            return fut
+        resp = aiocouchdb.client.HttpResponse('get', URL)
+        content = resp.content = unittest.mock.Mock()
+        content.read.side_effect = side_effect
+        resp.close = unittest.mock.Mock()
+
+        res = self.loop.run_until_complete(resp.read(close=True))
+        self.assertEqual(res, b'{"couchdb": "Welcome!"}')
+        self.assertTrue(resp.close.called)
+        
+    def test_force_close_on_read_error(self):
+        resp = aiocouchdb.client.HttpResponse('get', URL)
+        content = resp.content = unittest.mock.Mock()
+        content.read.return_value = asyncio.Future(loop=self.loop)
+        content.read.return_value.set_exception(ValueError)
+        resp.close = unittest.mock.Mock()
+
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete, resp.read(close=True))
+        resp.close.assert_called_with(True)
+
+    def test_warning_read_and_close(self):
+        def side_effect(*args, **kwargs):
+            def second_call(*args, **kwargs):
+                raise aiohttp.EofStream
+            fut = asyncio.Future(loop=self.loop)
+            fut.set_result(b'{"couchdb": "Welcome!"}')
+            content.read.side_effect = second_call
+            return fut
+        resp = aiocouchdb.client.HttpResponse('get', URL)
+        content = resp.content = unittest.mock.Mock()
+        content.read.side_effect = side_effect
+        resp.close = unittest.mock.Mock()
+
+        self.assertWarns(UserWarning, self.loop.run_until_complete,
+                         resp.read_and_close())
+        self.assertTrue(resp.close.called)
+
     def test_read_body(self):
         content = BytesIO(b'{"couchdb": "Welcome!"}')
         def read():

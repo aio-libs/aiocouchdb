@@ -37,10 +37,10 @@ class FeedTestCase(unittest.TestCase):
                 return fut
             raise aiohttp.EofStream
         data = BytesIO(b'foo\r\nbar\r\n')
-        content = mock.Mock()
-        content.read = read
+        resp = mock.Mock()
+        resp.content.read = read
 
-        feed = aiocouchdb.feeds.Feed(content, loop=self.loop)
+        feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.loop.run_until_complete(feed.next())
@@ -62,10 +62,10 @@ class FeedTestCase(unittest.TestCase):
                 return fut
             raise aiohttp.EofStream
         data = BytesIO(b'data\r\n\r\n\r\n\r\ndata\r\n')
-        content = mock.Mock()
-        content.read = read
+        resp = mock.Mock()
+        resp.content.read = read
 
-        feed = aiocouchdb.feeds.Feed(content, loop=self.loop)
+        feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.loop.run_until_complete(feed.next())
@@ -87,10 +87,10 @@ class FeedTestCase(unittest.TestCase):
                 return fut
             raise aiohttp.EofStream
         data = BytesIO(b'{"foo": true}\r\n{"bar": null}\r\n')
-        content = mock.Mock()
-        content.read = read
+        resp = mock.Mock()
+        resp.content.read = read
 
-        feed = aiocouchdb.feeds.JsonFeed(content, loop=self.loop)
+        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.loop.run_until_complete(feed.next())
@@ -106,10 +106,10 @@ class FeedTestCase(unittest.TestCase):
     def test_read_empty_json_feed(self):
         def read():
             raise aiohttp.EofStream
-        content = mock.Mock()
-        content.read = read
+        resp = mock.Mock()
+        resp.content.read = read
 
-        feed = aiocouchdb.feeds.JsonFeed(content, loop=self.loop)
+        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.loop.run_until_complete(feed.next())
@@ -120,10 +120,10 @@ class FeedTestCase(unittest.TestCase):
     def test_calling_inactive_feed_returns_none(self):
         def read():
             raise aiohttp.EofStream
-        content = mock.Mock()
-        content.read = read
+        resp = mock.Mock()
+        resp.content.read = read
 
-        feed = aiocouchdb.feeds.JsonFeed(content, loop=self.loop)
+        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         self.loop.run_until_complete(feed.next())
@@ -132,3 +132,33 @@ class FeedTestCase(unittest.TestCase):
 
         result = self.loop.run_until_complete(feed.next())
         self.assertEqual(None, result)
+
+    def test_close_resp_on_feed_end(self):
+        def read():
+            raise aiohttp.EofStream
+        resp = mock.Mock()
+        resp.content.read = read
+
+        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        self.loop.run_until_complete(feed.next())
+
+        self.assertFalse(feed.is_active())
+        self.assertTrue(resp.close.called)
+
+    def test_force_close_resp_on_error(self):
+        def read():
+            raise ValueError
+        resp = mock.Mock()
+        resp.content.read = read
+
+        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        self.assertRaises(ValueError,
+                          self.loop.run_until_complete,
+                          feed.next())
+
+        self.assertFalse(feed.is_active())
+        resp.close.assert_called_with(force=True)

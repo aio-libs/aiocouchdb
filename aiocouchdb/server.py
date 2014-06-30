@@ -36,7 +36,7 @@ class Server(object):
         """
         resp = yield from self.resource.get()
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))
 
     @asyncio.coroutine
     def active_tasks(self):
@@ -47,7 +47,7 @@ class Server(object):
         """
         resp = yield from self.resource.get('_active_tasks')
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))
 
     @asyncio.coroutine
     def all_dbs(self):
@@ -58,7 +58,7 @@ class Server(object):
         """
         resp = yield from self.resource.get('_all_dbs')
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))
 
     @property
     def config(self):
@@ -90,11 +90,11 @@ class Server(object):
         resp = yield from self.resource.get('_db_updates', params=params)
         yield from maybe_raise_error(resp)
         if feed == 'continuous':
-            return JsonFeed(resp.content)
+            return JsonFeed(resp)
         elif feed == 'eventsource':
-            return Feed(resp.content)
+            return Feed(resp)
         else:
-            return (yield from resp.json())
+            return (yield from resp.json(close=True))
 
     @asyncio.coroutine
     def log(self, *, bytes=None, offset=None):
@@ -113,7 +113,7 @@ class Server(object):
             params['offset'] = offset
         resp = yield from self.resource.get('_log', params=params)
         yield from maybe_raise_error(resp)
-        return (yield from resp.read()).decode('utf-8')
+        return (yield from resp.read(close=True)).decode('utf-8')
 
     @asyncio.coroutine
     def replicate(self, source, target, *,
@@ -196,7 +196,7 @@ class Server(object):
         maybe_set_param(doc, 'worker_processes', worker_processes)
         resp = yield from self.resource.post('_replicate', data=doc)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))
 
     @asyncio.coroutine
     def restart(self):
@@ -206,7 +206,7 @@ class Server(object):
         """
         resp = yield from self.resource.post('_restart')
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))
 
 
 class Config(object):
@@ -243,7 +243,7 @@ class Config(object):
             path.append(key)
         resp = yield from self.resource(*path).get()
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))
 
     @asyncio.coroutine
     def update(self, section, key, value):
@@ -258,7 +258,7 @@ class Config(object):
         """
         resp = yield from self.resource(section).put(key, data=value)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))
 
     @asyncio.coroutine
     def remove(self, section, key):
@@ -272,4 +272,4 @@ class Config(object):
         """
         resp = yield from self.resource(section).delete(key)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json())
+        return (yield from resp.json(close=True))

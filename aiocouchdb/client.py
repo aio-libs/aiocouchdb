@@ -12,6 +12,7 @@ import aiohttp
 import json
 import logging
 import urllib.parse
+import warnings
 
 
 class HttpRequest(aiohttp.client.ClientRequest):
@@ -46,7 +47,7 @@ class HttpResponse(aiohttp.client.ClientResponse):
     """:class:`aiohttp.client.ClientResponse` class with CouchDB specifics."""
 
     @asyncio.coroutine
-    def read(self):
+    def read(self, *, close=False):
         """Read response payload.
         Unlike :meth:`aiohttp.client.ClientResponse.read` doesn't decodes
         the response."""
@@ -60,7 +61,11 @@ class HttpResponse(aiohttp.client.ClientResponse):
                     buf.append((chunk, size))
                     total += size
             except aiohttp.EofStream:
-                pass
+                if close:
+                    self.close()
+            except:
+                self.close(True)
+                raise
 
             self._content = bytearray(total)
 
@@ -73,15 +78,18 @@ class HttpResponse(aiohttp.client.ClientResponse):
         return self._content
 
     @asyncio.coroutine
-    def read_and_close(self):
-        """Read response payload and then close response."""
-        super().read_and_close()
+    def read_and_close(self, decode=False):
+        warnings.warn(
+            'use .read(close=True) instead of .read_and_close',
+            UserWarning
+        )
+        return (yield from self.read(close=True))
 
     @asyncio.coroutine
-    def json(self):
+    def json(self, *, close=False):
         """Reads and decodes JSON response."""
         if self._content is None:
-            yield from self.read()
+            yield from self.read(close=close)
 
         ctype = self.headers.get('CONTENT-TYPE', '').lower()
         if not ctype.startswith('application/json'):
