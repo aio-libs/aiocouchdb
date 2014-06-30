@@ -28,35 +28,41 @@ class Server(object):
         self._config = Config(self.resource)
 
     @asyncio.coroutine
-    def info(self):
+    def info(self, *, auth=None):
         """Returns server :ref:`meta information and welcome message
         <api/server/root>`.
 
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
         :rtype: dict
         """
-        resp = yield from self.resource.get()
+        resp = yield from self.resource.get(auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
     @asyncio.coroutine
-    def active_tasks(self):
+    def active_tasks(self, *, auth=None):
         """Returns list of :ref:`active tasks <api/server/active_tasks>`
         which runs on server.
 
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
         :rtype: list
         """
-        resp = yield from self.resource.get('_active_tasks')
+        resp = yield from self.resource.get('_active_tasks', auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
     @asyncio.coroutine
-    def all_dbs(self):
+    def all_dbs(self, *, auth=None):
         """Returns list of available :ref:`databases <api/server/all_dbs>`
         on server.
 
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
         :rtype: list
         """
-        resp = yield from self.resource.get('_all_dbs')
+        resp = yield from self.resource.get('_all_dbs', auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
@@ -66,13 +72,14 @@ class Server(object):
         return self._config
 
     @asyncio.coroutine
-    def db_updates(self, *, feed=None, timeout=None, heartbeat=None):
+    def db_updates(self, *, feed=None, timeout=None, heartbeat=None, auth=None):
         """Emits :ref:`databases events <api/server/db_updates>` for
         the related server instance.
 
         :param str feed: Feed type
         :param int timeout: Timeout in milliseconds
         :param bool heartbeat: Whenever use heartbeats to keep connection alive
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         Depending on feed type returns:
 
@@ -87,7 +94,8 @@ class Server(object):
             params['timeout'] = timeout
         if heartbeat:
             params['heartbeat'] = heartbeat
-        resp = yield from self.resource.get('_db_updates', params=params)
+        resp = yield from self.resource.get('_db_updates',
+                                            auth=auth, params=params)
         yield from maybe_raise_error(resp)
         if feed == 'continuous':
             return JsonFeed(resp)
@@ -97,7 +105,7 @@ class Server(object):
             return (yield from resp.json(close=True))
 
     @asyncio.coroutine
-    def log(self, *, bytes=None, offset=None):
+    def log(self, *, bytes=None, offset=None, auth=None):
         """Returns a chunk of data from the tail of :ref:`CouchDB's log
         <api/server/log>` file.
 
@@ -111,13 +119,14 @@ class Server(object):
             params['bytes'] = bytes
         if offset:
             params['offset'] = offset
-        resp = yield from self.resource.get('_log', params=params)
+        resp = yield from self.resource.get('_log',  auth=auth, params=params)
         yield from maybe_raise_error(resp)
         return (yield from resp.read(close=True)).decode('utf-8')
 
     @asyncio.coroutine
     def replicate(self, source, target, *,
                   auth=None,
+                  authobj=None,
                   cancel=None,
                   continuous=None,
                   create_target=None,
@@ -141,7 +150,11 @@ class Server(object):
         :param str source: Source database name or URL
         :param str target: Target database name or URL
 
-        :param dict auth: Authorization object for the target database
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+                      (don't confuse with ``authobj`` which belongs to
+                      replication options)
+
+        :param dict authobj: Authentication object for the target database
         :param bool cancel: Cancels active replication
         :param bool continuous: Runs continuous replication
         :param bool create_target: Creates target database if it not exists
@@ -176,7 +189,7 @@ class Server(object):
         doc = {'source': source, 'target': target}
         maybe_set_param = (
             lambda doc, *kv: (None if kv[1] is None else doc.update([kv])))
-        maybe_set_param(doc, 'auth', auth)
+        maybe_set_param(doc, 'auth', authobj)
         maybe_set_param(doc, 'cancel', cancel)
         maybe_set_param(doc, 'continuous', continuous)
         maybe_set_param(doc, 'create_target', create_target)
@@ -194,30 +207,32 @@ class Server(object):
         maybe_set_param(doc, 'use_checkpoints', use_checkpoints)
         maybe_set_param(doc, 'worker_batch_size', worker_batch_size)
         maybe_set_param(doc, 'worker_processes', worker_processes)
-        resp = yield from self.resource.post('_replicate', data=doc)
+        resp = yield from self.resource.post('_replicate', auth=auth, data=doc)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
     @asyncio.coroutine
-    def restart(self):
+    def restart(self, *, auth=None):
         """:ref:`Restarts <api/server/restart>` server instance.
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: dict
         """
-        resp = yield from self.resource.post('_restart')
+        resp = yield from self.resource.post('_restart', auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
 
 class Config(object):
-    """Implements :ref:`/_config/* <api/config>` API. Should be used thought
+    """Implements :ref:`/_config/* <api/config>` API. Should be used via
     :attr:`server.config <aiocouchdb.server.Server.config>` property."""
 
     def __init__(self, resource):
         self.resource = resource('_config')
         
     @asyncio.coroutine
-    def get(self, section=None, key=None):
+    def get(self, section=None, key=None, *, auth=None):
         """Returns :ref:`server configuration <api/config>`. Depending on
         specified arguments returns:
 
@@ -232,6 +247,7 @@ class Config(object):
 
         :param str section: Section name (`optional`)
         :param str key: Option name (`optional`)
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: dict or str
         """
@@ -241,35 +257,37 @@ class Config(object):
         if key:
             assert isinstance(section, str)
             path.append(key)
-        resp = yield from self.resource(*path).get()
+        resp = yield from self.resource(*path).get(auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
     @asyncio.coroutine
-    def update(self, section, key, value):
+    def update(self, section, key, value, *, auth=None):
         """Updates specific :ref:`configuration option <api/config/section/key>`
         value and returns the old one back.
 
         :param str section: Configuration section name
         :param str key: Option name
         :param str value: New option value
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: str
         """
-        resp = yield from self.resource(section).put(key, data=value)
+        resp = yield from self.resource(section).put(key, auth=auth, data=value)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
     @asyncio.coroutine
-    def remove(self, section, key):
+    def remove(self, section, key, *, auth=None):
         """Removes specific :ref:`configuration option <api/config/section/key>`
         and returns it value back.
 
         :param string section: Configuration section name
         :param string key: Option name
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: str
         """
-        resp = yield from self.resource(section).delete(key)
+        resp = yield from self.resource(section).delete(key, auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))

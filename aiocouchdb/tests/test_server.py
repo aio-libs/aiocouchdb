@@ -90,7 +90,7 @@ class ServerTestCase(unittest.TestCase):
         post.return_value = self.make_future(resp)
 
         all_kwargs = {
-            'auth': {'oauth': {}},
+            'authobj': {'oauth': {}},
             'cancel': True,
             'continuous': True,
             'create_target': False,
@@ -117,6 +117,8 @@ class ServerTestCase(unittest.TestCase):
 
             _, kwargs = post.call_args
             data = kwargs['data']
+            if key == 'authobj':
+                key = 'auth'
             expected = {'source': 'source', 'target': 'target', key: value}
             self.assertEqual(expected, data)
 
