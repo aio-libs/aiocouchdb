@@ -133,40 +133,40 @@ class Resource(object):
     def __repr__(self):
         return '<{} @ {!r}>'.format(type(self).__name__, self.url)
 
-    def head(self, path=None, headers=None, params=None, **options):
+    def head(self, path=None, **options):
         """Makes HEAD request to the resource. See :meth:`Resource.request`
         for arguments definition."""
-        return self.request('HEAD', path, None, headers, params, **options)
+        return self.request('HEAD', path, **options)
 
-    def get(self, path=None, headers=None, params=None, **options):
+    def get(self, path=None, **options):
         """Makes GET request to the resource. See :meth:`Resource.request`
         for arguments definition."""
-        return self.request('GET', path, None, headers, params, **options)
+        return self.request('GET', path, **options)
 
-    def post(self, path=None, data=None, headers=None, params=None, **options):
+    def post(self, path=None, **options):
         """Makes POST request to the resource. See :meth:`Resource.request`
         for arguments definition."""
-        return self.request('POST', path, data, headers, params, **options)
+        return self.request('POST', path, **options)
 
-    def put(self, path=None, data=None, headers=None, params=None, **options):
+    def put(self, path=None, **options):
         """Makes PUT request to the resource. See :meth:`Resource.request`
         for arguments definition."""
-        return self.request('PUT', path, data, headers, params, **options)
+        return self.request('PUT', path, **options)
 
-    def delete(self, path=None, headers=None, params=None, **options):
+    def delete(self, path=None, **options):
         """Makes DELETE request to the resource. See :meth:`Resource.request`
         for arguments definition."""
-        return self.request('DELETE', path, headers, params, **options)
+        return self.request('DELETE', path, **options)
 
-    def copy(self, path=None, headers=None, params=None, **options):
+    def copy(self, path=None, **options):
         """Makes COPY request to the resource. See :meth:`Resource.request`
         for arguments definition."""
-        return self.request('COPY', path, headers, params, **options)
+        return self.request('COPY', path, **options)
 
-    def options(self, path=None, headers=None, params=None, **options):
+    def options(self, path=None, **options):
         """Makes OPTIONS request to the resource. See :meth:`Resource.request`
         for arguments definition."""
-        return self.request('OPTIONS', path, headers, params, **options)
+        return self.request('OPTIONS', path, **options)
 
     @asyncio.coroutine
     def request(self, method, path=None, data=None, headers=None, params=None,
@@ -174,13 +174,13 @@ class Resource(object):
         """Makes a HTTP request to the resource.
 
         :param str method: HTTP method
-        :param str path: Resource relative path (optional)
+        :param str path: Resource relative path
         :param bytes data: POST/PUT request payload data
         :param dict headers: Custom HTTP request headers
         :param dict params: Custom HTTP request query parameters
         :param options: Additional options for :func:`aiohttp.request` function
 
-        :returns: :class:`aiohttp.HttpResponse` instance
+        :returns: :class:`aiocouchdb.client.HttpResponse` instance
         """
         url = urljoin(self.url, path) if path else self.url
         resp = yield from aiohttp.request(method, url,
