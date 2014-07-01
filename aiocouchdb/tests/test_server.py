@@ -146,6 +146,45 @@ class ServerTestCase(utils.TestCase):
     def test_session(self):
         self.assertIsInstance(self.server.session, aiocouchdb.server.Session)
 
+    def test_stats(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.stats())
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET', '_stats')
+
+    def test_stats_flush(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.stats(flush=True))
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET', '_stats', params={'flush': True})
+
+    def test_stats_range(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.stats(range=60))
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET', '_stats', params={'range': 60})
+
+    def test_stats_single_metric(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.stats('httpd/requests'))
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET', '_stats', 'httpd', 'requests')
+
+    def test_stats_invalid_metric(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        self.assertRaises(ValueError, self.run_loop,
+                          self.server.stats('httpd'))
+
 
 class ServerConfigFunctionalTestCase(utils.TestCase):
 

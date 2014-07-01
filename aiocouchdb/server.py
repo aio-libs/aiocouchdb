@@ -230,6 +230,37 @@ class Server(object):
         """Proxy to the related :class:`~aiocouchdb.server.Session` instance."""
         return self._session
 
+    @asyncio.coroutine
+    def stats(self, metric=None, *, auth=None, flush=None, range=None):
+        """Returns :ref:`server statistics <api/server/stats>`.
+
+        :param str metric: Metrics name in format ``group/name`. For instance,
+                           ``httpd/requests``. If omitted, all metrics
+                           will be returned
+        :param bool flush: If ``True``, collects samples right for this request
+        :param int range: `Sampling range`_
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+
+        .. _Sampling range: http://docs.couchdb.org/en/latest/config/misc.html#stats/samples
+        """
+        path = ['_stats']
+        params = {}
+        if metric is not None:
+            if '/' in metric:
+                path.extend(metric.split('/', 1))
+            else:
+                raise ValueError('invalid metric name. try "httpd/requests"')
+        if flush:
+            params['flush'] = flush
+        if range:
+            params['range'] = range
+        resource = self.resource(*path)
+        resp = yield from resource.get(auth=auth, params=params)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))
+
 
 class Config(object):
     """Implements :ref:`/_config/* <api/config>` API. Should be used via
