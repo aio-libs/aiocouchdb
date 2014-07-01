@@ -1,4 +1,4 @@
-0.1.0  (dev)
+0.1.0 (2014-07-01)
 ------------------
 
 - Initial checkpoint release
