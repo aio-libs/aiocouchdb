@@ -23,12 +23,12 @@ class ServerTestCase(utils.TestCase):
         self.server = aiocouchdb.server.Server(self.url)
 
     def test_init_with_url(self):
-        self.assertIsInstance(self.server.resource, self.server.resource_class)
+        self.assertIsInstance(self.server.resource, aiocouchdb.client.Resource)
 
     def test_init_with_resource(self):
-        res = self.server.resource_class(self.url)
+        res = aiocouchdb.client.Resource(self.url)
         server = aiocouchdb.server.Server(res)
-        self.assertIsInstance(server.resource, server.resource_class)
+        self.assertIsInstance(server.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url, self.server.resource.url)
 
     def test_info(self):

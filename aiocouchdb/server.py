@@ -18,14 +18,10 @@ from .feeds import Feed, JsonFeed
 class Server(object):
     """Implementation of :ref:`CouchDB Server API <api/server>`."""
 
-    resource_class = Resource
-
-    def __init__(self, url='http://localhost:5984', *, resource_class=None):
-        if resource_class is not None:
-            self.resource_class = resource_class
-        if not isinstance(url, self.resource_class):
-            url = self.resource_class(url)
-        self.resource = url
+    def __init__(self, url_or_resource='http://localhost:5984'):
+        if isinstance(url_or_resource, str):
+            url_or_resource = Resource(url_or_resource)
+        self.resource = url_or_resource
         self._session = Session(self.resource)
         self._config = Config(self.resource)
 
