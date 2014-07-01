@@ -261,6 +261,22 @@ class Server(object):
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
 
+    @asyncio.coroutine
+    def uuids(self, *, auth=None, count=None):
+        """Returns :ref:`UUIDs <api/server/uuids>` generated on server.
+
+        :param int count: Amount of UUIDs to generate
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: list
+        """
+        params = {}
+        if count is not None:
+            params['count'] = count
+        resp = yield from self.resource.get('_uuids', auth=auth, params=params)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))['uuids']
+
 
 class Config(object):
     """Implements :ref:`/_config/* <api/config>` API. Should be used via

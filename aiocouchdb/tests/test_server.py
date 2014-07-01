@@ -185,6 +185,24 @@ class ServerTestCase(utils.TestCase):
         self.assertRaises(ValueError, self.run_loop,
                           self.server.stats('httpd'))
 
+    def test_uuids(self):
+        resp = self.mock_json_response(data=b'{"uuids": ["foo"]}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.uuids())
+        self.assertIsInstance(result, list)
+        self.assertEqual(['foo'], result)
+        self.assert_request_called_with('GET', '_uuids')
+
+    def test_uuids_count(self):
+        resp = self.mock_json_response(data=b'{"uuids": ["foo", "bar"]}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.uuids(count=2))
+        self.assertIsInstance(result, list)
+        self.assertEqual(['foo', 'bar'], result)
+        self.assert_request_called_with('GET', '_uuids', params={'count': 2})
+
 
 class ServerConfigFunctionalTestCase(utils.TestCase):
 
