@@ -7,89 +7,103 @@
 # you should have received as part of this distribution.
 #
 
-import asyncio
-import aiohttp
 import http.cookies
-import unittest
-import unittest.mock as mock
-from io import BytesIO
 
 import aiocouchdb.authn
 import aiocouchdb.client
 import aiocouchdb.feeds
 import aiocouchdb.server
+import aiocouchdb.tests.utils as utils
 
-URL = 'http://localhost:5984'
 
-
-class ServerTestCase(unittest.TestCase):
+class ServerTestCase(utils.TestCase):
 
     def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.server = aiocouchdb.server.Server(URL)
+        super().setUp()
+        self.server = aiocouchdb.server.Server(self.url)
 
-    def tearDown(self):
-        self.loop.close()
+    def test_init_with_url(self):
+        self.assertIsInstance(self.server.resource, self.server.resource_class)
 
-    def make_future(self, obj):
-        fut = asyncio.Future(loop=self.loop)
-        fut.set_result(obj)
-        return fut
+    def test_init_with_resource(self):
+        res = self.server.resource_class(self.url)
+        server = aiocouchdb.server.Server(res)
+        self.assertIsInstance(server.resource, server.resource_class)
+        self.assertEqual(self.url, self.server.resource.url)
 
-    def make_mock_response(self, status, content, headers):
-        def read():
-            data = content.read()
-            if data:
-                return self.make_future(data)
-            raise aiohttp.EofStream
-        resp = aiocouchdb.client.HttpResponse('get', URL)
-        resp.content = mock.Mock()
-        resp.content.read = read
-        resp.status = status
-        resp.headers = headers
-        return resp
+    def test_info(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.info())
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET')
+
+    def test_active_tasks(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.active_tasks())
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET', '_active_tasks')
+
+    def test_all_dbs(self):
+        resp = self.mock_json_response(data=b'[]')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.all_dbs())
+        self.assertIsInstance(result, list)
+        self.assert_request_called_with('GET', '_all_dbs')
+
+    def test_contig(self):
+        self.assertIsInstance(self.server.config, aiocouchdb.server.Config)
 
     def test_db_updates(self):
-        resp = self.make_mock_response(200, BytesIO(b'{}'),
-                                       {'CONTENT-TYPE': 'application/json'})
-        self.server.resource = mock.Mock()
-        self.server.resource.get.return_value = self.make_future(resp)
-        result = self.loop.run_until_complete(self.server.db_updates())
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.db_updates())
+        self.assert_request_called_with('GET', '_db_updates')
         self.assertIsInstance(result, dict)
 
     def test_db_updates_feed_continuous(self):
-        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
-        self.server.resource = mock.Mock()
-        self.server.resource.get.return_value = self.make_future(resp)
-        result = self.loop.run_until_complete(
-            self.server.db_updates(feed='continuous'))
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.db_updates(feed='continuous'))
+        self.assert_request_called_with('GET', '_db_updates',
+                                        params={'feed': 'continuous'})
         self.assertIsInstance(result, aiocouchdb.feeds.JsonFeed)
 
     def test_db_updates_feed_eventsource(self):
-        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
-        self.server.resource = mock.Mock()
-        self.server.resource.get.return_value = self.make_future(resp)
-        result = self.loop.run_until_complete(
-            self.server.db_updates(feed='eventsource'))
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.db_updates(feed='eventsource'))
+        self.assert_request_called_with('GET', '_db_updates',
+                                        params={'feed': 'eventsource'})
         self.assertIsInstance(result, aiocouchdb.feeds.Feed)
 
+    def test_log(self):
+        resp = self.mock_response(data=b'hello')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.log())
+        self.assertIsInstance(result, str)
+        self.assert_request_called_with('GET', '_log')
+
     def test_replicate(self):
-        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
-        post = self.server.resource.post = mock.Mock()
-        post.return_value = self.make_future(resp)
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
 
-        coro = self.server.replicate('source', 'target')
-        self.loop.run_until_complete(coro)
-
-        _, kwargs = post.call_args
-        data = kwargs['data']
-        self.assertEqual({'source': 'source', 'target': 'target'}, data)
+        result = self.run_loop(self.server.replicate('source', 'target'))
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with(
+            'POST', '_replicate', data={'source': 'source', 'target': 'target'})
 
     def test_replicate_kwargs(self):
-        resp = self.make_mock_response(200, BytesIO(b'{}'), {})
-        post = self.server.resource.post = mock.Mock()
-        post.return_value = self.make_future(resp)
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
 
         all_kwargs = {
             'authobj': {'oauth': {}},
@@ -113,149 +127,101 @@ class ServerTestCase(unittest.TestCase):
         }
 
         for key, value in all_kwargs.items():
-            kwarg = {key: value}
-            coro = self.server.replicate('source', 'target', **kwarg)
-            self.loop.run_until_complete(coro)
-
-            _, kwargs = post.call_args
-            data = kwargs['data']
+            result = self.run_loop(self.server.replicate('source', 'target',
+                                                         **{key: value}))
+            self.assertIsInstance(result, dict)
             if key == 'authobj':
                 key = 'auth'
-            expected = {'source': 'source', 'target': 'target', key: value}
-            self.assertEqual(expected, data)
+            data = {'source': 'source', 'target': 'target', key: value}
+            self.assert_request_called_with('POST', '_replicate', data=data)
 
     def test_restart(self):
-        resp = self.make_mock_response(200, BytesIO(b'{"ok": true}'),
-                                       {'CONTENT-TYPE': 'application/json'})
-        post = self.server.resource.post = mock.Mock()
-        post.return_value = self.make_future(resp)
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
 
-        result = self.loop.run_until_complete(self.server.restart())
-        self.assertEqual({'ok': True}, result)
+        result = self.run_loop(self.server.restart())
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('POST', '_restart')
 
-
-class ServerFunctionalTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.server = aiocouchdb.server.Server(URL)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_init_with_url(self):
-        self.assertIsInstance(self.server.resource, self.server.resource_class)
-
-    def test_init_with_resource(self):
-        res = self.server.resource_class(URL)
-        server = aiocouchdb.server.Server(res)
-        self.assertIsInstance(server.resource, server.resource_class)
-        self.assertEqual(URL, self.server.resource.url)
-
-    def test_info(self):
-        result = self.loop.run_until_complete(self.server.info())
-        self.assertIn('couchdb', result)
-        self.assertIn('version', result)
-
-    def test_active_tasks(self):
-        result = self.loop.run_until_complete(self.server.active_tasks())
-        self.assertIsInstance(result, list)
-
-    def test_all_dbs(self):
-        result = self.loop.run_until_complete(self.server.all_dbs())
-        self.assertIsInstance(result, list)
-
-    def test_log(self):
-        result = self.loop.run_until_complete(self.server.log())
-        self.assertIsInstance(result, str)
+    def test_session(self):
+        self.assertIsInstance(self.server.session, aiocouchdb.server.Session)
 
 
-class ServerConfigFunctionalTestCase(unittest.TestCase):
+class ServerConfigFunctionalTestCase(utils.TestCase):
 
     def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.server = aiocouchdb.server.Server(URL)
-
-    def tearDown(self):
-        self.loop.close()
+        super().setUp()
+        self.server = aiocouchdb.server.Server(self.url)
 
     def test_config(self):
-        result = self.loop.run_until_complete(self.server.config.get())
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.config.get())
         self.assertIsInstance(result, dict)
-        self.assertIn('couchdb', result)
+        self.assert_request_called_with('GET', '_config')
 
     def test_config_get_section(self):
-        result = self.loop.run_until_complete(
-            self.server.config.get('couchdb'))
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.config.get('couchdb'))
         self.assertIsInstance(result, dict)
-        self.assertIn('uuid', result)
+        self.assert_request_called_with('GET', '_config', 'couchdb')
 
     def test_config_get_option(self):
-        result = self.loop.run_until_complete(
-            self.server.config.get('couchdb', 'uuid'))
-        self.assertIsInstance(result, str)
+        resp = self.mock_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.config.get('couchdb', 'uuid'))
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET', '_config', 'couchdb', 'uuid')
 
     def test_config_set_option(self):
-        result = self.loop.run_until_complete(
+        resp = self.mock_response(data=b'"relax!"')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(
             self.server.config.update('test', 'aiocouchdb', 'passed'))
-        self.assertEqual('', result)
+        self.assertIsInstance(result, str)
+        self.assert_request_called_with('PUT', '_config', 'test', 'aiocouchdb',
+                                        data='passed')
 
     def test_config_del_option(self):
-        self.loop.run_until_complete(
-            self.server.config.update('test', 'aiocouchdb', 'passed'))
-        result = self.loop.run_until_complete(
-            self.server.config.remove('test', 'aiocouchdb'))
-        self.assertEqual('passed', result)
+        resp = self.mock_response(data=b'"passed"')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.config.remove('test', 'aiocouchdb'))
+        self.assertIsInstance(result, str)
+        self.assert_request_called_with('DELETE',
+                                        '_config', 'test', 'aiocouchdb')
 
 
-class SessionTestCase(unittest.TestCase):
+class SessionTestCase(utils.TestCase):
 
     def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        resp = self.resp = aiocouchdb.client.HttpResponse('get', URL)
-        resp.status = 200
-        resp.headers = {'CONTENT-TYPE': 'application/json'}
-        resp._content = b'{"ok": true}'
-        resp.read = mock.Mock(return_value=self.make_future(b'{"ok": true}'))
-
-        self.patch = mock.patch('aiohttp.request')
-        self.request = self.patch.start()
-        self.request.return_value = self.make_future(resp)
-
-        self.server = aiocouchdb.server.Server(URL)
-
-    def tearDown(self):
-        self.patch.stop()
-        self.loop.close()
-
-    def make_future(self, obj):
-        fut = asyncio.Future(loop=self.loop)
-        fut.set_result(obj)
-        return fut
+        super().setUp()
+        self.server = aiocouchdb.server.Server(self.url)
+        self.resp = self.mock_json_response(data=b'{"ok": true}')
+        self.resp.cookies = http.cookies.SimpleCookie()
+        self.request.return_value = self.future(self.resp)
 
     def test_open_session(self):
         self.resp.cookies = http.cookies.SimpleCookie({'AuthSession': 'secret'})
-        auth = self.loop.run_until_complete(
-            self.server.session.open('username', 'password'))
+        auth = self.run_loop(self.server.session.open('foo', 'bar'))
 
         self.assertIsInstance(auth, aiocouchdb.authn.CookieAuthProvider)
         self.assertIs(auth._cookies, self.resp.cookies)
 
-        args, kwargs = self.request.call_args
-        self.assertEqual(('POST', URL + '/_session'), args)
-        self.assertEqual({'name': 'username', 'password': 'password'},
-                         kwargs['data'])
+        self.assert_request_called_with(
+            'POST', '_session', data={'name': 'foo', 'password': 'bar'})
 
     def test_session_info(self):
-        self.loop.run_until_complete(self.server.session.info())
-        args, _ = self.request.call_args
-        self.assertEqual(('GET', URL + '/_session'), args)
+        result = self.run_loop(self.server.session.info())
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('GET', '_session')
 
     def test_close_session(self):
-        self.loop.run_until_complete(self.server.session.close())
-        args, _ = self.request.call_args
-        self.assertEqual(('DELETE', URL + '/_session'), args)
+        result = self.run_loop(self.server.session.close())
+        self.assertIsInstance(result, dict)
+        self.assert_request_called_with('DELETE', '_session')
