@@ -90,11 +90,11 @@ class Server(object):
         - :class:`aiocouchdb.feeds.Feed` - for ``eventsource`` feed
         """
         params = {}
-        if feed:
+        if feed is not None:
             params['feed'] = feed
-        if timeout:
+        if timeout is not None:
             params['timeout'] = timeout
-        if heartbeat:
+        if heartbeat is not None:
             params['heartbeat'] = heartbeat
         resp = yield from self.resource.get('_db_updates',
                                             auth=auth, params=params)
@@ -117,9 +117,9 @@ class Server(object):
         :rtype: str
         """
         params = {}
-        if bytes:
+        if bytes is not None:
             params['bytes'] = bytes
-        if offset:
+        if offset is not None:
             params['offset'] = offset
         resp = yield from self.resource.get('_log',  auth=auth, params=params)
         yield from maybe_raise_error(resp)
@@ -252,9 +252,9 @@ class Server(object):
                 path.extend(metric.split('/', 1))
             else:
                 raise ValueError('invalid metric name. try "httpd/requests"')
-        if flush:
+        if flush is not None:
             params['flush'] = flush
-        if range:
+        if range is not None:
             params['range'] = range
         resource = self.resource(*path)
         resp = yield from resource.get(auth=auth, params=params)
@@ -306,9 +306,9 @@ class Config(object):
         :rtype: dict or str
         """
         path = []
-        if section:
+        if section is not None:
             path.append(section)
-        if key:
+        if key is not None:
             assert isinstance(section, str)
             path.append(key)
         resp = yield from self.resource(*path).get(auth=auth)
