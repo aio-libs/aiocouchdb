@@ -128,7 +128,9 @@ class Resource(object):
             self.response_class = response_class
 
     def __call__(self, *path):
-        return type(self)(urljoin(self.url, *path))
+        return type(self)(urljoin(self.url, *path),
+                          request_class=self.request_class,
+                          response_class=self.response_class)
 
     def __repr__(self):
         return '<{} @ {!r}>'.format(type(self).__name__, self.url)
