@@ -1,8 +1,7 @@
-
 Welcome to aiocouchdb's documentation!
 ****************************************
 
-.. include:: ../README.rst
+:Version: |version|
 
 Server
 ======
@@ -45,6 +44,11 @@ Errors
 
 .. automodule:: aiocouchdb.errors
   :members:
+
+Changes
+=======
+
+.. include:: ../CHANGES.rst
 
 License
 =======
