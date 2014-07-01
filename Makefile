@@ -17,7 +17,7 @@ install:
 	${PYTHON} setup.py install
 
 test:
-	${NOSE} -v --with-doctest aiocouchdb
+	${NOSE} --with-doctest aiocouchdb
 
 cover: test
 	${NOSE} --with-coverage --cover-html --cover-erase --cover-package=aiocouchdb
