@@ -11,6 +11,7 @@ import asyncio
 
 from .authn import CookieAuthProvider
 from .client import Resource
+from .database import Database
 from .errors import maybe_raise_error
 from .feeds import Feed, JsonFeed
 
@@ -18,7 +19,12 @@ from .feeds import Feed, JsonFeed
 class Server(object):
     """Implementation of :ref:`CouchDB Server API <api/server>`."""
 
-    def __init__(self, url_or_resource='http://localhost:5984'):
+    database_class = Database
+
+    def __init__(self, url_or_resource='http://localhost:5984', *,
+                 database_class=None):
+        if database_class is not None:
+            self.database_class = database_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
@@ -68,6 +74,26 @@ class Server(object):
     def config(self):
         """Proxy to the related :class:`~aiocouchdb.server.Config` instance."""
         return self._config
+
+    @asyncio.coroutine
+    def database(self, dbname, *, auth=None):
+        """Returns :class:`~aiocouchdb.database.Database` instance against
+        specified ``dbname``.
+
+        If database is missed or isn't accessible for provided credentials
+        this method raises :exc:`aiocouchdb.errors.HttpErrorException`
+        for related response status code.
+
+        :param str dbname: Database name
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: :class:`aiocouchdb.database.Database`
+        """
+        db_resource = self.resource(dbname)
+        resp = yield from db_resource.head(auth=auth)
+        yield from maybe_raise_error(resp)
+        yield from resp.read(close=True)
+        return self.database_class(db_resource)
 
     @asyncio.coroutine
     def db_updates(self, *, feed=None, timeout=None, heartbeat=None, auth=None):

@@ -21,6 +21,12 @@ Session
 .. autoclass:: aiocouchdb.server.Session
   :members:
 
+Database
+========
+
+.. automodule:: aiocouchdb.database
+  :members:
+
 Client
 ======
 

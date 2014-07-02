@@ -58,6 +58,29 @@ class ServerTestCase(utils.TestCase):
     def test_contig(self):
         self.assertIsInstance(self.server.config, aiocouchdb.server.Config)
 
+    def test_database(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.server.database('db'))
+        self.assert_request_called_with('HEAD', 'db')
+        self.assertIsInstance(result, self.server.database_class)
+
+    def test_database_custom_class(self):
+        class CustomDatabase(object):
+            def __init__(self, thing):
+                self.resource = thing
+        server = aiocouchdb.server.Server(self.url,
+                                          database_class=CustomDatabase)
+
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(server.database('db'))
+        self.assert_request_called_with('HEAD', 'db')
+        self.assertIsInstance(result, CustomDatabase)
+        self.assertIsInstance(result.resource, aiocouchdb.client.Resource)
+
     def test_db_updates(self):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)
