@@ -7,6 +7,28 @@
 # you should have received as part of this distribution.
 #
 
+"""
+Exception hierarchy
+-------------------
+
+.. code::
+
+  BaseException
+   +-- Exception
+        +-- aiohttp.errors.HttpException
+             +-- aiohttp.errors.HttpErrorException
+                  +-- aiocouchdb.errors.HttpErrorException
+                       +-- aiocouchdb.errors.BadRequest
+                       +-- aiocouchdb.errors.Unauthorized
+                       +-- aiocouchdb.errors.Forbidden
+                       +-- aiocouchdb.errors.ResourceNotFound
+                       +-- aiocouchdb.errors.MethodNotAllowed
+                       +-- aiocouchdb.errors.ResourceConflict
+                       +-- aiocouchdb.errors.PreconditionFailed
+                       +-- aiocouchdb.errors.ServerError
+"""
+
+
 import asyncio
 import aiohttp.errors
 
