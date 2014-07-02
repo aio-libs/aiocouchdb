@@ -8,11 +8,12 @@
 #
 
 import asyncio
-from aiohttp.errors import HttpException
+import aiohttp.errors
 
 
-class CouchHttpError(BaseException):
-    """Mixin class to denote CouchDB related errors."""
+class HttpErrorException(aiohttp.errors.HttpErrorException):
+    """Extension of :exc:`aiohttp.errors.HttpErrorException` for CouchDB related
+    errors."""
 
     error = ''
     reason = ''
@@ -26,7 +27,7 @@ class CouchHttpError(BaseException):
         return self.reason
 
 
-class BadRequest(CouchHttpError, HttpException):
+class BadRequest(HttpErrorException):
     """The request could not be understood by the server due to malformed
     syntax."""
 
@@ -39,28 +40,28 @@ class BadRequest(CouchHttpError, HttpException):
         return super().__str__()
 
 
-class Unauthorized(CouchHttpError, HttpException):
+class Unauthorized(HttpErrorException):
     """The request requires user authentication."""
 
     code = 401
     message = 'Unauthorized'
 
 
-class Forbidden(CouchHttpError, HttpException):
+class Forbidden(HttpErrorException):
     """The server understood the request, but is refusing to fulfill it."""
 
     code = 403
     message = 'Forbidden'
 
 
-class ResourceNotFound(CouchHttpError, HttpException):
+class ResourceNotFound(HttpErrorException):
     """The server has not found anything matching the Request-URI."""
 
     code = 404
     message = 'Resource Not Found'
 
 
-class MethodNotAllowed(CouchHttpError, HttpException):
+class MethodNotAllowed(HttpErrorException):
     """The method specified in the Request-Line is not allowed for
     the resource identified by the Request-URI."""
 
@@ -68,7 +69,7 @@ class MethodNotAllowed(CouchHttpError, HttpException):
     message = 'Method Not Allowed'
 
 
-class ResourceConflict(CouchHttpError, HttpException):
+class ResourceConflict(HttpErrorException):
     """The request could not be completed due to a conflict with the current
     state of the resource."""
 
@@ -76,7 +77,7 @@ class ResourceConflict(CouchHttpError, HttpException):
     message = 'Resource Conflict'
 
 
-class PreconditionFailed(CouchHttpError, HttpException):
+class PreconditionFailed(HttpErrorException):
     """The precondition given in one or more of the Request-Header fields
     evaluated to false when it was tested on the server."""
 
@@ -84,7 +85,7 @@ class PreconditionFailed(CouchHttpError, HttpException):
     message = 'Precondition Failed'
 
 
-class ServerError(CouchHttpError, HttpException):
+class ServerError(HttpErrorException):
     """The server encountered an unexpected condition which prevented it from
     fulfilling the request."""
 
@@ -97,12 +98,13 @@ class ServerError(CouchHttpError, HttpException):
         return super().__str__()
 
 
-HTTP_ERROR_BY_CODE = {err.code: err for err in CouchHttpError.__subclasses__()}
+HTTP_ERROR_BY_CODE = {err.code: err
+                      for err in HttpErrorException.__subclasses__()}
 
 
 @asyncio.coroutine
 def maybe_raise_error(resp):
-    """Raises :exc:`aiohttp.errors.HttpException` exception in case of >=400
+    """Raises :exc:`aiohttp.errors.HttpErrorException` exception in case of >=400
     response status code."""
     if resp.status < 400:
         return

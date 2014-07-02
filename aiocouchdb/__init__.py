@@ -15,7 +15,7 @@ from .authn import (
     OAuthProvider
 )
 from .errors import (
-    HttpException,
+    HttpErrorException,
     BadRequest,
     Unauthorized,
     Forbidden,

@@ -33,7 +33,7 @@ class HttpErrorsTestCase(utils.TestCase):
     def test_decode_common_error_response(self):
         try:
             self.run_loop(aiocouchdb.errors.maybe_raise_error(self.resp))
-        except aiocouchdb.errors.CouchHttpError as exc:
+        except aiocouchdb.errors.HttpErrorException as exc:
             self.assertEqual('test', exc.error)
             self.assertEqual('passed', exc.reason)
         else:
@@ -43,7 +43,7 @@ class HttpErrorsTestCase(utils.TestCase):
         self.resp.headers['X-Foo'] = 'bar'
         try:
             self.run_loop(aiocouchdb.errors.maybe_raise_error(self.resp))
-        except aiocouchdb.errors.CouchHttpError as exc:
+        except aiocouchdb.errors.HttpErrorException as exc:
             self.assertEqual('bar', exc.headers.get('X-Foo'))
         else:
             assert False, 'exception expected'
@@ -51,7 +51,7 @@ class HttpErrorsTestCase(utils.TestCase):
     def test_exc_to_str(self):
         try:
             self.run_loop(aiocouchdb.errors.maybe_raise_error(self.resp))
-        except aiocouchdb.errors.CouchHttpError as exc:
+        except aiocouchdb.errors.HttpErrorException as exc:
             self.assertEqual('(test) passed', str(exc))
         else:
             assert False, 'exception expected'
