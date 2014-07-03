@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 #
 
+import types
 import unittest.mock as mock
 
 import aiocouchdb.authn
@@ -112,6 +113,11 @@ class HttpRequestTestCase(utils.TestCase):
         req = aiocouchdb.client.HttpRequest('get', self.url,
                                             params={'bar': False})
         self.assertEqual('/?bar=false', req.path)
+
+    def test_encode_chunked_json_body(self):
+        req = aiocouchdb.client.HttpRequest(
+            'post', self.url, data=('{"foo": "bar"}' for _ in [0]))
+        self.assertIsInstance(req.body, types.GeneratorType)
 
 
 class HttpResponseTestCase(utils.TestCase):

@@ -11,6 +11,7 @@ import asyncio
 import aiohttp
 import json
 import logging
+import types
 import urllib.parse
 import warnings
 
@@ -29,7 +30,8 @@ class HttpRequest(aiohttp.client.ClientRequest):
         """Encodes ``data`` as JSON if `Content-Type`
         is :mimetype:`application/json`."""
         if self.headers.get('CONTENT-TYPE') == 'application/json':
-            data = json.dumps(data)
+            if not isinstance(data, types.GeneratorType):
+                data = json.dumps(data)
         return super().update_body_from_data(data)
 
     def update_path(self, params, data):
