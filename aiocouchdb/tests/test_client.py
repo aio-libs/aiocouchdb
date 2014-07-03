@@ -84,7 +84,7 @@ class ResourceTestCase(utils.TestCase):
         self.run_loop(res.request('get'))
         self.assertFalse(res.update_auth.called)
 
-    def test_sing_request(self):
+    def test_sign_request(self):
         res = aiocouchdb.client.Resource(self.url)
         auth = mock.Mock(spec=aiocouchdb.authn.AuthProvider)
         self.run_loop(res.request('get', auth=auth))
