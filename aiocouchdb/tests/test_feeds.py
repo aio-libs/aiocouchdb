@@ -129,3 +129,95 @@ class JsonFeedTestCase(utils.TestCase):
         result = self.run_loop(feed.next())
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
+
+
+class JsonViewFeedTestCase(utils.TestCase):
+
+    def test_read_empty_view(self):
+        resp = self.mock_response(data=[
+            b'{"total_rows": 0, "offset": 0, "rows": [\r\n',
+            b'\r\n',
+            b']}\r\n'
+        ])
+
+        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(None, result)
+        self.assertFalse(feed.is_active())
+
+    def test_read_reduced_empty_view(self):
+        resp = self.mock_response(data=[
+            b'{"rows": [\r\n',
+            b'\r\n',
+            b']}\r\n'
+        ])
+
+        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(None, result)
+        self.assertFalse(feed.is_active())
+
+    def test_read_view(self):
+        resp = self.mock_response(data=[
+            b'{"total_rows": 3, "offset": 0, "rows": [\r\n',
+            b'{"id": "foo", "key": null, "value": false}',
+            b',\r\n{"id": "bar", "key": null, "value": false}',
+            b',\r\n{"id": "baz", "key": null, "value": false}',
+            b']}\r\n'
+        ])
+
+        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        for idx in ('foo', 'bar', 'baz'):
+            row = self.run_loop(feed.next())
+            self.assertEqual({'id': idx, 'key': None, 'value': False}, row)
+        row = self.run_loop(feed.next())
+        self.assertEqual(None, row)
+        self.assertFalse(feed.is_active())
+
+    def test_view_header(self):
+        resp = self.mock_response(data=[
+            b'{"total_rows": 3, "offset": 0, "rows": [\r\n',
+            b'{"id": "foo", "key": null, "value": false}',
+            b',\r\n{"id": "bar", "key": null, "value": false}',
+            b',\r\n{"id": "baz", "key": null, "value": false}',
+            b']}\r\n'
+        ])
+
+        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+
+        self.assertIsNone(feed.total_rows)
+        self.assertIsNone(feed.offset)
+        self.assertIsNone(feed.update_seq)
+
+        self.run_loop(feed.next())
+
+        self.assertEqual(3, feed.total_rows)
+        self.assertEqual(0, feed.offset)
+        self.assertIsNone(feed.update_seq)
+
+    def test_reduced_view_header(self):
+        resp = self.mock_response(data=[
+            b'{"rows": [\r\n',
+            b'{"key": null, "value": 1}',
+            b',\r\n{"key": true, "value": 2}',
+            b']}\r\n'
+        ])
+
+        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        self.assertIsNone(feed.total_rows)
+        self.assertIsNone(feed.offset)
+        self.assertIsNone(feed.update_seq)
+
+        self.run_loop(feed.next())
+
+        self.assertIsNone(feed.total_rows)
+        self.assertIsNone(feed.offset)
+        self.assertIsNone(feed.update_seq)

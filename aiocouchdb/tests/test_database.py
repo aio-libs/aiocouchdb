@@ -7,7 +7,10 @@
 # you should have received as part of this distribution.
 #
 
+import json
+
 import aiocouchdb.client
+import aiocouchdb.feeds
 import aiocouchdb.database
 import aiocouchdb.tests.utils as utils
 from aiocouchdb.client import urljoin
@@ -78,3 +81,54 @@ class DatabaseTestCase(utils.TestCase):
         result = self.run_loop(self.db.delete())
         self.assert_request_called_with('DELETE', 'db')
         self.assertTrue(result)
+
+    def test_all_docs(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.all_docs())
+        self.assert_request_called_with('GET', 'db', '_all_docs')
+        self.assertIsInstance(result, aiocouchdb.feeds.JsonViewFeed)
+
+    def test_all_docs_params(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        all_params = {
+            'attachments': False,       
+            'conflicts': True,
+            'descending': True,
+            'endkey': 'foo',
+            'endkey_docid': 'foo_id',
+            'include_docs': True,
+            'inclusive_end': False,
+            'limit': 10,
+            'skip': 20,
+            'stale': 'ok',
+            'startkey': 'bar',
+            'startkey_docid': 'bar_id',
+            'update_seq': True
+        }
+
+        for key, value in all_params.items():
+            self.run_loop(self.db.all_docs(**{key: value}))
+            if key in ('endkey', 'startkey'):
+                value = json.dumps(value)
+            self.assert_request_called_with('GET', 'db', '_all_docs',
+                                            params={key: value})
+
+    def test_all_docs_key(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.all_docs('foo'))
+        self.assert_request_called_with('GET', 'db', '_all_docs',
+                                        params={'key': '"foo"'})
+
+    def test_all_docs_keys(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.all_docs('foo', 'bar', 'baz'))
+        self.assert_request_called_with('POST', 'db', '_all_docs',
+                                        data={'keys': ['foo', 'bar', 'baz']})

@@ -80,3 +80,47 @@ class JsonFeed(Feed):
         value = yield from super().next()
         if value is not None:
             return json.loads(value.decode('utf-8'))
+
+
+class JsonViewFeed(Feed):
+    """Like :class:`JsonFeed`, but uses CouchDB view response specifics."""
+
+    _total_rows = None
+    _offset = None
+    _update_seq = None
+
+    @asyncio.coroutine
+    def next(self):
+        """Returns next view result rows. CouchDB streams JSON response using
+        line-based protocol so we're able to read it row by row."""
+        value = yield from super().next()
+        if value is None:
+            return value
+        elif value.startswith(b'{"total_rows"'):
+            value += b']}'
+            data = json.loads(value.decode('utf-8'))
+            self._total_rows = data['total_rows']
+            self._offset = data.get('offset')
+            return (yield from self.next())
+        elif value.startswith(b'{"rows"'):
+            return (yield from self.next())
+        elif value == b']}':
+            return (yield from self.next())
+        else:
+            value = value.strip(b',\r\n')
+            return json.loads(value.decode('utf-8'))
+
+    @property
+    def offset(self):
+        """Returns view results offset."""
+        return self._offset
+
+    @property
+    def total_rows(self):
+        """Returns total rows in view."""
+        return self._total_rows
+
+    @property
+    def update_seq(self):
+        """Returns update sequence for a view."""
+        return self._update_seq
