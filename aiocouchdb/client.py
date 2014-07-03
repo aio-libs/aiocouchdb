@@ -51,7 +51,13 @@ class HttpResponse(aiohttp.client.ClientResponse):
         """Read response payload.
         Unlike :meth:`aiohttp.client.ClientResponse.read` doesn't decodes
         the response."""
-        if self._content is None:
+
+        if self.method.lower() == 'head':
+            self._content = b''
+            if close:
+                self.close()
+
+        elif self._content is None:
             buf = []
             total = 0
             try:
