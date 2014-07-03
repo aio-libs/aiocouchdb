@@ -8,6 +8,7 @@
 #
 
 import json
+import types
 
 import aiocouchdb.client
 import aiocouchdb.feeds
@@ -132,3 +133,35 @@ class DatabaseTestCase(utils.TestCase):
         self.run_loop(self.db.all_docs('foo', 'bar', 'baz'))
         self.assert_request_called_with('POST', 'db', '_all_docs',
                                         data={'keys': ['foo', 'bar', 'baz']})
+
+    def test_bulk_docs(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.bulk_docs([{'_id': 'foo'}, {'_id': 'bar'}]))
+        self.assert_request_called_with('POST', 'db', '_bulk_docs')
+        data = self.request.call_args[1]['data']
+        self.assertIsInstance(data, types.GeneratorType)
+        self.assertEqual(b'{"docs": [{"_id": "foo"},{"_id": "bar"}]}',
+                         b''.join(data))
+
+    def test_bulk_docs_all_or_nothing(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.bulk_docs([{'_id': 'foo'}, {'_id': 'bar'}],
+                                        all_or_nothing=True))
+        self.assert_request_called_with('POST', 'db', '_bulk_docs')
+        data = self.request.call_args[1]['data']
+        self.assertIsInstance(data, types.GeneratorType)
+        self.assertEqual(b'{"all_or_nothing": true, "docs": '
+                         b'[{"_id": "foo"},{"_id": "bar"}]}',
+                         b''.join(data))
+
+    def test_bulk_docs_new_edits(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.bulk_docs([{'_id': 'foo'}], new_edits=False))
+        self.assert_request_called_with('POST', 'db', '_bulk_docs',
+                                        params={'new_edits': False})

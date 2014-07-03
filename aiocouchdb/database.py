@@ -166,3 +166,36 @@ class Database(object):
                                   params=params)
         yield from maybe_raise_error(resp)
         return JsonViewFeed(resp)
+
+    def bulk_docs(self, docs, *, auth=None, all_or_nothing=None,
+                  new_edits=None):
+        """:ref:`Updates multiple documents <api/db/bulk_docs>` using a single
+        request.
+
+        :param Iterable docs: Sequence of document objects (:class:`dict`)
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param bool all_or_nothing: Sets the database commit mode to use
+            :ref:`all-or-nothing <api/db/bulk_docs/semantics>` semantics
+        :param bool new_edits: If `False`, prevents the database from
+                               assigning them new revision for updated documents
+
+        :rtype: list
+        """
+        def chunkify(docs, all_or_nothing):
+            # stream docs one by one to reduce footprint from jsonifying all
+            # of them in single shot. useful when docs is generator of docs
+            if all_or_nothing is True:
+                yield b'{"all_or_nothing": true, "docs": ['
+            else:
+                yield b'{"docs": ['
+            idocs = iter(docs)
+            yield json.dumps(next(idocs)).encode('utf-8')
+            for doc in idocs:
+                yield b',' + json.dumps(doc).encode('utf-8')
+            yield b']}'
+        params = {} if new_edits is None else {'new_edits': new_edits}
+        chunks = chunkify(docs, all_or_nothing)
+        resp = yield from self.resource.post(
+            '_bulk_docs', auth=auth, data=chunks, params=params)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))
