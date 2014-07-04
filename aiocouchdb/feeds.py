@@ -126,3 +126,25 @@ class ViewFeed(Feed):
     def update_seq(self):
         """Returns update sequence for a view."""
         return self._update_seq
+
+
+class EventSourceFeed(Feed):
+    """Handles `EventSource`_ response.
+
+    .. _EventSource: http://www.w3.org/TR/eventsource/
+    """
+
+    @asyncio.coroutine
+    def next(self):
+        """Emits decoded EventSource event.
+
+        :rtype: dict
+        """
+        chunk = (yield from super().next())
+        if chunk is None:
+            return chunk
+        chunk = chunk.decode('utf-8')
+        event = dict([item.split(': ', 1) for item in chunk.split('\n')])
+        if 'data' in event:
+            event['data'] = json.loads(event['data'])
+        return event

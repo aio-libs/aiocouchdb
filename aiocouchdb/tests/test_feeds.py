@@ -222,3 +222,40 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertIsNone(feed.offset)
         self.assertIsNone(feed.update_seq)
 
+
+class EventSourceFeedTestCase(utils.TestCase):
+
+    def test_read_empty_view(self):
+        resp = self.mock_response(data=[
+            b'data: {"type":"updated","db_name":"db"}',
+            b'data: {"type":"ddoc_updated",'
+            b'"db_name":"{<<\\"db\\">>,<<\\"_design/test\\">>}"}',
+            b'data: {"type":"deleted","db_name":"db"}'
+        ])
+
+        feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(
+            {'data': {'db_name': 'db', 'type': 'updated'}},
+            result)
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(
+            {'data': {'db_name': '{<<"db">>,<<"_design/test">>}',
+                      'type': 'ddoc_updated'}},
+            result)
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(
+            {'data': {'db_name': 'db', 'type': 'deleted'}},
+            result)
+
+        result = self.run_loop(feed.next())
+        self.assertIsNone(result)
+
+
+
+
+        self.assertFalse(feed.is_active())

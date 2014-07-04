@@ -105,7 +105,7 @@ class ServerTestCase(utils.TestCase):
         result = self.run_loop(self.server.db_updates(feed='eventsource'))
         self.assert_request_called_with('GET', '_db_updates',
                                         params={'feed': 'eventsource'})
-        self.assertIsInstance(result, aiocouchdb.feeds.Feed)
+        self.assertIsInstance(result, aiocouchdb.feeds.EventSourceFeed)
 
     def test_log(self):
         resp = self.mock_response(data=b'hello')

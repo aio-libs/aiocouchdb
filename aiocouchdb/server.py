@@ -13,7 +13,7 @@ from .authn import CookieAuthProvider
 from .client import Resource
 from .database import Database
 from .errors import maybe_raise_error
-from .feeds import Feed, JsonFeed
+from .feeds import EventSourceFeed, JsonFeed
 
 
 class Server(object):
@@ -124,7 +124,7 @@ class Server(object):
         if feed == 'continuous':
             return JsonFeed(resp)
         elif feed == 'eventsource':
-            return Feed(resp)
+            return EventSourceFeed(resp)
         else:
             return (yield from resp.json(close=True))
 
