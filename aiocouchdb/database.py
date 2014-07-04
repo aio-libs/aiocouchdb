@@ -11,7 +11,7 @@ import asyncio
 import json
 
 from .client import Resource
-from .feeds import JsonViewFeed
+from .feeds import ViewFeed
 from .errors import maybe_raise_error
 
 
@@ -165,7 +165,7 @@ class Database(object):
         resp = yield from request('_all_docs', auth=auth, data=data,
                                   params=params)
         yield from maybe_raise_error(resp)
-        return JsonViewFeed(resp)
+        return ViewFeed(resp)
 
     def bulk_docs(self, docs, *, auth=None, all_or_nothing=None,
                   new_edits=None):

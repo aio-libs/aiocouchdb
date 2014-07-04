@@ -39,17 +39,17 @@ class Feed(object):
 
     @asyncio.coroutine
     def next(self):
-        """Emits next response chunk or ``None`` is feed is empty.
+        """Emits the next response chunk or ``None`` is feed is empty.
 
         :rtype: bytearray
         """
         if not self.is_active():
             return None
-        item = yield from self._queue.get()
-        if isinstance(item, BaseException):
+        chunk = yield from self._queue.get()
+        if isinstance(chunk, BaseException):
             yield from self._queue.get()
-            raise item from None
-        return item
+            raise chunk from None
+        return chunk
 
     def is_active(self):
         """Checks if the feed is still able to emit any data.
@@ -71,18 +71,21 @@ class Feed(object):
 
 
 class JsonFeed(Feed):
-    """As :class:`Feed`, but for chunked JSON response."""
+    """As :class:`Feed`, but for chunked JSON response. Assumes that each
+    received chunk is valid JSON object and decodes them before emit."""
 
     @asyncio.coroutine
     def next(self):
-        """Assumes that each emitted chunk is valid JSON object and decodes
-        them before return."""
-        value = yield from super().next()
-        if value is not None:
-            return json.loads(value.decode('utf-8'))
+        """Decodes feed chunk with JSON before emit it.
+
+        :rtype: dict
+        """
+        chunk = yield from super().next()
+        if chunk is not None:
+            return json.loads(chunk.decode('utf-8'))
 
 
-class JsonViewFeed(Feed):
+class ViewFeed(Feed):
     """Like :class:`JsonFeed`, but uses CouchDB view response specifics."""
 
     _total_rows = None
@@ -91,24 +94,23 @@ class JsonViewFeed(Feed):
 
     @asyncio.coroutine
     def next(self):
-        """Returns next view result rows. CouchDB streams JSON response using
-        line-based protocol so we're able to read it row by row."""
-        value = yield from super().next()
-        if value is None:
-            return value
-        elif value.startswith(b'{"total_rows"'):
-            value += b']}'
-            data = json.loads(value.decode('utf-8'))
-            self._total_rows = data['total_rows']
-            self._offset = data.get('offset')
+        """Emits view result row.
+
+        :rtype: dict
+        """
+        chunk = yield from super().next()
+        if chunk is None:
+            return chunk
+        elif chunk.startswith(b'{"total_rows"'):
+            chunk += b']}'
+            event = json.loads(chunk.decode('utf-8'))
+            self._total_rows = event['total_rows']
+            self._offset = event.get('offset')
             return (yield from self.next())
-        elif value.startswith(b'{"rows"'):
-            return (yield from self.next())
-        elif value == b']}':
+        elif chunk.startswith((b'{"rows"', b']}')):
             return (yield from self.next())
         else:
-            value = value.strip(b',\r\n')
-            return json.loads(value.decode('utf-8'))
+            return json.loads(chunk.strip(b',').decode('utf-8'))
 
     @property
     def offset(self):

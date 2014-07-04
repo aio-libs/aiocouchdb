@@ -89,7 +89,7 @@ class DatabaseTestCase(utils.TestCase):
 
         result = self.run_loop(self.db.all_docs())
         self.assert_request_called_with('GET', 'db', '_all_docs')
-        self.assertIsInstance(result, aiocouchdb.feeds.JsonViewFeed)
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
 
     def test_all_docs_params(self):
         resp = self.mock_json_response()

@@ -131,7 +131,7 @@ class JsonFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
 
-class JsonViewFeedTestCase(utils.TestCase):
+class ViewFeedTestCase(utils.TestCase):
 
     def test_read_empty_view(self):
         resp = self.mock_response(data=[
@@ -140,7 +140,7 @@ class JsonViewFeedTestCase(utils.TestCase):
             b']}\r\n'
         ])
 
-        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.run_loop(feed.next())
@@ -154,7 +154,7 @@ class JsonViewFeedTestCase(utils.TestCase):
             b']}\r\n'
         ])
 
-        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.run_loop(feed.next())
@@ -170,7 +170,7 @@ class JsonViewFeedTestCase(utils.TestCase):
             b']}\r\n'
         ])
 
-        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         for idx in ('foo', 'bar', 'baz'):
@@ -189,7 +189,7 @@ class JsonViewFeedTestCase(utils.TestCase):
             b']}\r\n'
         ])
 
-        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
 
         self.assertIsNone(feed.total_rows)
         self.assertIsNone(feed.offset)
@@ -209,7 +209,7 @@ class JsonViewFeedTestCase(utils.TestCase):
             b']}\r\n'
         ])
 
-        feed = aiocouchdb.feeds.JsonViewFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         self.assertIsNone(feed.total_rows)
@@ -221,3 +221,4 @@ class JsonViewFeedTestCase(utils.TestCase):
         self.assertIsNone(feed.total_rows)
         self.assertIsNone(feed.offset)
         self.assertIsNone(feed.update_seq)
+
