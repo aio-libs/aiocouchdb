@@ -20,27 +20,27 @@ class FeedTestCase(utils.TestCase):
         self.assertTrue(feed.is_active())
 
         result = self.run_loop(feed.next())
-        self.assertEqual(b'foo', result)
+        self.assertEqual(b'foo\r\n', result)
 
         result = self.run_loop(feed.next())
-        self.assertEqual(b'bar', result)
+        self.assertEqual(b'bar\r\n', result)
 
         result = self.run_loop(feed.next())
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
     def test_ignore_empty_chunks(self):
-        resp = self.mock_response(data=[b'foo\r\n', b'\r\n',  b'\r\n'
-                                        b'\r\n',  b'\r\n', b'bar\r\n'])
+        resp = self.mock_response(data=[b'foo\r\n', b'\n',  b'\n',
+                                        b'\n',  b'\n', b'bar\r\n'])
 
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.run_loop(feed.next())
-        self.assertEqual(b'foo', result)
+        self.assertEqual(b'foo\r\n', result)
 
         result = self.run_loop(feed.next())
-        self.assertEqual(b'bar', result)
+        self.assertEqual(b'bar\r\n', result)
 
         result = self.run_loop(feed.next())
         self.assertEqual(None, result)
@@ -136,7 +136,7 @@ class ViewFeedTestCase(utils.TestCase):
     def test_read_empty_view(self):
         resp = self.mock_response(data=[
             b'{"total_rows": 0, "offset": 0, "rows": [\r\n',
-            b'\r\n',
+            b'\n',
             b']}\r\n'
         ])
 
@@ -150,8 +150,7 @@ class ViewFeedTestCase(utils.TestCase):
     def test_read_reduced_empty_view(self):
         resp = self.mock_response(data=[
             b'{"rows": [\r\n',
-            b'\r\n',
-            b']}\r\n'
+            b'\r\n]}'
         ])
 
         feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
@@ -167,7 +166,7 @@ class ViewFeedTestCase(utils.TestCase):
             b'{"id": "foo", "key": null, "value": false}',
             b',\r\n{"id": "bar", "key": null, "value": false}',
             b',\r\n{"id": "baz", "key": null, "value": false}',
-            b']}\r\n'
+            b'\r\n]}'
         ])
 
         feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
@@ -186,7 +185,7 @@ class ViewFeedTestCase(utils.TestCase):
             b'{"id": "foo", "key": null, "value": false}',
             b',\r\n{"id": "bar", "key": null, "value": false}',
             b',\r\n{"id": "baz", "key": null, "value": false}',
-            b']}\r\n'
+            b'\r\n]}'
         ])
 
         feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
@@ -206,7 +205,7 @@ class ViewFeedTestCase(utils.TestCase):
             b'{"rows": [\r\n',
             b'{"key": null, "value": 1}',
             b',\r\n{"key": true, "value": 2}',
-            b']}\r\n'
+            b'\r\n]}'
         ])
 
         feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
@@ -225,37 +224,106 @@ class ViewFeedTestCase(utils.TestCase):
 
 class EventSourceFeedTestCase(utils.TestCase):
 
-    def test_read_empty_view(self):
+    def test_read_event(self):
         resp = self.mock_response(data=[
-            b'data: {"type":"updated","db_name":"db"}',
-            b'data: {"type":"ddoc_updated",'
-            b'"db_name":"{<<\\"db\\">>,<<\\"_design/test\\">>}"}',
-            b'data: {"type":"deleted","db_name":"db"}'
+            b'data: {"type":"updated","db_name":"db"}\n\n',
+        ])
+        feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual({'data': {'db_name': 'db', 'type': 'updated'}}, result)
+
+        result = self.run_loop(feed.next())
+        self.assertIsNone(result)
+        self.assertFalse(feed.is_active())
+
+    def test_read_empty_data(self):
+        resp = self.mock_response(data=[
+            b'event: heartbeat\ndata: \n\n'
         ])
 
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.run_loop(feed.next())
-        self.assertEqual(
-            {'data': {'db_name': 'db', 'type': 'updated'}},
-            result)
-
-        result = self.run_loop(feed.next())
-        self.assertEqual(
-            {'data': {'db_name': '{<<"db">>,<<"_design/test">>}',
-                      'type': 'ddoc_updated'}},
-            result)
-
-        result = self.run_loop(feed.next())
-        self.assertEqual(
-            {'data': {'db_name': 'db', 'type': 'deleted'}},
-            result)
+        self.assertEqual({'event': 'heartbeat', 'data': None}, result)
 
         result = self.run_loop(feed.next())
         self.assertIsNone(result)
+        self.assertFalse(feed.is_active())
 
+    def test_read_multiple_data(self):
+        resp = self.mock_response(data=[
+            b'data: [\ndata:"foo",\ndata: "bar"\ndata:] \n\n'
+        ])
 
+        feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
 
+        result = self.run_loop(feed.next())
+        self.assertEqual({'data': ['foo', 'bar']}, result)
 
+        result = self.run_loop(feed.next())
+        self.assertIsNone(result)
+        self.assertFalse(feed.is_active())
+
+    def test_no_colon(self):
+        resp = self.mock_response(data=[
+            b'id\n\n'
+        ])
+
+        feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual({'id': '', 'data': None}, result)
+
+        result = self.run_loop(feed.next())
+        self.assertIsNone(result)
+        self.assertFalse(feed.is_active())
+
+    def test_leading_colon(self):
+        resp = self.mock_response(data=[
+            b':id\n\n'
+        ])
+
+        feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual({'data': None}, result)
+
+        result = self.run_loop(feed.next())
+        self.assertIsNone(result)
+        self.assertFalse(feed.is_active())
+
+    def test_decode_retry_with_int(self):
+        resp = self.mock_response(data=[
+            b'retry: 10\n\n'
+        ])
+
+        feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual({'retry': 10, 'data': None}, result)
+
+        result = self.run_loop(feed.next())
+        self.assertIsNone(result)
+        self.assertFalse(feed.is_active())
+
+    def test_ignore_unknown_field(self):
+        resp = self.mock_response(data=[
+            b'data: "foo"\nfoo: bar\n\n'
+        ])
+
+        feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual({'data': 'foo'}, result)
+
+        result = self.run_loop(feed.next())
+        self.assertIsNone(result)
         self.assertFalse(feed.is_active())

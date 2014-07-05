@@ -10,6 +10,7 @@
 import asyncio
 import aiohttp
 import json
+import string
 
 
 class Feed(object):
@@ -27,8 +28,7 @@ class Feed(object):
         try:
             while self._active:
                 chunk = yield from self._resp.content.read()
-                chunk = chunk.strip()
-                if not chunk:
+                if not chunk or chunk == b'\n':  # ignore heartbeats
                     continue
                 self._queue.put_nowait(chunk)
         except aiohttp.EofStream:
@@ -101,16 +101,17 @@ class ViewFeed(Feed):
         chunk = yield from super().next()
         if chunk is None:
             return chunk
-        elif chunk.startswith(b'{"total_rows"'):
-            chunk += b']}'
-            event = json.loads(chunk.decode('utf-8'))
+        chunk = chunk.decode('utf-8').strip('\r\n,')
+        if chunk.startswith('{"total_rows"'):
+            chunk += ']}'
+            event = json.loads(chunk)
             self._total_rows = event['total_rows']
             self._offset = event.get('offset')
             return (yield from self.next())
-        elif chunk.startswith((b'{"rows"', b']}')):
+        elif chunk.startswith(('{"rows"', ']}')):
             return (yield from self.next())
         else:
-            return json.loads(chunk.strip(b',').decode('utf-8'))
+            return json.loads(chunk)
 
     @property
     def offset(self):
@@ -129,7 +130,8 @@ class ViewFeed(Feed):
 
 
 class EventSourceFeed(Feed):
-    """Handles `EventSource`_ response.
+    """Handles `EventSource`_ response following the W3.org spec with single
+    exception: it expects field `data` to contain valid JSON value.
 
     .. _EventSource: http://www.w3.org/TR/eventsource/
     """
@@ -144,7 +146,55 @@ class EventSourceFeed(Feed):
         if chunk is None:
             return chunk
         chunk = chunk.decode('utf-8')
-        event = dict([item.split(': ', 1) for item in chunk.split('\n')])
-        if 'data' in event:
-            event['data'] = json.loads(event['data'])
+        event = {}
+        data = event['data'] = []
+        for line in chunk.splitlines():
+            if not line:
+                break
+            if line.startswith(':'):
+                # If the line starts with a U+003A COLON character (:)
+                # Ignore the line.
+                continue
+            if ':' not in line:
+                # Otherwise, the string is not empty but does not contain
+                # a U+003A COLON character (:)
+                # Process the field using the steps described below, using
+                # the whole line as the field name, and the empty string as
+                # the field value.
+                field, value = line, ''
+            else:
+                # If the line contains a U+003A COLON character (:)
+                # Collect the characters on the line before the first
+                # U+003A COLON character (:), and let field be that string.
+                #
+                # Collect the characters on the line after the first U+003A
+                # COLON character (:), and let value be that string.
+                # If value starts with a U+0020 SPACE character, remove it
+                # from value.
+                #
+                # Process the field using the steps described below, using
+                # field as the field name and value as the field value.
+                field, value = line.split(':', 1)
+                if value.startswith(' '):
+                    value = value[1:]
+
+            if field in ('id', 'event'):
+                event[field] = value
+            elif field == 'data':
+                # If the field name is "data":
+                # Append the field value to the data buffer,
+                # then append a single U+000A LINE FEED (LF) character
+                # to the data buffer.
+                data.append(value)
+                data.append('\n')
+            elif field == 'retry':
+                # If the field name is "retry":
+                # If the field value consists of only ASCII digits,
+                # then interpret the field value as an integer in base ten.
+                event[field] = int(value)
+            else:
+                # Otherwise: The field is ignored.
+                continue  # pragma: no cover
+        data = ''.join(data).strip()
+        event['data'] = json.loads(data) if data else None
         return event
