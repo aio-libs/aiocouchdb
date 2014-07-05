@@ -11,7 +11,11 @@ import asyncio
 import json
 
 from .client import Resource
-from .feeds import ViewFeed
+from .feeds import (
+    ViewFeed,
+    ChangesFeed, LongPollChangesFeed,
+    ContinuousChangesFeed, EventSourceChangesFeed
+)
 from .errors import maybe_raise_error
 
 
@@ -199,3 +203,94 @@ class Database(object):
             '_bulk_docs', auth=auth, data=chunks, params=params)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
+
+    def changes(self, *doc_ids,
+                auth=None,
+                att_encoding_info=None,
+                attachments=None,
+                conflicts=None,
+                descending=None,
+                feed=None,
+                filter=None,
+                heartbeat=None,
+                include_docs=None,
+                limit=None,
+                since=None,
+                style=None,
+                timeout=None,
+                view=None):
+        """Emits :ref:`database changes events<api/db/changes>`.
+
+        :param str doc_ids: Document IDs to filter for. This method is smart
+                            enough to use `GET` or `POST` request depending
+                            if any ``doc_ids`` were provided or not and
+                            automatically sets ``filter`` param to ``_doc_ids``
+                            value.
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :param bool att_encoding_info: Includes encoding information in an
+                                       attachment stubs
+        :param bool attachments: Includes the Base64-encoded content of an
+                                 attachments in the documents
+        :param bool conflicts: Includes conflicts information in the documents
+        :param bool descending: Return changes in descending order
+        :param str feed: :ref:`Changes feed type <changes>`
+        :param str filter: Filter function name
+        :param int heartbeat: Period in milliseconds after which an empty
+                              line will be sent from server as the result
+                              to keep connection alive
+        :param bool include_docs: Includes the associated document for each
+                                  emitted event
+        :param int limit: Limits a number of returned events by the specified
+                          value
+        :param since: Starts listening changes feed since given
+                      `update sequence` value
+        :param str style: Changes feed output style: ``all_docs``, ``main_only``
+        :param int timeout: Period in milliseconds to await for new changes
+                            before close the feed. Works for continuous feeds
+        :param str view: View function name which would be used as filter.
+                         Implicitly sets ``filter`` param to ``_view`` value
+
+        :rtype: :class:`aiocouchdb.feeds.ChangesFeed`
+        """
+        params = {}
+        maybe_set_param = (
+            lambda *kv: (None if kv[1] is None else params.update([kv])))
+        maybe_set_param('att_encoding_info', att_encoding_info)
+        maybe_set_param('attachments', attachments)
+        maybe_set_param('conflicts', conflicts)
+        maybe_set_param('descending', descending)
+        maybe_set_param('feed', feed)
+        maybe_set_param('filter', filter)
+        maybe_set_param('heartbeat', heartbeat)
+        maybe_set_param('include_docs', include_docs)
+        maybe_set_param('limit', limit)
+        maybe_set_param('since', since)
+        maybe_set_param('style', style)
+        maybe_set_param('timeout', timeout)
+        maybe_set_param('view', view)
+
+        if doc_ids:
+            data = {'doc_ids': doc_ids}
+            if 'filter' not in params:
+                params['filter'] = '_doc_ids'
+            else:
+                assert params['filter'] == '_doc_ids'
+            request = self.resource.post
+        else:
+            data = None
+            request = self.resource.get
+
+        resp = yield from request('_changes', auth=auth, data=data,
+                                  params=params)
+        yield from maybe_raise_error(resp)
+
+        if feed == 'continuous':
+            return ContinuousChangesFeed(resp)
+        elif feed == 'eventsource':
+            return EventSourceChangesFeed(resp)
+        elif feed == 'longpoll':
+            return LongPollChangesFeed(resp)
+        else:
+            return ChangesFeed(resp)

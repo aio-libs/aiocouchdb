@@ -327,3 +327,75 @@ class EventSourceFeedTestCase(utils.TestCase):
         result = self.run_loop(feed.next())
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
+
+
+class ChangesFeedTestCase(utils.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.output = [
+            {'seq': 77, 'id': 'foo', 'changes': [{'rev': '9-CDE'}]},
+            {'seq': 90, 'id': 'bar', 'changes': [{'rev': '12-ABC'}]},
+            {'seq': 91, 'id': 'baz', 'changes': [{'rev': '11-EFG'}],
+             'deleted': True}
+        ]
+
+    def test_read_changes(self):
+        resp = self.mock_response(data=[
+            b'{"results":[\n',
+            b'{"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}',
+            b',\n{"seq":90,"id":"bar","changes":[{"rev":"12-ABC"}]}',
+            b',\n{"seq":91,"id":"baz","changes":[{"rev":"11-EFG"}],'
+            b'"deleted":true}',
+            b'\n],\n"last_seq":91}\n'
+        ])
+        feed = aiocouchdb.feeds.ChangesFeed(resp, loop=self.loop)
+        self.check_feed_output(feed, self.output)
+
+    def test_read_changes_longpoll(self):
+        resp = self.mock_response(data=[
+            b'{"results":[\n',
+            b'{"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}',
+            b',\n{"seq":90,"id":"bar","changes":[{"rev":"12-ABC"}]}',
+            b',\n{"seq":91,"id":"baz","changes":[{"rev":"11-EFG"}],'
+            b'"deleted":true}',
+            b'\n],\n"last_seq":91}\n'
+        ])
+        feed = aiocouchdb.feeds.LongPollChangesFeed(resp, loop=self.loop)
+        self.check_feed_output(feed, self.output)
+
+    def test_read_changes_continuous(self):
+        resp = self.mock_response(data=[
+            b'{"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}\n',
+            b'{"seq":90,"id":"bar","changes":[{"rev":"12-ABC"}]}\n',
+            b'{"seq":91,"id":"baz","changes":[{"rev":"11-EFG"}],'
+            b'"deleted":true}\n',
+            b'{"last_seq":91}\n',
+        ])
+        feed = aiocouchdb.feeds.ContinuousChangesFeed(resp, loop=self.loop)
+        self.check_feed_output(feed, self.output)
+
+    def test_read_changes_eventsource(self):
+        resp = self.mock_response(data=[
+            b'data: {"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}\n'
+            b'id: 77\n\n',
+            b'event: heartbeat\ndata: \n\n',
+            b'data: {"seq":90,"id":"bar","changes":[{"rev":"12-ABC"}]}\n'
+            b'id: 90\n\n',
+            b'data: {"seq":91,"id":"baz","changes":[{"rev":"11-EFG"}],'
+            b'"deleted":true}\nid: 91\n\n',
+        ])
+        feed = aiocouchdb.feeds.EventSourceChangesFeed(resp, loop=self.loop)
+        self.check_feed_output(feed, self.output)
+
+    def check_feed_output(self, feed, output):
+        self.assertTrue(feed.is_active())
+        self.assertIsNone(feed.last_seq)
+        for expected in output:
+            event = self.run_loop(feed.next())
+            self.assertEqual(expected, event)
+            self.assertEqual(expected['seq'], feed.last_seq)
+        event = self.run_loop(feed.next())
+        self.assertIsNone(event)
+        self.assertFalse(feed.is_active())
+        self.assertIsNotNone(feed.last_seq)

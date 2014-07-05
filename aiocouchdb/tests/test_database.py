@@ -165,3 +165,82 @@ class DatabaseTestCase(utils.TestCase):
         self.run_loop(self.db.bulk_docs([{'_id': 'foo'}], new_edits=False))
         self.assert_request_called_with('POST', 'db', '_bulk_docs',
                                         params={'new_edits': False})
+
+    def test_changes(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.changes())
+        self.assertIsInstance(result, aiocouchdb.feeds.ChangesFeed)
+        self.assert_request_called_with('GET', 'db', '_changes')
+
+    def test_changes_longpoll(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.changes(feed='longpoll'))
+        self.assertIsInstance(result, aiocouchdb.feeds.LongPollChangesFeed)
+        self.assert_request_called_with('GET', 'db', '_changes',
+                                        params={'feed': 'longpoll'})
+
+    def test_changes_continuous(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.changes(feed='continuous'))
+        self.assertIsInstance(result, aiocouchdb.feeds.ContinuousChangesFeed)
+        self.assert_request_called_with('GET', 'db', '_changes',
+                                        params={'feed': 'continuous'})
+
+    def test_changes_eventsource(self):
+        resp = self.mock_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.changes(feed='eventsource'))
+        self.assertIsInstance(result, aiocouchdb.feeds.EventSourceChangesFeed)
+        self.assert_request_called_with('GET', 'db', '_changes',
+                                        params={'feed': 'eventsource'})
+
+    def test_changes_doc_ids(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.changes('foo', 'bar'))
+        self.assert_request_called_with('POST', 'db', '_changes',
+                                        data={'doc_ids': ('foo', 'bar')},
+                                        params={'filter': '_doc_ids'})
+
+    def test_changes_assert_filter_doc_ids(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.assertRaises(
+            AssertionError,
+            self.run_loop,
+            self.db.changes('foo', 'bar', filter='somefilter')
+        )
+
+    def test_changes_params(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        all_params = {
+            'att_encoding_info': False,
+            'attachments': True,
+            'conflicts': True,
+            'descending': True,
+            'feed': 'continuous',
+            'filter': 'some/filter',
+            'heartbeat': 1000,
+            'include_docs': True,
+            'limit': 20,
+            'since': 'now',
+            'style': 'all_docs',
+            'timeout': 3000,
+            'view': 'some/view'
+        }
+
+        for key, value in all_params.items():
+            self.run_loop(self.db.changes(**{key: value}))
+            self.assert_request_called_with('GET', 'db', '_changes',
+                                            params={key: value})

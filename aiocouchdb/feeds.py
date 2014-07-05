@@ -198,3 +198,77 @@ class EventSourceFeed(Feed):
         data = ''.join(data).strip()
         event['data'] = json.loads(data) if data else None
         return event
+
+
+class ChangesFeed(Feed):
+    """Processes database changes feed."""
+
+    _last_seq = None
+
+    @asyncio.coroutine
+    def next(self):
+        """Emits the next event from changes feed.
+
+        :rtype: dict
+        """
+        chunk = yield from super().next()
+        if chunk is None:
+            return chunk
+        if chunk.startswith((b'{"results"', b'\n]')):
+            return (yield from self.next())
+        event = json.loads(chunk.strip(b',').decode('utf-8'))
+        self._last_seq = event['seq']
+        return event
+
+    @property
+    def last_seq(self):
+        """Returns last emitted sequence number.
+
+        :rtype: int
+        """
+        return self._last_seq
+
+
+class LongPollChangesFeed(ChangesFeed):
+    """Processes long polling database changes feed."""
+
+
+class ContinuousChangesFeed(ChangesFeed, JsonFeed):
+    """Processes continuous database changes feed."""
+
+    @asyncio.coroutine
+    def next(self):
+        """Emits the next event from changes feed.
+
+        :rtype: dict
+        """
+        event = yield from JsonFeed.next(self)
+        if event is None:
+            return None
+        if 'last_seq' in event:
+            self._last_seq = event['last_seq']
+            return (yield from self.next())
+        self._last_seq = event['seq']
+        return event
+
+
+class EventSourceChangesFeed(ChangesFeed, EventSourceFeed):
+    """Process event source database changes feed.
+    Similar to :class:`EventSourceFeed`, but includes specifics for changes feed
+    and emits events in the same format as others :class:`ChangesFeed` does.
+    """
+
+    @asyncio.coroutine
+    def next(self):
+        """Emits the next event from changes feed.
+
+        :rtype: dict
+        """
+        event = (yield from EventSourceFeed.next(self))
+        if event is None:
+            return event
+        if event.get('event') == 'heartbeat':
+            return (yield from self.next())
+        if 'id' in event:
+            self._last_seq = int(event['id'])
+        return event['data']
