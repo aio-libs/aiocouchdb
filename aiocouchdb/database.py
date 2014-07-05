@@ -134,7 +134,7 @@ class Database(object):
         :param bool update_seq: Include an ``update_seq`` value into view
                                 results header
 
-        :rtype: :class:`aiocouchdb.feeds.JsonViewFeed`
+        :rtype: :class:`aiocouchdb.feeds.ViewFeed`
         """
         params = {}
         maybe_set_param = (
@@ -155,7 +155,7 @@ class Database(object):
 
         data = None
         if len(keys) > 2:
-            data = {'keys': list(keys)}
+            data = {'keys': keys}
             request = self.resource.post
         else:
             maybe_set_param('key', keys[0] if keys else None)

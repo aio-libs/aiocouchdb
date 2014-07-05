@@ -132,7 +132,7 @@ class DatabaseTestCase(utils.TestCase):
 
         self.run_loop(self.db.all_docs('foo', 'bar', 'baz'))
         self.assert_request_called_with('POST', 'db', '_all_docs',
-                                        data={'keys': ['foo', 'bar', 'baz']})
+                                        data={'keys': ('foo', 'bar', 'baz')})
 
     def test_bulk_docs(self):
         resp = self.mock_json_response()
