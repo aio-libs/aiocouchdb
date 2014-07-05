@@ -16,7 +16,7 @@ dev: venv
 install:
 	${PYTHON} setup.py install
 
-test:
+check:
 	${NOSE} --with-doctest aiocouchdb
 
 cover: test
