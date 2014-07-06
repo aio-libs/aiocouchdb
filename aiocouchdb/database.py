@@ -347,3 +347,19 @@ class Database(object):
                                              auth=auth, data=id_revs)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
+
+    @asyncio.coroutine
+    def purge(self, id_revs, *, auth=None):
+        """:ref:`Permanently removes specified document revisions
+        <api/db/purge>` from the database.
+
+        :param dict id_revs: Mapping between document ID and list of his
+                             revisions to purge.
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        resp = yield from self.resource.post('_purge',
+                                             auth=auth, data=id_revs)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))

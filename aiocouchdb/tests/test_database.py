@@ -276,3 +276,11 @@ class DatabaseTestCase(utils.TestCase):
         self.run_loop(self.db.missing_revs({'docid': ['rev1', 'rev2']}))
         self.assert_request_called_with('POST', 'db', '_missing_revs',
                                         data={'docid': ['rev1', 'rev2']})
+
+    def test_purge(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.purge({'docid': ['rev1', 'rev2']}))
+        self.assert_request_called_with('POST', 'db', '_purge',
+                                        data={'docid': ['rev1', 'rev2']})
