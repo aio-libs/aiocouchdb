@@ -292,3 +292,17 @@ class DatabaseTestCase(utils.TestCase):
         self.run_loop(self.db.revs_diff({'docid': ['rev1', 'rev2']}))
         self.assert_request_called_with('POST', 'db', '_revs_diff',
                                         data={'docid': ['rev1', 'rev2']})
+
+    def test_revs_limit(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.revs_limit())
+        self.assert_request_called_with('GET', 'db', '_revs_limit')
+
+    def test_revs_limit_update(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.revs_limit(42))
+        self.assert_request_called_with('PUT', 'db', '_revs_limit', data=42)

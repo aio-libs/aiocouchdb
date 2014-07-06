@@ -379,3 +379,21 @@ class Database(object):
                                              auth=auth, data=id_revs)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
+
+    @asyncio.coroutine
+    def revs_limit(self, count=None, *, auth=None):
+        """Returns the :ref:`limit of database revisions <api/db/revs_limit>`
+        to store or updates it if ``count`` parameter was specified.
+
+        :param int count: Amount of revisions to store
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: int or dict
+        """
+        if count is None:
+            resp = yield from self.resource.get('_revs_limit', auth=auth)
+        else:
+            resp = yield from self.resource.put('_revs_limit',
+                                                 auth=auth, data=count)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))
