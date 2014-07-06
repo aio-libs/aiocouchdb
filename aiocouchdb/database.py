@@ -331,3 +331,19 @@ class Database(object):
         resp = yield from self.resource.post('_ensure_full_commit', auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
+
+    @asyncio.coroutine
+    def missing_revs(self, id_revs, *, auth=None):
+        """Returns :ref:`document missed revisions <api/db/missing_revs>`
+        in the database by given document-revisions mapping.
+
+        :param dict id_revs: Mapping between document ID and list of his
+                             revisions to search for.
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        resp = yield from self.resource.post('_missing_revs',
+                                             auth=auth, data=id_revs)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))

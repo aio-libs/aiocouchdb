@@ -268,3 +268,11 @@ class DatabaseTestCase(utils.TestCase):
 
         self.run_loop(self.db.ensure_full_commit())
         self.assert_request_called_with('POST', 'db', '_ensure_full_commit')
+
+    def test_missing_revs(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.missing_revs({'docid': ['rev1', 'rev2']}))
+        self.assert_request_called_with('POST', 'db', '_missing_revs',
+                                        data={'docid': ['rev1', 'rev2']})
