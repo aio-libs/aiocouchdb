@@ -10,7 +10,6 @@
 import asyncio
 import aiohttp
 import json
-import string
 
 
 class Feed(object):
