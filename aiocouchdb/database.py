@@ -282,6 +282,12 @@ class Database(object):
             data = None
             request = self.resource.get
 
+        if 'view' in params:
+            if 'filter' not in params:
+                params['filter'] = '_view'
+            else:
+                assert params['filter'] == '_view'
+
         resp = yield from request('_changes', auth=auth, data=data,
                                   params=params)
         yield from maybe_raise_error(resp)

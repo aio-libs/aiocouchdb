@@ -242,5 +242,8 @@ class DatabaseTestCase(utils.TestCase):
 
         for key, value in all_params.items():
             self.run_loop(self.db.changes(**{key: value}))
+            params = {key: value}
+            if key == 'view':
+                params['filter'] = '_view'
             self.assert_request_called_with('GET', 'db', '_changes',
-                                            params={key: value})
+                                            params=params)
