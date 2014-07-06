@@ -261,3 +261,10 @@ class DatabaseTestCase(utils.TestCase):
 
         self.run_loop(self.db.compact('ddoc'))
         self.assert_request_called_with('POST', 'db', '_compact', 'ddoc')
+
+    def test_ensure_full_commit(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.ensure_full_commit())
+        self.assert_request_called_with('POST', 'db', '_ensure_full_commit')

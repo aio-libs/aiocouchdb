@@ -318,3 +318,16 @@ class Database(object):
         resp = yield from self.resource(*path).post(auth=auth)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
+
+    @asyncio.coroutine
+    def ensure_full_commit(self, *, auth=None):
+        """Ensures that all bits are :ref:`committed on disk
+        <api/db/ensure_full_commit>`.
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        resp = yield from self.resource.post('_ensure_full_commit', auth=auth)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))
