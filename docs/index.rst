@@ -24,7 +24,13 @@ Session
 Database
 ========
 
-.. automodule:: aiocouchdb.database
+.. autoclass:: aiocouchdb.database.Database
+  :members:
+
+Security
+--------
+
+.. autoclass:: aiocouchdb.database.Security
   :members:
 
 Client
