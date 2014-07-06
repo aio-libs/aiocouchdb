@@ -247,3 +247,17 @@ class DatabaseTestCase(utils.TestCase):
                 params['filter'] = '_view'
             self.assert_request_called_with('GET', 'db', '_changes',
                                             params=params)
+
+    def test_compact(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.compact())
+        self.assert_request_called_with('POST', 'db', '_compact')
+
+    def test_compact_ddoc(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.compact('ddoc'))
+        self.assert_request_called_with('POST', 'db', '_compact', 'ddoc')

@@ -300,3 +300,21 @@ class Database(object):
             return LongPollChangesFeed(resp)
         else:
             return ChangesFeed(resp)
+
+    @asyncio.coroutine
+    def compact(self, ddoc_name=None, *, auth=None):
+        """Initiates :ref:`database <api/db/compact>`
+        or :ref:`view index <api/db/compact/ddoc>` compaction.
+
+        :param str ddoc_name: Design document name. If specified initiates
+                              view index compaction instead of database
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        path = ['_compact']
+        if ddoc_name is not None:
+            path.append(ddoc_name)
+        resp = yield from self.resource(*path).post(auth=auth)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))
