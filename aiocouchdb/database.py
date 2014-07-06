@@ -363,3 +363,19 @@ class Database(object):
                                              auth=auth, data=id_revs)
         yield from maybe_raise_error(resp)
         return (yield from resp.json(close=True))
+
+    @asyncio.coroutine
+    def revs_diff(self, id_revs, *, auth=None):
+        """Returns :ref:`document revisions difference <api/db/revs_diff>`
+        in the database by given document-revisions mapping.
+
+        :param dict id_revs: Mapping between document ID and list of his
+                             revisions to compare.
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        resp = yield from self.resource.post('_revs_diff',
+                                             auth=auth, data=id_revs)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))

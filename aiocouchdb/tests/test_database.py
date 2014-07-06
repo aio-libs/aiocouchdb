@@ -284,3 +284,11 @@ class DatabaseTestCase(utils.TestCase):
         self.run_loop(self.db.purge({'docid': ['rev1', 'rev2']}))
         self.assert_request_called_with('POST', 'db', '_purge',
                                         data={'docid': ['rev1', 'rev2']})
+
+    def test_revs_diff(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.revs_diff({'docid': ['rev1', 'rev2']}))
+        self.assert_request_called_with('POST', 'db', '_revs_diff',
+                                        data={'docid': ['rev1', 'rev2']})
