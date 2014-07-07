@@ -48,67 +48,6 @@ class HttpRequest(aiohttp.client.ClientRequest):
 class HttpResponse(aiohttp.client.ClientResponse):
     """:class:`aiohttp.client.ClientResponse` class with CouchDB specifics."""
 
-    @asyncio.coroutine
-    def read(self, *, close=False):
-        """Read response payload.
-        Unlike :meth:`aiohttp.client.ClientResponse.read` doesn't decodes
-        the response."""
-
-        if self.method.lower() == 'head':
-            self._content = b''
-            if close:
-                self.close()
-
-        elif self._content is None:
-            buf = []
-            total = 0
-            try:
-                while True:
-                    chunk = yield from self.content.read()
-                    size = len(chunk)
-                    buf.append((chunk, size))
-                    total += size
-            except aiohttp.EofStream:
-                if close:
-                    self.close()
-            except:
-                self.close(True)
-                raise
-
-            self._content = bytearray(total)
-
-            idx = 0
-            content = memoryview(self._content)
-            for chunk, size in buf:
-                content[idx:idx+size] = chunk
-                idx += size
-
-        return self._content
-
-    @asyncio.coroutine
-    def read_and_close(self, decode=False):
-        warnings.warn(
-            'use .read(close=True) instead of .read_and_close',
-            UserWarning
-        )
-        return (yield from self.read(close=True))
-
-    @asyncio.coroutine
-    def json(self, *, close=False):
-        """Reads and decodes JSON response."""
-        if self._content is None:
-            yield from self.read(close=close)
-
-        ctype = self.headers.get('CONTENT-TYPE', '').lower()
-        if not ctype.startswith('application/json'):
-            logging.warning(
-                'Attempt to decode JSON with unexpected mimetype: %s', ctype)
-
-        if not self._content.strip():
-            return None
-
-        return json.loads(self._content.decode('utf-8'))
-
 
 class Resource(object):
     """HTTP resource representation. Accepts full ``url`` as argument.

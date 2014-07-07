@@ -42,7 +42,7 @@ class Server(object):
         """
         resp = yield from self.resource.get(auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def active_tasks(self, *, auth=None):
@@ -55,7 +55,7 @@ class Server(object):
         """
         resp = yield from self.resource.get('_active_tasks', auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def all_dbs(self, *, auth=None):
@@ -68,7 +68,7 @@ class Server(object):
         """
         resp = yield from self.resource.get('_all_dbs', auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @property
     def config(self):
@@ -92,7 +92,7 @@ class Server(object):
         db_resource = self.resource(dbname)
         resp = yield from db_resource.head(auth=auth)
         yield from maybe_raise_error(resp)
-        yield from resp.read(close=True)
+        yield from resp.read()
         return self.database_class(db_resource)
 
     @asyncio.coroutine
@@ -126,7 +126,7 @@ class Server(object):
         elif feed == 'eventsource':
             return EventSourceFeed(resp)
         else:
-            return (yield from resp.json(close=True))
+            return (yield from resp.json())
 
     @asyncio.coroutine
     def log(self, *, bytes=None, offset=None, auth=None):
@@ -146,7 +146,7 @@ class Server(object):
             params['offset'] = offset
         resp = yield from self.resource.get('_log',  auth=auth, params=params)
         yield from maybe_raise_error(resp)
-        return (yield from resp.read(close=True)).decode('utf-8')
+        return (yield from resp.read()).decode('utf-8')
 
     @asyncio.coroutine
     def replicate(self, source, target, *,
@@ -234,7 +234,7 @@ class Server(object):
         maybe_set_param(doc, 'worker_processes', worker_processes)
         resp = yield from self.resource.post('_replicate', auth=auth, data=doc)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def restart(self, *, auth=None):
@@ -246,7 +246,7 @@ class Server(object):
         """
         resp = yield from self.resource.post('_restart', auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @property
     def session(self):
@@ -282,7 +282,7 @@ class Server(object):
         resource = self.resource(*path)
         resp = yield from resource.get(auth=auth, params=params)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def uuids(self, *, auth=None, count=None):
@@ -298,7 +298,7 @@ class Server(object):
             params['count'] = count
         resp = yield from self.resource.get('_uuids', auth=auth, params=params)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))['uuids']
+        return (yield from resp.json())['uuids']
 
 
 class Config(object):
@@ -336,7 +336,7 @@ class Config(object):
             path.append(key)
         resp = yield from self.resource(*path).get(auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def update(self, section, key, value, *, auth=None):
@@ -352,7 +352,7 @@ class Config(object):
         """
         resp = yield from self.resource(section).put(key, auth=auth, data=value)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def remove(self, section, key, *, auth=None):
@@ -367,7 +367,7 @@ class Config(object):
         """
         resp = yield from self.resource(section).delete(key, auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
 
 class Session(object):
@@ -393,7 +393,7 @@ class Session(object):
         doc = {'name': name, 'password': password}
         resp = yield from self.resource.post(auth=auth, data=doc)
         yield from maybe_raise_error(resp)
-        yield from resp.read(close=True)
+        yield from resp.read()
         return auth
 
     @asyncio.coroutine
@@ -405,7 +405,7 @@ class Session(object):
         """
         resp = yield from self.resource.get(auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def close(self, *, auth=None):
@@ -413,4 +413,4 @@ class Session(object):
         Uses for :class:`aiocouchdb.authn.CookieAuthProvider`."""
         resp = yield from self.resource.delete(auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())

@@ -40,7 +40,7 @@ class Database(object):
         .. _database exists: http://docs.couchdb.org/en/latest/api/database/common.html#head--db
         """
         resp = yield from self.resource.head(auth=auth)
-        yield from resp.read(close=True)
+        yield from resp.read()
         return resp.status == 200
 
     @asyncio.coroutine
@@ -55,7 +55,7 @@ class Database(object):
         """
         resp = yield from self.resource.get(auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def create(self, *, auth=None):
@@ -69,7 +69,7 @@ class Database(object):
         """
         resp = yield from self.resource.put(auth=auth)
         yield from maybe_raise_error(resp)
-        status = yield from resp.json(close=True)
+        status = yield from resp.json()
         return status['ok']
 
 
@@ -85,7 +85,7 @@ class Database(object):
         """
         resp = yield from self.resource.delete(auth=auth)
         yield from maybe_raise_error(resp)
-        status = yield from resp.json(close=True)
+        status = yield from resp.json()
         return status['ok']
 
     @asyncio.coroutine
@@ -203,7 +203,7 @@ class Database(object):
         resp = yield from self.resource.post(
             '_bulk_docs', auth=auth, data=chunks, params=params)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     def changes(self, *doc_ids,
                 auth=None,
@@ -318,7 +318,7 @@ class Database(object):
             path.append(ddoc_name)
         resp = yield from self.resource(*path).post(auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def ensure_full_commit(self, *, auth=None):
@@ -331,7 +331,7 @@ class Database(object):
         """
         resp = yield from self.resource.post('_ensure_full_commit', auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def missing_revs(self, id_revs, *, auth=None):
@@ -347,7 +347,7 @@ class Database(object):
         resp = yield from self.resource.post('_missing_revs',
                                              auth=auth, data=id_revs)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def purge(self, id_revs, *, auth=None):
@@ -363,7 +363,7 @@ class Database(object):
         resp = yield from self.resource.post('_purge',
                                              auth=auth, data=id_revs)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def revs_diff(self, id_revs, *, auth=None):
@@ -379,7 +379,7 @@ class Database(object):
         resp = yield from self.resource.post('_revs_diff',
                                              auth=auth, data=id_revs)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def revs_limit(self, count=None, *, auth=None):
@@ -397,7 +397,7 @@ class Database(object):
             resp = yield from self.resource.put('_revs_limit',
                                                  auth=auth, data=count)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     @property
     def security(self):
@@ -516,7 +516,7 @@ class Database(object):
         """
         resp = yield from self.resource.post('_view_cleanup', auth=auth)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
 
 class Security(object):
@@ -539,7 +539,7 @@ class Security(object):
         """
         resp = yield from self.resource.get(auth=auth)
         yield from maybe_raise_error(resp)
-        secobj = (yield from resp.json(close=True))
+        secobj = (yield from resp.json())
         if not secobj:
             secobj = {
                 'admins': {
@@ -582,7 +582,7 @@ class Security(object):
                 secobj[role].update(section)
         resp = yield from self.resource.put(auth=auth, data=secobj)
         yield from maybe_raise_error(resp)
-        return (yield from resp.json(close=True))
+        return (yield from resp.json())
 
     def update_admins(self, *, auth=None, users=None, roles=None, merge=False):
         """Helper for :meth:`~aiocouchdb.database.Security.update` method to

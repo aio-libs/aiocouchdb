@@ -18,7 +18,7 @@ mod = imp.load_module(
     'version', *imp.find_module('version', [join(setup_dir, 'aiocouchdb')]))
 
 install_requires = [
-    'aiohttp>=0.8'
+    'aiohttp==0.8.4'
 ]
 
 if sys.version_info >= (3, 4):

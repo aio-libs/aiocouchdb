@@ -122,27 +122,6 @@ class HttpRequestTestCase(utils.TestCase):
 
 class HttpResponseTestCase(utils.TestCase):
 
-    def test_read_and_close(self):
-        resp = self.mock_response(data=b'{"couchdb": "Welcome!"}')
-
-        res = self.run_loop(resp.read(close=True))
-        self.assertEqual(res, b'{"couchdb": "Welcome!"}')
-        self.assertTrue(resp.close.called)
-
-    def test_force_close_on_read_error(self):
-        resp = self.mock_response(err=ValueError)
-
-        self.assertRaises(ValueError,
-                          self.loop.run_until_complete, resp.read(close=True))
-        resp.close.assert_called_with(True)
-
-    def test_warning_read_and_close(self):
-        resp = self.mock_response()
-
-        self.assertWarns(UserWarning, self.loop.run_until_complete,
-                         resp.read_and_close())
-        self.assertTrue(resp.close.called)
-
     def test_read_body(self):
         resp = self.mock_response(data=b'{"couchdb": "Welcome!"}')
 
