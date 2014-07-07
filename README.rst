@@ -13,7 +13,7 @@ Example
 
     import sys
     import asyncio
-    from aiocouchdb import Server, maybe_raise_error
+    from aiocouchdb import Server
 
 
     @asyncio.coroutine
@@ -45,7 +45,7 @@ Example
                 # ignore Forbidden errors
                 continue
             # but respect everyone else
-            yield from maybe_raise_error(resp)
+            yield from resp.maybe_raise_error()
             dbinfo = yield from resp.json(close=True)  # release connection
             print(dbinfo)
 

@@ -10,10 +10,9 @@
 import asyncio
 import aiohttp
 import json
-import logging
 import types
 import urllib.parse
-import warnings
+from .errors import maybe_raise_error
 
 
 class HttpRequest(aiohttp.client.ClientRequest):
@@ -47,6 +46,11 @@ class HttpRequest(aiohttp.client.ClientRequest):
 
 class HttpResponse(aiohttp.client.ClientResponse):
     """:class:`aiohttp.client.ClientResponse` class with CouchDB specifics."""
+
+    def maybe_raise_error(self):
+        """Raises an :exc:`HttpErrorException` if response status code is
+        greater or equal `400`."""
+        return maybe_raise_error(self)
 
 
 class Resource(object):

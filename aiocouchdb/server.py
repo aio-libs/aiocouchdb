@@ -12,7 +12,6 @@ import asyncio
 from .authn import CookieAuthProvider
 from .client import Resource
 from .database import Database
-from .errors import maybe_raise_error
 from .feeds import EventSourceFeed, JsonFeed
 
 
@@ -41,7 +40,7 @@ class Server(object):
         :rtype: dict
         """
         resp = yield from self.resource.get(auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @asyncio.coroutine
@@ -54,7 +53,7 @@ class Server(object):
         :rtype: list
         """
         resp = yield from self.resource.get('_active_tasks', auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @asyncio.coroutine
@@ -67,7 +66,7 @@ class Server(object):
         :rtype: list
         """
         resp = yield from self.resource.get('_all_dbs', auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @property
@@ -91,7 +90,7 @@ class Server(object):
         """
         db_resource = self.resource(dbname)
         resp = yield from db_resource.head(auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         yield from resp.read()
         return self.database_class(db_resource)
 
@@ -120,7 +119,7 @@ class Server(object):
             params['heartbeat'] = heartbeat
         resp = yield from self.resource.get('_db_updates',
                                             auth=auth, params=params)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         if feed == 'continuous':
             return JsonFeed(resp)
         elif feed == 'eventsource':
@@ -145,7 +144,7 @@ class Server(object):
         if offset is not None:
             params['offset'] = offset
         resp = yield from self.resource.get('_log',  auth=auth, params=params)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.read()).decode('utf-8')
 
     @asyncio.coroutine
@@ -233,7 +232,7 @@ class Server(object):
         maybe_set_param(doc, 'worker_batch_size', worker_batch_size)
         maybe_set_param(doc, 'worker_processes', worker_processes)
         resp = yield from self.resource.post('_replicate', auth=auth, data=doc)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @asyncio.coroutine
@@ -245,7 +244,7 @@ class Server(object):
         :rtype: dict
         """
         resp = yield from self.resource.post('_restart', auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @property
@@ -281,7 +280,7 @@ class Server(object):
             params['range'] = range
         resource = self.resource(*path)
         resp = yield from resource.get(auth=auth, params=params)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @asyncio.coroutine
@@ -297,7 +296,7 @@ class Server(object):
         if count is not None:
             params['count'] = count
         resp = yield from self.resource.get('_uuids', auth=auth, params=params)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())['uuids']
 
 
@@ -335,7 +334,7 @@ class Config(object):
             assert isinstance(section, str)
             path.append(key)
         resp = yield from self.resource(*path).get(auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @asyncio.coroutine
@@ -351,7 +350,7 @@ class Config(object):
         :rtype: str
         """
         resp = yield from self.resource(section).put(key, auth=auth, data=value)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @asyncio.coroutine
@@ -366,7 +365,7 @@ class Config(object):
         :rtype: str
         """
         resp = yield from self.resource(section).delete(key, auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
 
@@ -392,7 +391,7 @@ class Session(object):
         auth = self.cookie_auth_provider_class()
         doc = {'name': name, 'password': password}
         resp = yield from self.resource.post(auth=auth, data=doc)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         yield from resp.read()
         return auth
 
@@ -404,7 +403,7 @@ class Session(object):
         :rtype: dict
         """
         resp = yield from self.resource.get(auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
     @asyncio.coroutine
@@ -412,5 +411,5 @@ class Session(object):
         """Closes active cookie session.
         Uses for :class:`aiocouchdb.authn.CookieAuthProvider`."""
         resp = yield from self.resource.delete(auth=auth)
-        yield from maybe_raise_error(resp)
+        yield from resp.maybe_raise_error()
         return (yield from resp.json())
