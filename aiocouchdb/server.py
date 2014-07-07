@@ -135,6 +135,7 @@ class Server(object):
 
         :param int bytes: Bytes to return
         :param int offset: Offset in bytes where the log tail should be started
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: str
         """
