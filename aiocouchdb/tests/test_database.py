@@ -546,3 +546,10 @@ class DatabaseTestCase(utils.TestCase):
             self.assert_request_called_with('POST', 'db', '_temp_view',
                                             data={'map': 'fun(_)-> ok end'},
                                             params={key: value})
+
+    def test_view_cleanup(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.db.view_cleanup())
+        self.assert_request_called_with('POST', 'db', '_view_cleanup')

@@ -506,6 +506,18 @@ class Database(object):
         yield from maybe_raise_error(resp)
         return ViewFeed(resp)
 
+    @asyncio.coroutine
+    def view_cleanup(self, *, auth=None):
+        """:ref:`Removes outdated views <api/db/view_cleanup>` index files.
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        resp = yield from self.resource.post('_view_cleanup', auth=auth)
+        yield from maybe_raise_error(resp)
+        return (yield from resp.json(close=True))
+
 
 class Security(object):
     """Provides set of methods to work with :ref:`database security API
