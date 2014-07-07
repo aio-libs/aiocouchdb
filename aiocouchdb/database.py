@@ -405,6 +405,107 @@ class Database(object):
         instance."""
         return self._security
 
+    @asyncio.coroutine
+    def temp_view(self, map_fun, red_fun=None, language=None, *,
+                  auth=None,
+                  att_encoding_info=None,
+                  attachments=None,
+                  conflicts=None,
+                  descending=None,
+                  endkey=None,
+                  endkey_docid=None,
+                  group=None,
+                  group_level=None,
+                  include_docs=None,
+                  inclusive_end=None,
+                  keys=None,
+                  limit=None,
+                  reduce=None,
+                  skip=None,
+                  stale=None,
+                  startkey=None,
+                  startkey_docid=None,
+                  update_seq=None):
+        """Executes :ref:`temporary view <api/db/temp_view>` and returns
+        it results according specified parameters.
+
+        :param str map_fun: Map function source code
+        :param str red_fun: Reduce function source code
+        :param str language: Query server language to process the view
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :param bool att_encoding_info: Includes encoding information in an
+                                       attachment stubs
+        :param bool attachments: Includes attachments content into documents.
+                                 **Warning**: use with caution!
+        :param bool conflicts: Includes conflicts information into documents
+        :param bool descending: Return rows in descending by key order
+        :param str endkey: Stop fetching rows when the specified key is reached
+        :param str endkey_docid: Stop fetching rows when the specified
+                                 document ID is reached
+        :param bool group: Reduces the view result grouping by unique keys
+        :param int group_level: Reduces the view result grouping the keys
+                                with defined level
+        :param str include_docs: Include document body for each row
+        :param bool inclusive_end: When ``False``, doesn't includes ``endkey``
+                                   in returned rows
+        :param list keys: List of view keys to fetch
+        :param int limit: Limits the number of the returned rows by
+                          the specified number
+        :param bool reduce: Defines is the reduce function needs to be applied
+                            or not
+        :param int skip: Skips specified number of rows before starting
+                         to return the actual result
+        :param str stale: Allow to fetch the rows from a stale view, without
+                          triggering index update. Supported values: ``ok``
+                          and ``update_after``
+        :param str startkey: Return rows starting with the specified key
+        :param str startkey_docid: Return rows starting with the specified
+                                   document ID
+        :param bool update_seq: Include an ``update_seq`` value into view
+                                results header
+
+        :rtype: :class:`aiocouchdb.feeds.ViewFeed`
+        """
+        params = {}
+        maybe_set_param = (
+            lambda *kv: (None if kv[1] is None else params.update([kv])))
+        maybe_set_param('att_encoding_info', att_encoding_info)
+        maybe_set_param('attachments', attachments)
+        maybe_set_param('conflicts', conflicts)
+        maybe_set_param('descending', descending)
+        maybe_set_param('endkey', endkey)
+        maybe_set_param('endkey_docid', endkey_docid)
+        maybe_set_param('include_docs', include_docs)
+        maybe_set_param('inclusive_end', inclusive_end)
+        maybe_set_param('group', group)
+        maybe_set_param('group_level', group_level)
+        maybe_set_param('keys', keys)
+        maybe_set_param('limit', limit)
+        maybe_set_param('reduce', reduce)
+        maybe_set_param('skip', skip)
+        maybe_set_param('stale', stale)
+        maybe_set_param('startkey', startkey)
+        maybe_set_param('startkey_docid', startkey_docid)
+        maybe_set_param('update_seq', update_seq)
+
+        data = {'map': map_fun}
+        if red_fun is not None:
+            data['reduce'] = red_fun
+        if language is not None:
+            data['language'] = language
+
+        # CouchDB requires these params have valid JSON value
+        for param in ('keys', 'startkey', 'endkey'):
+            if param in params:
+                params[param] = json.dumps(params[param])
+
+        resp = yield from self.resource.post('_temp_view', auth=auth, data=data,
+                                             params=params)
+        yield from maybe_raise_error(resp)
+        return ViewFeed(resp)
+
 
 class Security(object):
     """Provides set of methods to work with :ref:`database security API

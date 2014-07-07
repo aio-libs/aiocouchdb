@@ -483,3 +483,66 @@ class DatabaseTestCase(utils.TestCase):
         self.run_loop(self.db.security.update_members(users=['foo'],
                                                       roles=['bar', 'baz']))
         self.assert_request_called_with('PUT', 'db', '_security', data=data)
+
+    def test_temp_view(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.temp_view('fun(_)-> ok end'))
+        self.assert_request_called_with('POST', 'db', '_temp_view',
+                                        data={'map': 'fun(_)-> ok end'})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_temp_view_reduce(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.temp_view('fun(_)-> ok end', '_count'))
+        self.assert_request_called_with('POST', 'db', '_temp_view',
+                                        data={'map': 'fun(_)-> ok end',
+                                              'reduce': '_count'})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_temp_view_language(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.temp_view('fun(_)-> ok end',
+                                                 language='erlang'))
+        self.assert_request_called_with('POST', 'db', '_temp_view',
+                                        data={'map': 'fun(_)-> ok end',
+                                              'language': 'erlang'})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_temp_view_params(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        all_params = {
+            'att_encoding_info': False,
+            'attachments': False,
+            'conflicts': True,
+            'descending': True,
+            'endkey': 'foo',
+            'endkey_docid': 'foo_id',
+            'group': False,
+            'group_level': 10,
+            'include_docs': True,
+            'inclusive_end': False,
+            'keys': ['foo', 'bar'],
+            'limit': 10,
+            'reduce': True,
+            'skip': 20,
+            'stale': 'ok',
+            'startkey': 'bar',
+            'startkey_docid': 'bar_id',
+            'update_seq': True
+        }
+
+        for key, value in all_params.items():
+            self.run_loop(self.db.temp_view('fun(_)-> ok end', **{key: value}))
+            if key in ('keys', 'endkey', 'startkey'):
+                value = json.dumps(value)
+            self.assert_request_called_with('POST', 'db', '_temp_view',
+                                            data={'map': 'fun(_)-> ok end'},
+                                            params={key: value})
