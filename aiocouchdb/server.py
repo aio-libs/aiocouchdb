@@ -94,6 +94,9 @@ class Server(object):
         yield from resp.read()
         return self.database_class(db_resource)
 
+    #: alias for :meth:`aiocouchdb.server.Server.database`
+    db = database
+
     @asyncio.coroutine
     def db_updates(self, *, feed=None, timeout=None, heartbeat=None, auth=None):
         """Emits :ref:`databases events <api/server/db_updates>` for
