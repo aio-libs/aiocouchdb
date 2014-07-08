@@ -79,9 +79,9 @@ class Server(object):
         """Returns :class:`~aiocouchdb.database.Database` instance against
         specified ``dbname``.
 
-        If database is missed or isn't accessible for provided credentials
-        this method raises :exc:`aiocouchdb.errors.HttpErrorException`
-        for related response status code.
+        If database  isn't accessible for provided credentials this method
+        raises :exc:`aiocouchdb.errors.HttpErrorException` for related
+        response status code.
 
         :param str dbname: Database name
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
@@ -90,7 +90,8 @@ class Server(object):
         """
         db_resource = self.resource(dbname)
         resp = yield from db_resource.head(auth=auth)
-        yield from resp.maybe_raise_error()
+        if resp.status != 404:
+            yield from resp.maybe_raise_error()
         yield from resp.read()
         return self.database_class(db_resource)
 
