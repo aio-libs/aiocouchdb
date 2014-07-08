@@ -119,8 +119,8 @@ class BasicAuthProvider(AuthProvider):
             if self._credentials is None:
                 raise ValueError('Basic Auth credentials was not specified')
             token = base64.b64encode(
-                ('%s:%s' % self._credentials).encode('latin1'))
-            self._auth_header = 'Basic %s' % (token.strip().decode('latin1'))
+                ('%s:%s' % self._credentials).encode('utf8'))
+            self._auth_header = 'Basic %s' % (token.strip().decode('utf8'))
         headers['AUTHORIZATION'] = self._auth_header
 
     def update(self, response):

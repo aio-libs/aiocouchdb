@@ -44,6 +44,13 @@ class BasicAuthProviderTestCase(unittest.TestCase):
         self.assertIn('AUTHORIZATION', headers)
         self.assertTrue(headers['AUTHORIZATION'].startswith('Basic'))
 
+    def test_set_auth_header_utf8(self):
+        self.auth.set_credentials('foo', 'бар')
+        headers = {}
+        self.auth.sign(URL, headers)
+        self.assertIn('AUTHORIZATION', headers)
+        self.assertTrue(headers['AUTHORIZATION'].startswith('Basic'))
+
     def test_reset_credentials(self):
         self.auth.set_credentials('foo', 'bar')
         self.auth.reset()
