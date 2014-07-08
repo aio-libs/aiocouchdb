@@ -38,8 +38,7 @@ Example
                 break
             dbname = event['db_name']
 
-            # there is no Database API yet, let's go with raw requests
-            # we don't want to query database as admin, but as other user
+            # what use raw queries? that's easy
             resp = yield from server.resource.get(dbname, auth=user)
             if resp.status == 403:
                 # ignore Forbidden errors

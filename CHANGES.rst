@@ -1,5 +1,13 @@
-0.2.0 (dev)
+0.2.0 (2014-07-08)
 ------------------
+
+- Second checkpoint release
+- Implements CouchDB Database HTTP API
+- Bulk docs accepts generator as an argument and streams request doc by doc
+- Views are processed as stream
+- Unified output for various changes feed types
+- Basic Auth accepts non-ASCII credentials
+- Minimal requirements for aiohttp raised up to 0.8.4 version
 
 0.1.0 (2014-07-01)
 ------------------
