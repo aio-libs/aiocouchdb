@@ -10,6 +10,7 @@
 import asyncio
 import aiohttp
 import json
+from aiohttp.helpers import parse_mimetype
 
 
 class Feed(object):
@@ -20,6 +21,9 @@ class Feed(object):
         self._queue = asyncio.Queue(loop=loop)
         self._active = True
         self._resp = resp
+        ctype = resp.headers.get('CONTENT-TYPE', '').lower()
+        *_, params = parse_mimetype(ctype)
+        self._encoding = params.get('charset', 'utf-8')
         asyncio.Task(self._loop(), loop=loop)
 
     @asyncio.coroutine
@@ -81,7 +85,7 @@ class JsonFeed(Feed):
         """
         chunk = yield from super().next()
         if chunk is not None:
-            return json.loads(chunk.decode('utf-8'))
+            return json.loads(chunk.decode(self._encoding))
 
 
 class ViewFeed(Feed):
@@ -100,7 +104,7 @@ class ViewFeed(Feed):
         chunk = yield from super().next()
         if chunk is None:
             return chunk
-        chunk = chunk.decode('utf-8').strip('\r\n,')
+        chunk = chunk.decode(self._encoding).strip('\r\n,')
         if chunk.startswith('{"total_rows"'):
             chunk += ']}'
             event = json.loads(chunk)
@@ -144,7 +148,7 @@ class EventSourceFeed(Feed):
         chunk = (yield from super().next())
         if chunk is None:
             return chunk
-        chunk = chunk.decode('utf-8')
+        chunk = chunk.decode(self._encoding)
         event = {}
         data = event['data'] = []
         for line in chunk.splitlines():
@@ -215,7 +219,7 @@ class ChangesFeed(Feed):
             return chunk
         if chunk.startswith((b'{"results"', b'\n]')):
             return (yield from self.next())
-        event = json.loads(chunk.strip(b',').decode('utf-8'))
+        event = json.loads(chunk.strip(b',').decode(self._encoding))
         self._last_seq = event['seq']
         return event
 
