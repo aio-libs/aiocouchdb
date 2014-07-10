@@ -31,6 +31,30 @@ class Server(object):
         self._config = Config(self.resource)
 
     @asyncio.coroutine
+    def database(self, dbname, *, auth=None):
+        """Returns :class:`~aiocouchdb.database.Database` instance against
+        specified ``dbname``.
+
+        If database  isn't accessible for provided credentials this method
+        raises :exc:`aiocouchdb.errors.HttpErrorException` for related
+        response status code.
+
+        :param str dbname: Database name
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: :class:`aiocouchdb.database.Database`
+        """
+        db_resource = self.resource(dbname)
+        resp = yield from db_resource.head(auth=auth)
+        if resp.status != 404:
+            yield from resp.maybe_raise_error()
+        yield from resp.read()
+        return self.database_class(db_resource)
+
+    #: alias for :meth:`aiocouchdb.server.Server.database`
+    db = database
+
+    @asyncio.coroutine
     def info(self, *, auth=None):
         """Returns server :ref:`meta information and welcome message
         <api/server/root>`.
@@ -73,30 +97,6 @@ class Server(object):
     def config(self):
         """Proxy to the related :class:`~aiocouchdb.server.Config` instance."""
         return self._config
-
-    @asyncio.coroutine
-    def database(self, dbname, *, auth=None):
-        """Returns :class:`~aiocouchdb.database.Database` instance against
-        specified ``dbname``.
-
-        If database  isn't accessible for provided credentials this method
-        raises :exc:`aiocouchdb.errors.HttpErrorException` for related
-        response status code.
-
-        :param str dbname: Database name
-        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
-
-        :rtype: :class:`aiocouchdb.database.Database`
-        """
-        db_resource = self.resource(dbname)
-        resp = yield from db_resource.head(auth=auth)
-        if resp.status != 404:
-            yield from resp.maybe_raise_error()
-        yield from resp.read()
-        return self.database_class(db_resource)
-
-    #: alias for :meth:`aiocouchdb.server.Server.database`
-    db = database
 
     @asyncio.coroutine
     def db_updates(self, *, feed=None, timeout=None, heartbeat=None, auth=None):
