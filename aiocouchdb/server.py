@@ -18,6 +18,7 @@ from .feeds import EventSourceFeed, JsonFeed
 class Server(object):
     """Implementation of :ref:`CouchDB Server API <api/server>`."""
 
+    #: Default :class:`~aiocouchdb.database.Database` instance class
     database_class = Database
 
     def __init__(self, url_or_resource='http://localhost:5984', *,
@@ -33,7 +34,7 @@ class Server(object):
     @asyncio.coroutine
     def database(self, dbname, *, auth=None):
         """Returns :class:`~aiocouchdb.database.Database` instance against
-        specified ``dbname``.
+        specified database name.
 
         If database  isn't accessible for provided credentials this method
         raises :exc:`aiocouchdb.errors.HttpErrorException` for related
@@ -42,7 +43,7 @@ class Server(object):
         :param str dbname: Database name
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :rtype: :class:`aiocouchdb.database.Database`
+        :rtype: :attr:`aiocouchdb.server.Server.database_class`
         """
         db_resource = self.resource(dbname)
         resp = yield from db_resource.head(auth=auth)
