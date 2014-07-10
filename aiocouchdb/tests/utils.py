@@ -40,20 +40,24 @@ class TestCase(unittest.TestCase):
     def run_loop(self, coro):
         return self.loop.run_until_complete(coro)
 
-    def mock_response(self, status=200, headers=None, data=b'',
-                      err=aiohttp.EofStream):
+    def mock_response(self, status=200, headers=None, data=b'', err=None):
         def side_effect(*args, **kwargs):
             fut = asyncio.Future(loop=self.loop)
             if queue:
+                resp.content.at_eof.return_value = False
                 fut.set_result(queue.popleft())
-            else:
+            elif err:
                 fut.set_exception(err)
+            else:
+                resp.content.at_eof.return_value = True
+                fut.set_result(b'')
             return fut
         queue = deque(data if isinstance(data, list) else [data])
         resp = aiocouchdb.client.HttpResponse('', '')
         resp.status = status
         resp.headers = headers or {}
         resp.content = unittest.mock.Mock()
+        resp.content.at_eof.return_value = False
         resp.content.read.side_effect = side_effect
         resp.close = mock.Mock()
         return resp

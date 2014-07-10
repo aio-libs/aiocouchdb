@@ -29,16 +29,16 @@ class Feed(object):
     @asyncio.coroutine
     def _loop(self):
         try:
-            while self._active:
+            while not self._resp.content.at_eof():
                 chunk = yield from self._resp.content.read()
                 if not chunk or chunk == b'\n':  # ignore heartbeats
                     continue
                 self._queue.put_nowait(chunk)
-        except aiohttp.EofStream:
-            self.close()
         except Exception as exc:
             self._queue.put_nowait(exc)
             self.close(True)
+        else:
+            self.close()
 
     @asyncio.coroutine
     def next(self):

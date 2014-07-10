@@ -47,6 +47,8 @@ class HttpRequest(aiohttp.client.ClientRequest):
 class HttpResponse(aiohttp.client.ClientResponse):
     """:class:`aiohttp.client.ClientResponse` class with CouchDB specifics."""
 
+    flow_control_class = aiohttp.FlowControlChunksQueue
+
     def maybe_raise_error(self):
         """Raises an :exc:`HttpErrorException` if response status code is
         greater or equal `400`."""
