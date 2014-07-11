@@ -29,3 +29,57 @@ class DatabaseTestCase(utils.TestCase):
         doc = aiocouchdb.document.Document(res)
         self.assertIsInstance(doc.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url_doc, self.doc.resource.url)
+
+    def test_exists(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.exists())
+        self.assert_request_called_with('HEAD', 'db', 'docid')
+        self.assertTrue(result)
+
+    def test_exists_rev(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.exists('1-ABC'))
+        self.assert_request_called_with('HEAD', 'db', 'docid',
+                                        params={'rev': '1-ABC'})
+        self.assertTrue(result)
+
+    def test_exists_forbidden(self):
+        resp = self.mock_json_response()
+        resp.status = 403
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.exists())
+        self.assert_request_called_with('HEAD', 'db', 'docid')
+        self.assertFalse(result)
+
+    def test_exists_not_found(self):
+        resp = self.mock_json_response()
+        resp.status = 404
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.exists())
+        self.assert_request_called_with('HEAD', 'db', 'docid')
+        self.assertFalse(result)
+
+    def test_modified(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.modified('1-ABC'))
+        self.assert_request_called_with('HEAD', 'db', 'docid',
+                                        headers={'IF-NONE-MATCH': '"1-ABC"'})
+        self.assertTrue(result)
+
+    def test_not_modified(self):
+        resp = self.mock_json_response()
+        resp.status = 304
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.modified('1-ABC'))
+        self.assert_request_called_with('HEAD', 'db', 'docid',
+                                        headers={'IF-NONE-MATCH': '"1-ABC"'})
+        self.assertFalse(result)
