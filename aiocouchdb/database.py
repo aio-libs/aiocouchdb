@@ -9,8 +9,10 @@
 
 import asyncio
 import json
+import uuid
 
 from .client import Resource
+from .document import Document
 from .feeds import (
     ViewFeed,
     ChangesFeed, LongPollChangesFeed,
@@ -21,11 +23,48 @@ from .feeds import (
 class Database(object):
     """Implementation of :ref:`CouchDB Database API <api/db>`."""
 
-    def __init__(self, url_or_resource):
+    #: Default :class:`~aiocouchdb.document.Document` instance class
+    document_class = Document
+
+    def __init__(self, url_or_resource, *, document_class=None):
+        if document_class is not None:
+            self.document_class = document_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
         self._security = Security(self.resource)
+
+    @asyncio.coroutine
+    def document(self, docid=None, *, auth=None, idfun=uuid.uuid4):
+        """Returns :class:`~aiocouchdb.document.Document` instance against
+        specified document ID.
+
+        If document ID wasn't specified, the ``idfun`` function will be used
+        to generate it.
+
+        If document isn't accessible for auth provided credentials, this method
+        raises :exc:`aiocouchdb.errors.HttpErrorException` with the related
+        response status code.
+
+        :param str docid: Document ID
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param idfun: Document ID generation function.
+                      Should return ``str`` or other object which could be
+                      translated into string
+
+        :rtype: :attr:`aiocouchdb.database.Database.document_class`
+        """
+        if docid is None:
+            docid = str(idfun())
+        doc_resource = self.resource(docid)
+        resp = yield from doc_resource.head(auth=auth)
+        if resp.status != 404:
+            yield from resp.maybe_raise_error()
+        yield from resp.read()
+        return self.document_class(doc_resource)
+
+    #: alias for :meth:`aiocouchdb.database.Database.document`
+    doc = document
 
     @asyncio.coroutine
     def exists(self, *, auth=None):

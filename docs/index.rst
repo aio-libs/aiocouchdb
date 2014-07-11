@@ -33,6 +33,12 @@ Security
 .. autoclass:: aiocouchdb.database.Security
   :members:
 
+Document
+========
+
+.. autoclass:: aiocouchdb.document.Document
+  :members:
+
 Client
 ======
 

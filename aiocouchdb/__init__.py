@@ -26,5 +26,6 @@ from .errors import (
     ServerError
 )
 from .database import Database
+from .document import Document
 from .server import Server
 from .version import __version__, __version_info__

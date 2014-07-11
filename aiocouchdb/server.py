@@ -36,8 +36,8 @@ class Server(object):
         """Returns :class:`~aiocouchdb.database.Database` instance against
         specified database name.
 
-        If database  isn't accessible for provided credentials this method
-        raises :exc:`aiocouchdb.errors.HttpErrorException` for related
+        If database isn't accessible for provided auth credentials, this method
+        raises :exc:`aiocouchdb.errors.HttpErrorException` with the related
         response status code.
 
         :param str dbname: Database name

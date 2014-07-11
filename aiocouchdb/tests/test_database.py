@@ -262,6 +262,50 @@ class DatabaseTestCase(utils.TestCase):
         self.run_loop(self.db.compact('ddoc'))
         self.assert_request_called_with('POST', 'db', '_compact', 'ddoc')
 
+    def test_document(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.document('docid'))
+        self.assert_request_called_with('HEAD', 'db', 'docid')
+        self.assertIsInstance(result, self.db.document_class)
+
+    def test_document_custom_class(self):
+        class CustomDocument(object):
+            def __init__(self, thing):
+                self.resource = thing
+        db = aiocouchdb.database.Database(self.url_db,
+                                          document_class=CustomDocument)
+
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(db.doc('docid'))
+        self.assert_request_called_with('HEAD', 'db', 'docid')
+        self.assertIsInstance(result, CustomDocument)
+        self.assertIsInstance(result.resource, aiocouchdb.client.Resource)
+
+    def test_document_docid_gen_fun(self):
+        def custom_id():
+            return 'foo'
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.document(idfun=custom_id))
+        self.assert_request_called_with('HEAD', 'db', 'foo')
+        self.assertIsInstance(result, self.db.document_class)
+
+    def test_document_docid_gen_fun_default_uuid(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.document())
+        call_args, _ = self.request.call_args
+        docid = call_args[-1].rsplit('/', 1)[-1]
+        self.assertRegex(docid, '[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}')
+        self.assert_request_called_with('HEAD', 'db', docid)
+        self.assertIsInstance(result, self.db.document_class)
+
     def test_ensure_full_commit(self):
         resp = self.mock_json_response()
         self.request.return_value = self.future(resp)
