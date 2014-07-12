@@ -64,6 +64,7 @@ class Resource(object):
 
     Able to construct new Resource instance by assemble base URL and path
     sections on call:
+
     >>> new_res = res('foo', 'bar/baz')
     >>> assert new_res is not res
     >>> new_res.url

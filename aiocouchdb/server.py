@@ -261,7 +261,7 @@ class Server(object):
     def stats(self, metric=None, *, auth=None, flush=None, range=None):
         """Returns :ref:`server statistics <api/server/stats>`.
 
-        :param str metric: Metrics name in format ``group/name`. For instance,
+        :param str metric: Metrics name in format ``group/name``. For instance,
                            ``httpd/requests``. If omitted, all metrics
                            will be returned
         :param bool flush: If ``True``, collects samples right for this request
