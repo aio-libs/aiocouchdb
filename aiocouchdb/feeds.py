@@ -8,7 +8,6 @@
 #
 
 import asyncio
-import aiohttp
 import json
 from aiohttp.helpers import parse_mimetype
 
