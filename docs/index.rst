@@ -1,7 +1,7 @@
 Welcome to aiocouchdb's documentation!
-****************************************
+**************************************
 
-:Version: |version|
+.. contents::
 
 Server
 ======
