@@ -14,18 +14,18 @@ Exception hierarchy
 .. code::
 
   BaseException
-   +-- Exception
-        +-- aiohttp.errors.HttpException
-             +-- aiohttp.errors.HttpErrorException
-                  +-- aiocouchdb.errors.HttpErrorException
-                       +-- aiocouchdb.errors.BadRequest
-                       +-- aiocouchdb.errors.Unauthorized
-                       +-- aiocouchdb.errors.Forbidden
-                       +-- aiocouchdb.errors.ResourceNotFound
-                       +-- aiocouchdb.errors.MethodNotAllowed
-                       +-- aiocouchdb.errors.ResourceConflict
-                       +-- aiocouchdb.errors.PreconditionFailed
-                       +-- aiocouchdb.errors.ServerError
+  +-- Exception
+      +-- aiohttp.errors.HttpException
+          +-- aiohttp.errors.HttpErrorException
+              +-- aiocouchdb.errors.HttpErrorException
+                  +-- aiocouchdb.errors.BadRequest
+                  +-- aiocouchdb.errors.Unauthorized
+                  +-- aiocouchdb.errors.Forbidden
+                  +-- aiocouchdb.errors.ResourceNotFound
+                  +-- aiocouchdb.errors.MethodNotAllowed
+                  +-- aiocouchdb.errors.ResourceConflict
+                  +-- aiocouchdb.errors.PreconditionFailed
+                  +-- aiocouchdb.errors.ServerError
 """
 
 
