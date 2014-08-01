@@ -8,7 +8,6 @@
 #
 
 import asyncio
-import aiohttp
 import unittest
 import unittest.mock as mock
 from collections import deque
