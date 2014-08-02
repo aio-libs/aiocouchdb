@@ -45,7 +45,10 @@ class HttpRequest(aiohttp.client.ClientRequest):
 
 
 class HttpResponse(aiohttp.client.ClientResponse):
-    """:class:`aiohttp.client.ClientResponse` class with CouchDB specifics."""
+    """Deviation from :class:`aiohttp.client.ClientResponse` class for
+    CouchDB specifics. Prefers :class:`~aiohttp.streams.FlowControlChunksQueue`
+    flow control which fits the best to handle chunked responses.
+    """
 
     flow_control_class = aiohttp.FlowControlChunksQueue
 
@@ -71,6 +74,14 @@ class HttpResponse(aiohttp.client.ClientResponse):
             self._content = data
 
         return self._content
+
+
+class HttpStreamResponse(HttpResponse):
+    """Like :class:`HttpResponse`, but uses
+    :class:`~aiohttp.streams.FlowControlStreamReader` to handle nicely large
+    non-chunked data streams."""
+
+    flow_control_class = aiohttp.FlowControlStreamReader
 
 
 class Resource(object):
@@ -153,7 +164,8 @@ class Resource(object):
         :param dict headers: Custom HTTP request headers
         :param dict params: Custom HTTP request query parameters
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param options: Additional options for :func:`aiohttp.request` function
+        :param options: Additional options for :func:`aiohttp.client.request`
+                       function
 
         :returns: :class:`aiocouchdb.client.HttpResponse` instance
         """
