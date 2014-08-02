@@ -97,6 +97,20 @@ class ResourceTestCase(utils.TestCase):
         self.run_loop(res.request('get', auth=auth))
         self.assertTrue(auth.update.called)
 
+    def test_override_request_class(self):
+        class Thing(object):
+            pass
+        res = aiocouchdb.client.Resource(self.url)
+        self.run_loop(res.request('get', request_class=Thing))
+        self.assert_request_called_with('get', request_class=Thing)
+
+    def test_override_response_class(self):
+        class Thing(object):
+            pass
+        res = aiocouchdb.client.Resource(self.url)
+        self.run_loop(res.request('get', response_class=Thing))
+        self.assert_request_called_with('get', response_class=Thing)
+
 
 class HttpRequestTestCase(utils.TestCase):
 

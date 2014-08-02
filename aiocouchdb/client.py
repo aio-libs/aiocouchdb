@@ -164,12 +164,13 @@ class Resource(object):
         if auth is not None:
             self.apply_auth(auth, url, headers)
 
+        options.setdefault('request_class', self.request_class)
+        options.setdefault('response_class', self.response_class)
+
         resp = yield from aiohttp.request(method, url,
                                           data=data,
                                           headers=headers,
                                           params=params,
-                                          request_class=self.request_class,
-                                          response_class=self.response_class,
                                           **options)
         if auth is not None:
             self.update_auth(auth, resp)
