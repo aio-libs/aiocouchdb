@@ -54,6 +54,24 @@ class HttpResponse(aiohttp.client.ClientResponse):
         greater or equal `400`."""
         return maybe_raise_error(self)
 
+    @asyncio.coroutine
+    def read(self):
+        """Read response payload."""
+        if self._content is None:
+            data = bytearray()
+            try:
+                while not self.content.at_eof():
+                    data.extend((yield from self.content.read()))
+            except:
+                self.close(True)
+                raise
+            else:
+                self.close()
+
+            self._content = data
+
+        return self._content
+
 
 class Resource(object):
     """HTTP resource representation. Accepts full ``url`` as argument.
