@@ -9,10 +9,10 @@
 
 import json
 import aiocouchdb.client
-import aiocouchdb.feeds
 import aiocouchdb.document
 import aiocouchdb.tests.utils as utils
 from aiocouchdb.client import urljoin
+from .test_multipart import Stream
 
 
 class DatabaseTestCase(utils.TestCase):
@@ -127,6 +127,54 @@ class DatabaseTestCase(utils.TestCase):
             self.assert_request_called_with('GET', 'db', 'docid',
                                             params={key: value})
 
+    def test_get_open_revs(self):
+        resp = self.mock_response(
+            headers={'CONTENT-TYPE': 'multipart/mixed;boundary=:'})
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.get_open_revs())
+        self.assert_request_called_with('GET', 'db', 'docid',
+                                        headers={'ACCEPT': 'multipart/*'},
+                                        params={'open_revs': 'all'})
+        self.assertIsInstance(
+            result,
+            aiocouchdb.document.OpenRevsMultipartReader.response_wrapper_cls)
+        self.assertIsInstance(
+            result.stream,
+            aiocouchdb.document.OpenRevsMultipartReader)
+
+    def test_get_open_revs_list(self):
+        resp = self.mock_response(
+            headers={'CONTENT-TYPE': 'multipart/mixed;boundary=:'})
+        self.request.return_value = self.future(resp)
+
+        self.run_loop(self.doc.get_open_revs('1-ABC', '2-CDE'))
+        self.assert_request_called_with(
+            'GET', 'db', 'docid',
+            headers={'ACCEPT': 'multipart/*'},
+            params={'open_revs': '["1-ABC", "2-CDE"]'})
+
+    def test_get_open_revs_params(self):
+        resp = self.mock_response(
+            headers={'CONTENT-TYPE': 'multipart/mixed;boundary=:'})
+        self.request.return_value = self.future(resp)
+
+        all_params = {
+            'att_encoding_info': True,
+            'atts_since': ['1-ABC'],
+            'local_seq': True,
+            'revs': True
+        }
+
+        for key, value in all_params.items():
+            self.run_loop(self.doc.get_open_revs(**{key: value}))
+            if key == 'atts_since':
+                value = json.dumps(value)
+            self.assert_request_called_with('GET', 'db', 'docid',
+                                            headers={'ACCEPT': 'multipart/*'},
+                                            params={key: value,
+                                                    'open_revs': 'all'})
+
     def test_update(self):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)
@@ -200,3 +248,79 @@ class DatabaseTestCase(utils.TestCase):
         self.assert_request_called_with('COPY', 'db', 'docid',
                                         headers={'DESTINATION': 'newid'})
         self.assertEqual({}, result)
+
+
+class OpenRevsMultipartReader(utils.TestCase):
+
+    def test_next(self):
+        reader = aiocouchdb.document.OpenRevsMultipartReader(
+            {'CONTENT-TYPE': 'multipart/mixed;boundary=:'},
+            Stream(b'--:\r\n'
+                   b'Content-Type: multipart/related;boundary=--:--\r\n'
+                   b'\r\n'
+                   b'----:--\r\n'
+                   b'Content-Type: application/json\r\n'
+                   b'\r\n'
+                   b'{"_id": "foo"}\r\n'
+                   b'----:--\r\n'
+                   b'Content-Disposition: attachment; filename="att.txt"\r\n'
+                   b'Content-Type: text/plain\r\n'
+                   b'Content-Length: 9\r\n'
+                   b'\r\n'
+                   b'some data\r\n'
+                   b'----:----\r\n'
+                   b'--:--'))
+        result = self.run_loop(reader.next())
+
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(2, len(result))
+
+        doc, subreader = result
+
+        self.assertEqual({'_id': 'foo'}, doc)
+        self.assertIsInstance(subreader, reader.multipart_reader_cls)
+
+        partreader = self.run_loop(subreader.next())
+        self.assertIsInstance(partreader, subreader.part_reader_cls)
+
+        data = self.run_loop(partreader.next())
+        self.assertEqual(b'some data', data)
+
+        next_data = self.run_loop(partreader.next())
+        self.assertIsNone(next_data)
+        self.assertTrue(partreader.at_eof())
+
+        next_data = self.run_loop(subreader.next())
+        self.assertIsNone(next_data)
+        self.assertTrue(subreader.at_eof())
+
+        next_data = self.run_loop(reader.next())
+        self.assertEqual((None, None), next_data)
+        self.assertTrue(reader.at_eof())
+
+    def test_next_only_doc(self):
+        reader = aiocouchdb.document.OpenRevsMultipartReader(
+            {'CONTENT-TYPE': 'multipart/mixed;boundary=:'},
+            Stream(b'--:\r\n'
+                   b'Content-Type: application/json\r\n'
+                   b'\r\n'
+                   b'{"_id": "foo"}\r\n'
+                   b'--:--'))
+        result = self.run_loop(reader.next())
+
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(2, len(result))
+
+        doc, subreader = result
+
+        self.assertEqual({'_id': 'foo'}, doc)
+        self.assertIsInstance(subreader, reader.part_reader_cls)
+
+        next_data = self.run_loop(subreader.next())
+        self.assertIsNone(next_data)
+        self.assertTrue(subreader.at_eof())
+
+        next_data = self.run_loop(reader.next())
+        self.assertEqual((None, None), next_data)
+        self.assertTrue(reader.at_eof())
+

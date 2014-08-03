@@ -39,6 +39,9 @@ Document
 .. autoclass:: aiocouchdb.document.Document
   :members:
 
+.. autoclass:: aiocouchdb.document.OpenRevsMultipartReader
+  :members:
+
 Client
 ======
 

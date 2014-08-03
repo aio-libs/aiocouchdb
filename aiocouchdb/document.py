@@ -11,7 +11,8 @@ import asyncio
 
 import json
 from collections.abc import Mapping
-from .client import Resource
+from .client import Resource, HttpStreamResponse
+from .multipart import MultipartBodyReader
 
 
 class Document(object):
@@ -126,6 +127,59 @@ class Document(object):
         return (yield from resp.json())
 
     @asyncio.coroutine
+    def get_open_revs(self, *open_revs,
+                      auth=None,
+                      att_encoding_info=None,
+                      atts_since=None,
+                      local_seq=None,
+                      revs=None):
+        """Returns document open revisions with their attachments.
+
+        Unlike :func:`get(open_revs=[...]) <aiocouchdb.document.Document.get>`,
+        this method works with :mimetype:`multipart/mixed` response returning
+        multipart reader which is more optimized to handle large data sets with
+        lesser memory footprint.
+
+        Note, that this method always returns attachments along with leaf
+        revisions.
+
+        :param list open_revs: Leaf revisions to return. If omitted, all leaf
+                               revisions will be returned
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :param bool att_encoding_info: Includes encoding information in an
+                                       attachments stubs
+        :param list atts_since: Includes attachments that was added since
+                                the specified revisions
+        :param bool local_seq: Includes local sequence number in each document
+        :param bool revs: Includes information about all known revisions in
+                          each document
+
+        :rtype: :class:`~aiocouchdb.document.OpenRevsMultipartReader`
+        """
+        params = {}
+        maybe_set_param = (
+            lambda *kv: (None if kv[1] is None else params.update([kv])))
+        maybe_set_param('att_encoding_info', att_encoding_info)
+        maybe_set_param('atts_since', atts_since)
+        maybe_set_param('local_seq', local_seq)
+        maybe_set_param('revs', revs)
+
+        if atts_since is not None:
+            params['atts_since'] = json.dumps(atts_since)
+
+        params['open_revs'] = json.dumps(open_revs) if open_revs else 'all'
+
+        resp = yield from self.resource.get(auth=auth,
+                                            headers={'ACCEPT': 'multipart/*'},
+                                            params=params,
+                                            response_class=HttpStreamResponse)
+        yield from resp.maybe_raise_error()
+        reader = OpenRevsMultipartReader.from_response(resp)
+        return reader
+
+    @asyncio.coroutine
     def update(self, doc, *, auth=None, batch=None, new_edits=None, rev=None):
         """`Updates a document`_ on server.
 
@@ -212,3 +266,30 @@ class Document(object):
         resp = yield from self.resource.copy(auth=auth, headers=headers)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
+
+
+class OpenRevsMultipartReader(MultipartBodyReader):
+    """Special multipart reader optimized for reading document`s open revisions
+    with attachments."""
+
+    multipart_reader_cls = MultipartBodyReader
+
+    @asyncio.coroutine
+    def next(self):
+        """Emits a tuple of document object (:class:`dict`) and multipart reader
+        of the followed attachments (if any).
+
+        :rtype: tuple
+        """
+        reader = yield from super().next()
+
+        if self._at_eof:
+            return None, None
+
+        if isinstance(reader, self.multipart_reader_cls):
+            part = yield from reader.next()
+            doc = yield from part.json()
+        else:
+            doc = yield from reader.json()
+
+        return doc, reader
