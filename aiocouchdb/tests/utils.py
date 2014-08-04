@@ -56,6 +56,7 @@ class TestCase(unittest.TestCase):
         resp.status = status
         resp.headers = headers or {}
         resp.content = unittest.mock.Mock()
+        resp.content._buffer = bytearray()
         resp.content.at_eof.return_value = False
         resp.content.read.side_effect = side_effect
         resp.close = mock.Mock()

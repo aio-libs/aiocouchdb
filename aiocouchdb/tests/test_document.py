@@ -175,6 +175,93 @@ class DatabaseTestCase(utils.TestCase):
                                             params={key: value,
                                                     'open_revs': 'all'})
 
+    def test_get_with_atts(self):
+        resp = self.mock_response(
+            headers={'CONTENT-TYPE': 'multipart/related;boundary=:'})
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.get_with_atts())
+        self.assert_request_called_with(
+            'GET', 'db', 'docid',
+            headers={'ACCEPT': 'multipart/*, application/json'},
+            params={'attachments': True})
+        self.assertIsInstance(
+            result,
+            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
+        self.assertIsInstance(
+            result.stream,
+            aiocouchdb.document.DocAttachmentsMultipartReader)
+
+    def test_get_wth_atts_json(self):
+        resp = self.mock_response(headers={'CONTENT-TYPE': 'application/json'})
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.get_with_atts())
+        self.assert_request_called_with(
+            'GET', 'db', 'docid',
+            headers={'ACCEPT': 'multipart/*, application/json'},
+            params={'attachments': True})
+        self.assertIsInstance(
+            result,
+            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
+        self.assertIsInstance(
+            result.stream,
+            aiocouchdb.document.DocAttachmentsMultipartReader)
+
+    def test_get_wth_atts_json_hacks(self):
+        resp = self.mock_response(
+            headers={'CONTENT-TYPE': 'application/json'},
+            data=b'{"_id": "foo"}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.get_with_atts())
+        self.assert_request_called_with(
+            'GET', 'db', 'docid',
+            headers={'ACCEPT': 'multipart/*, application/json'},
+            params={'attachments': True})
+
+        resp = result.resp
+        self.assertTrue(
+            resp.headers['CONTENT-TYPE'].startswith('multipart/related'))
+
+        print(resp.content._buffer.splitlines())
+        head, *body, tail = resp.content._buffer.splitlines()
+        self.assertTrue(tail.startswith(head))
+        self.assertEqual(
+            b'Content-Type: application/json\r\n\r\n{"_id": "foo"}',
+            b'\r\n'.join(body))
+
+    def test_get_with_atts_params(self):
+        resp = self.mock_response(
+            headers={'CONTENT-TYPE': 'multipart/related;boundary=:'})
+        self.request.return_value = self.future(resp)
+
+        all_params = {
+            'att_encoding_info': True,
+            'atts_since': ['1-ABC'],
+            'conflicts': False,
+            'deleted_conflicts': True,
+            'local_seq': True,
+            'meta': False,
+            'rev': '1-ABC',
+            'revs': True,
+            'revs_info': True
+        }
+
+        for key, value in all_params.items():
+            self.run_loop(self.doc.get_with_atts(**{key: value}))
+            if key == 'atts_since':
+                value = json.dumps(value)
+            self.assert_request_called_with('GET', 'db', 'docid',
+                                            params={key: value,
+                                                    'attachments': True})
+
+        self.run_loop(self.doc.get_with_atts())
+        self.assert_request_called_with(
+            'GET', 'db', 'docid',
+            headers={'ACCEPT': 'multipart/*, application/json'},
+            params={'attachments': True})
+
     def test_update(self):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)

@@ -10,6 +10,8 @@
 import asyncio
 
 import json
+import uuid
+from aiohttp.multidict import CaseInsensitiveMultiDict
 from collections.abc import Mapping
 from .client import Resource, HttpStreamResponse
 from .multipart import MultipartBodyReader
@@ -180,6 +182,87 @@ class Document(object):
         return reader
 
     @asyncio.coroutine
+    def get_with_atts(self, rev=None, *,
+                      auth=None,
+                      att_encoding_info=None,
+                      atts_since=None,
+                      conflicts=None,
+                      deleted_conflicts=None,
+                      local_seq=None,
+                      meta=None,
+                      revs=None,
+                      revs_info=None):
+        """Returns document with attachments.
+
+        This method is more optimal than :func:`get(attachments=true)
+        <aiocouchdb.document.Document.get>` since it uses multipart API and
+        doesn't requires to read all the attachments, extract then from JSON
+        document and decode from base64.
+
+        :param str rev: Document revision
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :param bool att_encoding_info: Includes encoding information in an
+                                       attachment stubs
+        :param list atts_since: Includes attachments that was added since
+                                the specified revisions
+        :param bool conflicts: Includes conflicts information in the documents
+        :param bool deleted_conflicts: Includes information about deleted
+                                       conflicted revisions in the document
+        :param bool local_seq: Includes local sequence number in the document
+        :param bool meta: Includes meta information in the document
+        :param bool revs: Includes information about all known revisions
+        :param bool revs_info: Includes information about all known revisions
+                               and their status
+
+        :rtype: :class:`~aiocouchdb.document.DocAttachmentsMultipartReader`
+        """
+        params = {'attachments': True}
+        maybe_set_param = (
+            lambda *kv: (None if kv[1] is None else params.update([kv])))
+        maybe_set_param('att_encoding_info', att_encoding_info)
+        maybe_set_param('atts_since', atts_since)
+        maybe_set_param('conflicts', conflicts)
+        maybe_set_param('deleted_conflicts', deleted_conflicts)
+        maybe_set_param('local_seq', local_seq)
+        maybe_set_param('meta', meta)
+        maybe_set_param('rev', rev)
+        maybe_set_param('revs', revs)
+        maybe_set_param('revs_info', revs_info)
+
+        if atts_since is not None:
+            params['atts_since'] = json.dumps(atts_since)
+
+        resp = yield from self.resource.get(
+            auth=auth,
+            headers={'ACCEPT': 'multipart/*, application/json'},
+            params=params,
+            response_class=HttpStreamResponse)
+
+        yield from resp.maybe_raise_error()
+
+        if resp.headers['CONTENT-TYPE'].startswith('application/json'):
+            # WARNING! Here be Hacks!
+            # If document has no attachments, CouchDB returns it as JSON
+            # so we have to fake multipart response in the name of consistency.
+            # However, this hack may not lasts for too long.
+            data = yield from resp.read()
+            boundary = str(uuid.uuid4())
+            headers = dict(resp.headers.items())
+            headers['CONTENT-TYPE'] = 'multipart/related;boundary=%s' % boundary
+            resp.headers = CaseInsensitiveMultiDict(**headers)
+            resp.content._buffer.extend(
+                b'--' + boundary.encode('latin1') + b'\r\n'
+                b'Content-Type: application/json\r\n'
+                b'\r\n'
+                + data.rstrip() + b'\r\n'
+                b'--' + boundary.encode('latin1') + b'--\r\n'
+            )
+
+        return DocAttachmentsMultipartReader.from_response(resp)
+
+    @asyncio.coroutine
     def update(self, doc, *, auth=None, batch=None, new_edits=None, rev=None):
         """`Updates a document`_ on server.
 
@@ -266,6 +349,35 @@ class Document(object):
         resp = yield from self.resource.copy(auth=auth, headers=headers)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
+
+
+class DocAttachmentsMultipartReader(MultipartBodyReader):
+    """Special multipart reader optimized for requesting single document with
+    attachments. Matches output with :class:`OpenRevsMultipartReader`."""
+
+    @asyncio.coroutine
+    def next(self):
+        """Emits a tuple of document object (:class:`dict`) and multipart reader
+        of the followed attachments (if any).
+
+        :rtype: tuple
+        """
+        # WARNING! Here be Hacks!
+        part = self._last_part
+        if part is not None and part.at_eof():
+            self._at_eof = True
+
+        reader = yield from super().next()
+
+        if self._at_eof:
+            return None, None
+
+        attsreader = MultipartBodyReader(self.headers, self.content)
+        self._last_part = attsreader
+
+        doc = yield from reader.json()
+
+        return doc, attsreader
 
 
 class OpenRevsMultipartReader(MultipartBodyReader):
