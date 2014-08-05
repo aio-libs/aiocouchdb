@@ -109,19 +109,29 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             self.boundary, {}, Stream(b'Hello, world!\r\n--:'))
         self.assertRaises(AssertionError, self.run_loop, obj.read_chunk())
 
-    def test_read_doesnt_reads_boundary(self):
+    def test_read_does_reads_boundary(self):
         stream = Stream(b'Hello, world!\r\n--:')
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, stream)
         result = self.run_loop(obj.read())
         self.assertEqual(b'Hello, world!\r\n', result)
-        self.assertEqual(b'--:', self.run_loop(stream.read()))
+        self.assertEqual(b'', self.run_loop(stream.read()))
+        self.assertEqual([b'--:'], obj._unread)
 
     def test_multiread(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--'))
         result = self.run_loop(obj.read())
         self.assertEqual(b'Hello,\r\n', result)
+        result = self.run_loop(obj.read())
+        self.assertEqual(b'', result)
+        self.assertTrue(obj.at_eof())
+
+    def test_read_multiline(self):
+        obj = aiocouchdb.multipart.MultipartBodyPartReader(
+            self.boundary, {}, Stream(b'Hello\n,\r\nworld!\r\n--:--'))
+        result = self.run_loop(obj.read())
+        self.assertEqual(b'Hello\n,\r\nworld!\r\n', result)
         result = self.run_loop(obj.read())
         self.assertEqual(b'', result)
         self.assertTrue(obj.at_eof())
@@ -215,7 +225,7 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-ENCODING': 'deflate',
                             'CONTENT-TYPE': 'application/json'},
-            Stream(b'\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00'))
+            Stream(b'\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00\r\n--:--'))
         result = self.run_loop(obj.json())
         self.assertEqual({'test': 'passed'}, result)
 
@@ -233,7 +243,8 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             self.boundary, {}, stream)
         self.run_loop(obj.release())
         self.assertTrue(obj.at_eof())
-        self.assertEqual(b'--:\r\n\r\nworld!\r\n--:--', stream.content.read())
+        self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
+        self.assertEqual([b'--:\r\n'], obj._unread)
 
     def test_release_respects_content_length(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
@@ -249,7 +260,8 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             self.boundary, {}, stream)
         self.run_loop(obj.release())
         self.run_loop(obj.release())
-        self.assertEqual(b'--:\r\n\r\nworld!\r\n--:--', stream.content.read())
+        self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
+        self.assertEqual([b'--:\r\n'], obj._unread)
 
 
 class MultipartBodyReaderTestCase(utils.TestCase):

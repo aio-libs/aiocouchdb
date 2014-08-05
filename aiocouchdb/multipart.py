@@ -57,6 +57,7 @@ class MultipartBodyPartReader(object):
         length = self.headers.get('CONTENT-LENGTH', None)
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
+        self._unread = []
 
     @asyncio.coroutine
     def next(self):
@@ -79,8 +80,8 @@ class MultipartBodyPartReader(object):
             return b''
         data = bytearray()
         if self._length is None:
-            data.extend((yield from self.content.readline()))
-            self._at_eof = True
+            while not self._at_eof:
+                data.extend((yield from self.readline()))
         else:
             while not self._at_eof:
                 data.extend((yield from self.read_chunk(self._chunk_size)))
@@ -111,6 +112,28 @@ class MultipartBodyPartReader(object):
         return chunk
 
     @asyncio.coroutine
+    def readline(self):
+        """Reads body part by line by line.
+
+        :rtype: bytearray
+        """
+        if self._at_eof:
+            return b''
+        line = yield from self.content.readline()
+        if line.startswith(self.boundary):
+            # the very last boundary may not come with \r\n,
+            # so set single rules for everyone
+            sline = line.rstrip(b'\r\n')
+            boundary = self.boundary
+            last_boundary = self.boundary + b'--'
+            # ensure that we read exactly the boundary, not something alike
+            if sline == boundary or sline == last_boundary:
+                self._at_eof = True
+                self.unread(line)
+                return b''
+        return line
+
+    @asyncio.coroutine
     def release(self):
         """Lke :meth:`read`, but reads all the data to the void.
 
@@ -119,8 +142,8 @@ class MultipartBodyPartReader(object):
         if self._at_eof:
             return
         if self._length is None:
-            yield from self.content.readline()
-            self._at_eof = True
+            while not self._at_eof:
+                yield from self.readline()
         else:
             while not self._at_eof:
                 yield from self.read_chunk(self._chunk_size)
@@ -184,6 +207,10 @@ class MultipartBodyPartReader(object):
         """Decodes data for ``Content-Encoding: gzip``."""
         return zlib.decompress(data, 16 + zlib.MAX_WBITS)
 
+    def unread(self, data):
+        """Unreads already read data into internal buffer."""
+        self._unread.append(data)
+
 
 class MultipartBodyReader(object):
     """Multipart body reader."""
@@ -205,6 +232,7 @@ class MultipartBodyReader(object):
         self.headers = headers
         self._last_part = None
         self._at_eof = False
+        self._unread = []
 
     @classmethod
     def from_response(cls, response):
@@ -215,6 +243,12 @@ class MultipartBodyReader(object):
         obj = cls.response_wrapper_cls(response, cls(response.headers,
                                                      response.content))
         return obj
+
+    @asyncio.coroutine
+    def _readline(self):
+        if self._unread:
+            return self._unread.pop()
+        return (yield from self.content.readline())
 
     def at_eof(self):
         """Returns ``True`` if the final boundary was reached or
@@ -248,7 +282,7 @@ class MultipartBodyReader(object):
     @asyncio.coroutine
     def read_boundary(self):
         """Reads the next boundary."""
-        chunk = (yield from self.content.readline()).rstrip()
+        chunk = (yield from self._readline()).rstrip()
         if chunk == self.boundary:
             pass
         elif chunk == self.boundary + b'--':
@@ -262,6 +296,7 @@ class MultipartBodyReader(object):
         if self._last_part is not None:
             if not self._last_part.at_eof():
                 yield from self._last_part.release()
+            self._unread.extend(self._last_part._unread)
             self._last_part = None
 
     @asyncio.coroutine

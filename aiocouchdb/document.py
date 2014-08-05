@@ -374,6 +374,7 @@ class DocAttachmentsMultipartReader(MultipartBodyReader):
 
         attsreader = MultipartBodyReader(self.headers, self.content)
         self._last_part = attsreader
+        attsreader._unread = reader._unread
 
         doc = yield from reader.json()
 
