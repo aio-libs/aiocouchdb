@@ -134,6 +134,28 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
         self.assertEqual(b'.' * 100500, result)
         self.assertTrue(obj.at_eof())
 
+    def test_read_with_content_encoding_gzip(self):
+        obj = aiocouchdb.multipart.MultipartBodyPartReader(
+            self.boundary, {'CONTENT-ENCODING': 'gzip'},
+            Stream(b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
+                   b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
+                   b'\r\n--:--'))
+        result = self.run_loop(obj.read(decode=True))
+        self.assertEqual(b'Time to Relax!', result)
+
+    def test_read_with_content_encoding_deflate(self):
+        obj = aiocouchdb.multipart.MultipartBodyPartReader(
+            self.boundary, {'CONTENT-ENCODING': 'deflate'},
+            Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
+        result = self.run_loop(obj.read(decode=True))
+        self.assertEqual(b'Time to Relax!', result)
+
+    def test_read_with_content_encoding_unknown(self):
+        obj = aiocouchdb.multipart.MultipartBodyPartReader(
+            self.boundary, {'CONTENT-ENCODING': 'snappy'},
+            Stream(b'\x0e4Time to Relax!\r\n--:--'))
+        self.assertRaises(AttributeError, self.run_loop, obj.read(decode=True))
+
     def test_read_text(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello, world!\r\n--:--'))
@@ -152,6 +174,14 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
         result = self.run_loop(obj.text())
         self.assertEqual('Привет, Мир!\r\n', result)
+
+    def test_read_text_compressed(self):
+        obj = aiocouchdb.multipart.MultipartBodyPartReader(
+            self.boundary, {'CONTENT-ENCODING': 'deflate',
+                            'CONTENT-TYPE': 'text/plain'},
+            Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
+        result = self.run_loop(obj.text())
+        self.assertEqual('Time to Relax!', result)
 
     def test_read_text_while_closed(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
@@ -180,6 +210,14 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             Stream('{"тест": "пассед"}\r\n--:--'.encode('cp1251')))
         result = self.run_loop(obj.json())
         self.assertEqual({'тест': 'пассед'}, result)
+
+    def test_read_json_compressed(self):
+        obj = aiocouchdb.multipart.MultipartBodyPartReader(
+            self.boundary, {'CONTENT-ENCODING': 'deflate',
+                            'CONTENT-TYPE': 'application/json'},
+            Stream(b'\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00'))
+        result = self.run_loop(obj.json())
+        self.assertEqual({'test': 'passed'}, result)
 
     def test_read_json_while_closed(self):
         stream = Stream(b'')
@@ -360,4 +398,3 @@ class MultipartBodyReaderTestCase(utils.TestCase):
         self.assertTrue(second.at_eof())
         self.assertTrue(second.at_eof())
         self.assertIsNone(third)
-

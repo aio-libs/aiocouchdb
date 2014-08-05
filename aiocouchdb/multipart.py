@@ -9,8 +9,9 @@
 
 import asyncio
 import json
-from aiohttp.protocol import HttpParser
+import zlib
 from aiohttp.helpers import parse_mimetype
+from aiohttp.protocol import HttpParser
 
 
 class MultipartResponseWrapper(object):
@@ -65,8 +66,12 @@ class MultipartBodyPartReader(object):
         return item
 
     @asyncio.coroutine
-    def read(self):
+    def read(self, *, decode=False):
         """Reads body part data.
+
+        :param bool decode: Decodes data following by encoding
+                            method from `Content-Encoding` header. If it missed
+                            data remains untouched
 
         :rtype: bytearray
         """
@@ -81,6 +86,8 @@ class MultipartBodyPartReader(object):
                 data.extend((yield from self.read_chunk(self._chunk_size)))
             assert b'\r\n' == (yield from self.content.readline()), \
                 'reader did not read all the data or it is malformed'
+        if decode:
+            return self.decode(data)
         return data
 
     @asyncio.coroutine
@@ -128,7 +135,7 @@ class MultipartBodyPartReader(object):
 
         :rtype: str
         """
-        data = yield from self.read()
+        data = yield from self.read(decode=True)
         encoding = encoding or get_charset(self.headers, default='latin1')
         return data.decode(encoding)
 
@@ -139,7 +146,7 @@ class MultipartBodyPartReader(object):
         :param str encoding: Custom JSON encoding. Overrides specified
                              in charset param of `Content-Type` header
         """
-        data = yield from self.read()
+        data = yield from self.read(decode=True)
         if not data:
             return None
         encoding = encoding or get_charset(self.headers, default='utf-8')
@@ -152,6 +159,30 @@ class MultipartBodyPartReader(object):
         :rtype: bool
         """
         return self._at_eof
+
+    def decode(self, data):
+        """Decodes data from specified `Content-Encoding` header value.
+        This method looks for the handler within bounded instance for
+        the related encoding. For instance, to decode ``gzip`` encoding it looks
+        for :meth:`decode_gzip` one. Otherwise, if handler wasn't found
+        :exc:`AttributeError` will get raised.
+
+        :param bytearray data: Data to decode.
+
+        :rtype: bytes
+        """
+        encoding = self.headers.get('CONTENT-ENCODING')
+        if not encoding:
+            return data
+        return getattr(self, 'decode_%s' % encoding)(data)
+
+    def decode_deflate(self, data):
+        """Decodes data for ``Content-Encoding: deflate``."""
+        return zlib.decompress(data, -zlib.MAX_WBITS)
+
+    def decode_gzip(self, data):
+        """Decodes data for ``Content-Encoding: gzip``."""
+        return zlib.decompress(data, 16 + zlib.MAX_WBITS)
 
 
 class MultipartBodyReader(object):
