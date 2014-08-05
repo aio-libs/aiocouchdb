@@ -224,7 +224,6 @@ class DatabaseTestCase(utils.TestCase):
         self.assertTrue(
             resp.headers['CONTENT-TYPE'].startswith('multipart/related'))
 
-        print(resp.content._buffer.splitlines())
         head, *body, tail = resp.content._buffer.splitlines()
         self.assertTrue(tail.startswith(head))
         self.assertEqual(
