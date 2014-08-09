@@ -335,17 +335,22 @@ class Document(object):
         return (yield from resp.json())
 
     @asyncio.coroutine
-    def copy(self, newid, *, auth=None):
+    def copy(self, newid, rev=None, *, auth=None):
         """`Copies a document`_ with the new ID within the same database.
 
         :param str newid: New document ID
+        :param str rev: New document ID revision. Used for copying over existed
+                        document
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: dict
 
         .. _Copies a document: http://docs.couchdb.org/en/latest/api/document/common.html#copy--db-docid
         """
-        headers = {'DESTINATION': newid}
+        dest = newid
+        if rev is not None:
+            dest += '?rev=' + rev
+        headers = {'DESTINATION': dest}
         resp = yield from self.resource.copy(auth=auth, headers=headers)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())

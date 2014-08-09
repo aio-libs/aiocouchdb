@@ -335,6 +335,15 @@ class DatabaseTestCase(utils.TestCase):
                                         headers={'DESTINATION': 'newid'})
         self.assertEqual({}, result)
 
+    def test_copy_rev(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.copy('idx', '1-A'))
+        self.assert_request_called_with('COPY', 'db', 'docid',
+                                        headers={'DESTINATION': 'idx?rev=1-A'})
+        self.assertEqual({}, result)
+
 
 class OpenRevsMultipartReader(utils.TestCase):
 
