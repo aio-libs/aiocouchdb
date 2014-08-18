@@ -1,5 +1,11 @@
-0.3.0 (dev)
+0.3.0 (2014-08-18)
 ------------------
+
+- Third checkpoint release
+- Implements CouchDB Document HTTP API
+- Support document`s multipart API (but not doc update due to COUCHDB-2295)
+- Minimal requirements for aiohttp raised up to 0.9.0 version
+- Better documentation
 
 0.2.0 (2014-07-08)
 ------------------
