@@ -85,6 +85,29 @@ class DatabaseTestCase(utils.TestCase):
                                         headers={'IF-NONE-MATCH': '"1-ABC"'})
         self.assertFalse(result)
 
+    def test_attachment(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.doc.attachment('attname'))
+        self.assert_request_called_with('HEAD', 'db', 'docid', 'attname')
+        self.assertIsInstance(result, self.doc.attachment_class)
+
+    def test_attachment_custom_class(self):
+        class CustomAttachment(object):
+            def __init__(self, thing):
+                self.resource = thing
+        doc = aiocouchdb.document.Document(self.url_doc,
+                                           attachment_class=CustomAttachment)
+
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(doc.att('attname'))
+        self.assert_request_called_with('HEAD', 'db', 'docid', 'attname')
+        self.assertIsInstance(result, CustomAttachment)
+        self.assertIsInstance(result.resource, aiocouchdb.client.Resource)
+
     def test_get(self):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)

@@ -25,6 +25,7 @@ from .errors import (
     PreconditionFailed,
     ServerError
 )
+from .attachment import Attachment
 from .database import Database
 from .document import Document
 from .server import Server

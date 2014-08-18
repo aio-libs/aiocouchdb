@@ -45,6 +45,12 @@ Document
 .. autoclass:: aiocouchdb.document.OpenRevsMultipartReader
   :members:
 
+Attachment
+==========
+
+.. autoclass:: aiocouchdb.attachment.Attachment
+  :members:
+
 Client
 ======
 

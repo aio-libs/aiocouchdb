@@ -8,11 +8,12 @@
 #
 
 import asyncio
-
 import json
 import uuid
+
 from aiohttp.multidict import CaseInsensitiveMultiDict
 from collections.abc import Mapping
+from .attachment import Attachment
 from .client import Resource, HttpStreamResponse
 from .multipart import MultipartBodyReader
 
@@ -20,7 +21,11 @@ from .multipart import MultipartBodyReader
 class Document(object):
     """Implementation of :ref:`CouchDB Document API <api/doc>`."""
 
-    def __init__(self, url_or_resource):
+    attachment_class = Attachment
+
+    def __init__(self, url_or_resource, *, attachment_class=None):
+        if attachment_class is not None:
+            self.attachment_class = attachment_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
@@ -29,6 +34,30 @@ class Document(object):
     def id(self):
         """Returns associated document ID."""
         return self.resource.url.rsplit('/', 1)[-1]
+
+    @asyncio.coroutine
+    def attachment(self, attname, *, auth=None):
+        """Returns :class:`~aiocouchdb.attachment.Attachment` instance against
+        specified attachment.
+
+        If attachment isn't accessible for auth provided credentials,
+        this method raises :exc:`aiocouchdb.errors.HttpErrorException`
+        with the related response status code.
+
+        :param str attname: Attachment name
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: :attr:`aiocouchdb.document.Document.attachment_class`
+        """
+        att_resource = self.resource(*attname.split('/'))
+        resp = yield from att_resource.head(auth=auth)
+        if resp.status != 404:
+            yield from resp.maybe_raise_error()
+        yield from resp.read()
+        return self.attachment_class(att_resource)
+
+    #: alias for :meth:`aiocouchdb.document.Document.attachment`
+    att = attachment
 
     @asyncio.coroutine
     def exists(self, rev=None, *, auth=None):
