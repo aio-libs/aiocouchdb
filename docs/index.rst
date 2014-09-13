@@ -51,6 +51,9 @@ Attachment
 .. autoclass:: aiocouchdb.attachment.Attachment
   :members:
 
+.. autoclass:: aiocouchdb.attachment.AttachmentReader
+  :members:
+
 Client
 ======
 
