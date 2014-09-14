@@ -15,7 +15,7 @@ from aiocouchdb.client import urljoin
 from .test_multipart import Stream
 
 
-class DatabaseTestCase(utils.TestCase):
+class DocumentTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
