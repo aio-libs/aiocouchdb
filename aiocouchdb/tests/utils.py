@@ -71,7 +71,11 @@ class TestCase(unittest.TestCase):
         self.assertTrue(self.request.called_once)
         call_args, call_kwargs = self.request.call_args
         self.assertEqual((method, urljoin(self.url, *path)), call_args)
+        kwargs.setdefault('data', None)
+        kwargs.setdefault('headers', {})
+        kwargs.setdefault('params', {})
         for key, value in kwargs.items():
             self.assertIn(key, call_kwargs)
-            self.assertEqual(value, call_kwargs[key])
+            if value is not Ellipsis:
+                self.assertEqual(value, call_kwargs[key])
 

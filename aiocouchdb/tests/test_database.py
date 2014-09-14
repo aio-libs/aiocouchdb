@@ -139,7 +139,8 @@ class DatabaseTestCase(utils.TestCase):
         self.request.return_value = self.future(resp)
 
         self.run_loop(self.db.bulk_docs([{'_id': 'foo'}, {'_id': 'bar'}]))
-        self.assert_request_called_with('POST', 'db', '_bulk_docs')
+        self.assert_request_called_with('POST', 'db', '_bulk_docs',
+                                        data=Ellipsis)
         data = self.request.call_args[1]['data']
         self.assertIsInstance(data, types.GeneratorType)
         self.assertEqual(b'{"docs": [{"_id": "foo"},{"_id": "bar"}]}',
@@ -151,7 +152,8 @@ class DatabaseTestCase(utils.TestCase):
 
         self.run_loop(self.db.bulk_docs([{'_id': 'foo'}, {'_id': 'bar'}],
                                         all_or_nothing=True))
-        self.assert_request_called_with('POST', 'db', '_bulk_docs')
+        self.assert_request_called_with('POST', 'db', '_bulk_docs',
+                                        data=Ellipsis)
         data = self.request.call_args[1]['data']
         self.assertIsInstance(data, types.GeneratorType)
         self.assertEqual(b'{"all_or_nothing": true, "docs": '
@@ -164,6 +166,7 @@ class DatabaseTestCase(utils.TestCase):
 
         self.run_loop(self.db.bulk_docs([{'_id': 'foo'}], new_edits=False))
         self.assert_request_called_with('POST', 'db', '_bulk_docs',
+                                        data=Ellipsis,
                                         params={'new_edits': False})
 
     def test_changes(self):

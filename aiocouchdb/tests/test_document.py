@@ -274,15 +274,10 @@ class DocumentTestCase(utils.TestCase):
             self.run_loop(self.doc.get_with_atts(**{key: value}))
             if key == 'atts_since':
                 value = json.dumps(value)
-            self.assert_request_called_with('GET', 'db', 'docid',
-                                            params={key: value,
-                                                    'attachments': True})
-
-        self.run_loop(self.doc.get_with_atts())
-        self.assert_request_called_with(
-            'GET', 'db', 'docid',
-            headers={'ACCEPT': 'multipart/*, application/json'},
-            params={'attachments': True})
+            self.assert_request_called_with(
+                'GET', 'db', 'docid',
+                headers={'ACCEPT': 'multipart/*, application/json'},
+                params={key: value, 'attachments': True})
 
     def test_update(self):
         resp = self.mock_json_response(data=b'{}')
@@ -347,7 +342,8 @@ class DocumentTestCase(utils.TestCase):
         self.assert_request_called_with('PUT', 'db', 'docid',
                                         data={'_id': 'foo',
                                               '_deleted': True,
-                                              'bar': 'baz'})
+                                              'bar': 'baz'},
+                                        params={'rev': '1-ABC'})
 
     def test_copy(self):
         resp = self.mock_json_response(data=b'{}')

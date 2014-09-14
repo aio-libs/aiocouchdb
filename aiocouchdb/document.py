@@ -71,7 +71,10 @@ class Document(object):
 
         .. _document exists: http://docs.couchdb.org/en/latest/api/document/common.html#head--db-docid
         """
-        resp = yield from self.resource.head(auth=auth, params={'rev': rev})
+        params = {}
+        if rev is not None:
+            params['rev'] = rev
+        resp = yield from self.resource.head(auth=auth, params=params)
         yield from resp.read()
         return resp.status == 200
 
