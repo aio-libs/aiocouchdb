@@ -9,6 +9,7 @@
 
 import base64
 import hashlib
+import io
 
 import aiocouchdb.client
 import aiocouchdb.attachment
@@ -173,6 +174,33 @@ class AttachmentTestCase(utils.TestCase):
         self.assert_request_called_with('GET', 'db', 'docid', 'att',
                                         headers={'RANGE': 'bytes=0-42'})
 
+    def test_update(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.update(io.BytesIO(b'')))
+        self.assert_request_called_with(
+            'PUT', 'db', 'docid', 'att',
+            data=Ellipsis,
+            headers={'CONTENT-TYPE': 'application/octet-stream'})
+
+    def test_update_ctype(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.update(io.BytesIO(b''), content_type='foo/bar'))
+        self.assert_request_called_with(
+            'PUT', 'db', 'docid', 'att',
+            data=Ellipsis,
+            headers={'CONTENT-TYPE': 'foo/bar'})
+
+    def test_update_rev(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.update(io.BytesIO(b''), rev='1-ABC'))
+        self.assert_request_called_with(
+            'PUT', 'db', 'docid', 'att',
+            data=Ellipsis,
+            headers={'CONTENT-TYPE': 'application/octet-stream'},
+            params={'rev': '1-ABC'})
 
 
 class AttachmentReaderTestCase(utils.TestCase):

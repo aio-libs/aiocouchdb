@@ -119,6 +119,39 @@ class Attachment(object):
         yield from resp.maybe_raise_error()
         return AttachmentReader(resp)
 
+    def update(self, fileobj, *,
+               auth=None,
+               content_type='application/octet-stream',
+               rev=None):
+        """`Attaches a file` to document.
+
+        :param file fileobj: File object, should be readable
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str content_type: Attachment `Content-Type` header
+        :param str rev: Document revision
+
+        :rtype: dict
+
+        .. _Attaches a file: http://docs.couchdb.org/en/latest/api/document/attachments.html#put--db-docid-attname
+        """
+        assert hasattr(fileobj, 'read')
+
+        params = {}
+        if rev is not None:
+            params['rev'] = rev
+
+        headers = {
+            'CONTENT-TYPE': content_type
+        }
+
+        resp = yield from self.resource.put(auth=auth,
+                                            data=fileobj,
+                                            headers=headers,
+                                            params=params)
+        yield from resp.maybe_raise_error()
+        return (yield from resp.json())
+
 
 class AttachmentReader(RawIOBase):
     """Attachment reader implements :class:`io.RawIOBase` interface
