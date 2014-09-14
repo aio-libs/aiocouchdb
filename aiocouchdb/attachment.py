@@ -67,20 +67,52 @@ class Attachment(object):
         return resp.status != 304
 
     @asyncio.coroutine
-    def get(self, rev=None, *, auth=None):
+    def accepts_range(self, rev=None, *, auth=None):
+        """Returns ``True`` if attachments accepts bytes range requests.
+
+        :param str rev: Document revision
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: bool
+        """
+        params = {}
+        if rev is not None:
+            params['rev'] = rev
+        resp = yield from self.resource.head(auth=auth, params=params)
+        yield from resp.read()
+        return resp.headers.get('ACCEPT_RANGE') == 'bytes'
+
+    @asyncio.coroutine
+    def get(self, rev=None, *, auth=None, range=None):
         """`Returns an attachment`_ reader object.
 
         :param str rev: Document revision
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
+        :param slice range: Bytes range. Could be :class:`slice`
+                            or two-element iterable object like :class:`list`
+                            etc or just :class:`int`
+
         :rtype: :class:`~aiocouchdb.attachments.AttachmentReader`
 
         .. _Returns an attachment: http://docs.couchdb.org/en/latest/api/document/attachments.html#get--db-docid-attname
         """
+        headers = {}
         params = {}
         if rev is not None:
             params['rev'] = rev
-        resp = yield from self.resource.get(auth=auth, params=params)
+
+        if range is not None:
+            if isinstance(range, slice):
+                start, stop = range.start, range.stop
+            elif isinstance(range, int):
+                start, stop = 0, range
+            else:
+                start, stop = range
+            headers['RANGE'] = 'bytes={}-{}'.format(start or 0, stop)
+        resp = yield from self.resource.get(auth=auth,
+                                            headers=headers,
+                                            params=params)
         yield from resp.maybe_raise_error()
         return AttachmentReader(resp)
 

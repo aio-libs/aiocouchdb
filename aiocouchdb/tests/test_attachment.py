@@ -106,6 +106,30 @@ class AttachmentTestCase(utils.TestCase):
         self.assertRaises(ValueError, self.run_loop, self.att.modified(b'foo'))
         self.assertRaises(ValueError, self.run_loop, self.att.modified('bar'))
 
+    def test_accepts_range(self):
+        resp = self.mock_json_response()
+        resp.headers['ACCEPT_RANGE'] = 'bytes'
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.att.accepts_range())
+        self.assert_request_called_with('HEAD', 'db', 'docid', 'att')
+        self.assertTrue(result)
+
+    def test_accepts_range_not(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.att.accepts_range())
+        self.assert_request_called_with('HEAD', 'db', 'docid', 'att')
+        self.assertFalse(result)
+
+    def test_accepts_range_with_rev(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.att.accepts_range(rev='1-ABC'))
+        self.assert_request_called_with('HEAD', 'db', 'docid', 'att',
+                                        params={'rev': '1-ABC'})
+        self.assertFalse(result)
+
     def test_get(self):
         self.request.return_value = self.future(self.mock_response())
 
@@ -120,6 +144,35 @@ class AttachmentTestCase(utils.TestCase):
         self.assert_request_called_with('GET', 'db', 'docid', 'att',
                                         params={'rev': '1-ABC'})
         self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
+
+    def test_get_range(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.get(range=slice(24, 42)))
+        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+                                        headers={'RANGE': 'bytes=24-42'})
+
+    def test_get_range_from_start(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.get(range=slice(42)))
+        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+                                        headers={'RANGE': 'bytes=0-42'})
+
+    def test_get_range_iterable(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.get(range=[11, 22]))
+        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+                                        headers={'RANGE': 'bytes=11-22'})
+
+    def test_get_range_int(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.get(range=42))
+        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+                                        headers={'RANGE': 'bytes=0-42'})
+
 
 
 class AttachmentReaderTestCase(utils.TestCase):
