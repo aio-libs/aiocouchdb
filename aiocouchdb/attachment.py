@@ -92,9 +92,9 @@ class Attachment(object):
         :param str rev: Document revision
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :param slice range: Bytes range. Could be :class:`slice`
+        :param slice range: Bytes range. Could be :func:`slice`
                             or two-element iterable object like :class:`list`
-                            etc or just :class:`int`
+                            etc or just :func:`int`
 
         :rtype: :class:`~aiocouchdb.attachments.AttachmentReader`
 
@@ -123,12 +123,12 @@ class Attachment(object):
                auth=None,
                content_type='application/octet-stream',
                rev=None):
-        """`Attaches a file` to document.
+        """`Attaches a file`_ to document.
 
         :param file fileobj: File object, should be readable
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param str content_type: Attachment `Content-Type` header
+        :param str content_type: Attachment :mimetype:`Content-Type` header
         :param str rev: Document revision
 
         :rtype: dict
@@ -195,7 +195,7 @@ class AttachmentReader(RawIOBase):
 
     @asyncio.coroutine
     def read(self, size=None):
-        """Read and return up to n bytes, where `size` is an :class:`int`.
+        """Read and return up to n bytes, where `size` is an :func:`int`.
 
         Returns an empty bytes object on EOF, or None if the object is
         set not to block and has no data to read.
@@ -215,7 +215,7 @@ class AttachmentReader(RawIOBase):
         """Read and return a line of bytes from the stream.
 
         If limit is specified, at most limit bytes will be read.
-        Limit should be an :class:`int`.
+        Limit should be an :func:`int`.
 
         The line terminator is always ``b'\\n'`` for binary files; for text
         files, the newlines argument to open can be used to select the line
