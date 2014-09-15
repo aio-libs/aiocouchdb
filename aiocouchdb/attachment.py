@@ -152,6 +152,21 @@ class Attachment(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
+    def remove(self, rev, *, auth=None):
+        """`Deletes an attachment`_.
+
+        :param str rev: Document revision
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+
+        .. _Deletes an attachment: http://docs.couchdb.org/en/latest/api/document/attachments.html#delete--db-docid-attname
+        """
+        resp = yield from self.resource.delete(auth=auth,
+                                               params={'rev': rev})
+        yield from resp.maybe_raise_error()
+        return (yield from resp.json())
+
 
 class AttachmentReader(RawIOBase):
     """Attachment reader implements :class:`io.RawIOBase` interface

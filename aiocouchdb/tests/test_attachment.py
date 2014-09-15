@@ -202,6 +202,12 @@ class AttachmentTestCase(utils.TestCase):
             headers={'CONTENT-TYPE': 'application/octet-stream'},
             params={'rev': '1-ABC'})
 
+    def test_remove(self):
+        self.request.return_value = self.future(self.mock_response())
+        self.run_loop(self.att.remove('1-ABC'))
+        self.assert_request_called_with('DELETE', 'db', 'docid', 'att',
+                                        params={'rev': '1-ABC'})
+
 
 class AttachmentReaderTestCase(utils.TestCase):
 
