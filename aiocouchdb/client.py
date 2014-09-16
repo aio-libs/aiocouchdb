@@ -34,7 +34,7 @@ class HttpRequest(aiohttp.client.ClientRequest):
                 data = json.dumps(data)
         return super().update_body_from_data(data)
 
-    def update_path(self, params, data):
+    def update_path(self, params):
         if isinstance(params, dict):
             params = params.copy()
             for key, value in params.items():
@@ -42,7 +42,7 @@ class HttpRequest(aiohttp.client.ClientRequest):
                     params[key] = 'true'
                 elif value is False:
                     params[key] = 'false'
-        return super().update_path(params, data)
+        return super().update_path(params)
 
 
 class HttpResponse(aiohttp.client.ClientResponse):
