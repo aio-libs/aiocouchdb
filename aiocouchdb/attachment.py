@@ -120,6 +120,7 @@ class Attachment(object):
         yield from resp.maybe_raise_error()
         return AttachmentReader(resp)
 
+    @asyncio.coroutine
     def update(self, fileobj, *,
                auth=None,
                content_type='application/octet-stream',
@@ -153,6 +154,7 @@ class Attachment(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
+    @asyncio.coroutine
     def remove(self, rev, *, auth=None):
         """`Deletes an attachment`_.
 
