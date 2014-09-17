@@ -240,7 +240,7 @@ class AttachmentReaderTestCase(utils.TestCase):
 
     def test_read(self):
         self.run_loop(self.att.read())
-        self.request.content.read.assert_called_once_with(None)
+        self.request.content.read.assert_called_once_with(-1)
 
     def test_read_some(self):
         self.run_loop(self.att.read(10))

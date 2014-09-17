@@ -195,7 +195,7 @@ class AttachmentReader(RawIOBase):
         return True
 
     @asyncio.coroutine
-    def read(self, size=None):
+    def read(self, size=-1):
         """Read and return up to n bytes, where `size` is an :func:`int`.
 
         Returns an empty bytes object on EOF, or None if the object is
