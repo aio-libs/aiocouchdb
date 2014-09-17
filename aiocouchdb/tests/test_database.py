@@ -29,9 +29,9 @@ class DatabaseTestCase(utils.TestCase):
 
     def test_init_with_resource(self):
         res = aiocouchdb.client.Resource(self.url_db)
-        server = aiocouchdb.server.Server(res)
-        self.assertIsInstance(server.resource, aiocouchdb.client.Resource)
-        self.assertEqual(self.url_db, self.db.resource.url)
+        db = aiocouchdb.database.Database(res)
+        self.assertIsInstance(db.resource, aiocouchdb.client.Resource)
+        self.assertEqual(self.url_db, db.resource.url)
 
     def test_exists(self):
         resp = self.mock_json_response(data=b'{}')
@@ -308,6 +308,29 @@ class DatabaseTestCase(utils.TestCase):
         self.assertRegex(docid, '[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}')
         self.assert_request_called_with('HEAD', 'db', docid)
         self.assertIsInstance(result, self.db.document_class)
+
+    def test_design_document(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.db.design_document('ddoc'))
+        self.assert_request_called_with('HEAD', 'db', '_design', 'ddoc')
+        self.assertIsInstance(result, self.db.design_document_class)
+
+    def test_design_document_custom_class(self):
+        class CustomDocument(object):
+            def __init__(self, thing):
+                self.resource = thing
+        db = aiocouchdb.database.Database(self.url_db,
+                                          design_document_class=CustomDocument)
+
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(db.ddoc('_design/ddoc'))
+        self.assert_request_called_with('HEAD', 'db', '_design', 'ddoc')
+        self.assertIsInstance(result, CustomDocument)
+        self.assertIsInstance(result.resource, aiocouchdb.client.Resource)
 
     def test_ensure_full_commit(self):
         resp = self.mock_json_response()

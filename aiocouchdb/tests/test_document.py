@@ -29,7 +29,7 @@ class DocumentTestCase(utils.TestCase):
         res = aiocouchdb.client.Resource(self.url_doc)
         doc = aiocouchdb.document.Document(res)
         self.assertIsInstance(doc.resource, aiocouchdb.client.Resource)
-        self.assertEqual(self.url_doc, self.doc.resource.url)
+        self.assertEqual(self.url_doc, doc.resource.url)
 
     def test_exists(self):
         resp = self.mock_json_response()

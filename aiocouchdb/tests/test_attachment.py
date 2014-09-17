@@ -21,17 +21,17 @@ class AttachmentTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.url_doc = urljoin(self.url, 'db', 'docid', 'att')
-        self.att = aiocouchdb.attachment.Attachment(self.url_doc)
+        self.url_att = urljoin(self.url, 'db', 'docid', 'att')
+        self.att = aiocouchdb.attachment.Attachment(self.url_att)
 
     def test_init_with_url(self):
         self.assertIsInstance(self.att.resource, aiocouchdb.client.Resource)
 
     def test_init_with_resource(self):
-        res = aiocouchdb.client.Resource(self.url_doc)
-        doc = aiocouchdb.attachment.Attachment(res)
-        self.assertIsInstance(doc.resource, aiocouchdb.client.Resource)
-        self.assertEqual(self.url_doc, self.att.resource.url)
+        res = aiocouchdb.client.Resource(self.url_att)
+        att = aiocouchdb.attachment.Attachment(res)
+        self.assertIsInstance(att.resource, aiocouchdb.client.Resource)
+        self.assertEqual(self.url_att, att.resource.url)
 
     def test_exists(self):
         resp = self.mock_json_response()
