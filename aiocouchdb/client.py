@@ -9,7 +9,9 @@
 
 import asyncio
 import aiohttp
+import io
 import json
+import mimetypes
 import types
 import urllib.parse
 from .errors import maybe_raise_error
@@ -24,13 +26,34 @@ class HttpRequest(aiohttp.client.ClientRequest):
         'ACCEPT-ENCODING': 'gzip, deflate',
         'CONTENT-TYPE': 'application/json'
     }
+    CHUNK_SIZE = 8192
 
     def update_body_from_data(self, data):
         """Encodes ``data`` as JSON if `Content-Type`
         is :mimetype:`application/json`."""
-        if self.headers.get('CONTENT-TYPE') == 'application/json':
-            if not (isinstance(data, types.GeneratorType)
-                    or hasattr(data, 'read')):
+        if isinstance(data, io.IOBase):
+            assert not isinstance(data, io.StringIO), \
+                'attempt to send text data instead of binary'
+            self.body = data
+            self.chunked = True
+            if hasattr(data, 'mode'):
+                if data.mode == 'r':
+                    raise ValueError('file {!r} should be open in binary mode'
+                                     ''.format(data))
+            if hasattr(data, 'name'):
+                mime = mimetypes.guess_type(data.name)[0]
+                mime = 'application/octet-stream' if mime is None else mime
+                self.headers['CONTENT-TYPE'] = mime
+
+            def reader(data):
+                chunk = data.read(self.CHUNK_SIZE)
+                while chunk:
+                    yield chunk
+                    chunk = data.read(self.CHUNK_SIZE)
+            data = reader(data)
+
+        elif self.headers.get('CONTENT-TYPE') == 'application/json':
+            if not (isinstance(data, types.GeneratorType)):
                 data = json.dumps(data)
         return super().update_body_from_data(data)
 
