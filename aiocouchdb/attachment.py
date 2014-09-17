@@ -123,6 +123,7 @@ class Attachment(object):
     @asyncio.coroutine
     def update(self, fileobj, *,
                auth=None,
+               content_encoding=None,
                content_type='application/octet-stream',
                rev=None):
         """`Attaches a file`_ to document.
@@ -130,6 +131,7 @@ class Attachment(object):
         :param file fileobj: File object, should be readable
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str content_encoding: Content encoding: ``gzip`` or ``identity``
         :param str content_type: Attachment :mimetype:`Content-Type` header
         :param str rev: Document revision
 
@@ -146,6 +148,8 @@ class Attachment(object):
         headers = {
             'CONTENT-TYPE': content_type
         }
+        if content_encoding is not None:
+            headers['CONTENT-ENCODING'] = content_encoding
 
         resp = yield from self.resource.put(auth=auth,
                                             data=fileobj,

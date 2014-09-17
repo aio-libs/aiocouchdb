@@ -192,6 +192,16 @@ class AttachmentTestCase(utils.TestCase):
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'foo/bar'})
 
+    def test_update_with_encoding(self):
+        self.request.return_value = self.future(self.mock_response())
+
+        self.run_loop(self.att.update(io.BytesIO(b''), content_encoding='gzip'))
+        self.assert_request_called_with(
+            'PUT', 'db', 'docid', 'att',
+            data=Ellipsis,
+            headers={'CONTENT-TYPE': 'application/octet-stream',
+                     'CONTENT-ENCODING': 'gzip'})
+
     def test_update_rev(self):
         self.request.return_value = self.future(self.mock_response())
 
