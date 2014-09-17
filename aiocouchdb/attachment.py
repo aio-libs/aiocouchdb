@@ -9,7 +9,7 @@
 
 import asyncio
 import base64
-from .client import Resource
+from .client import Resource, HttpStreamResponse
 from io import RawIOBase
 
 
@@ -115,7 +115,8 @@ class Attachment(object):
             headers['RANGE'] = 'bytes={}-{}'.format(start or 0, stop)
         resp = yield from self.resource.get(auth=auth,
                                             headers=headers,
-                                            params=params)
+                                            params=params,
+                                            response_class=HttpStreamResponse)
         yield from resp.maybe_raise_error()
         return AttachmentReader(resp)
 
