@@ -1,5 +1,10 @@
-0.4.0 (dev)
------------
+0.4.0 (2014-09-17)
+------------------
+
+- Another checkpoint release
+- Implements CouchDB Attachment HTTP API
+- Minimal requirements for aiohttp raised up to 0.9.1 version
+- Minor fixes for Document API
 
 0.3.0 (2014-08-18)
 ------------------
