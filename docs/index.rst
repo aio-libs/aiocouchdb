@@ -45,6 +45,12 @@ Document
 .. autoclass:: aiocouchdb.document.OpenRevsMultipartReader
   :members:
 
+Design Document
+===============
+
+.. autoclass:: aiocouchdb.designdoc.DesignDocument
+  :members:
+
 Attachment
 ==========
 

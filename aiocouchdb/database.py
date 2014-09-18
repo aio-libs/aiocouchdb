@@ -13,6 +13,7 @@ import uuid
 
 from .client import Resource
 from .document import Document
+from .designdoc import DesignDocument
 from .feeds import (
     ViewFeed,
     ChangesFeed, LongPollChangesFeed,
@@ -25,10 +26,15 @@ class Database(object):
 
     #: Default :class:`~aiocouchdb.document.Document` instance class
     document_class = Document
+    #: Default :class:`~aiocouchdb.designdoc.DesignDocument` instance class
+    design_document_class = DesignDocument
 
-    def __init__(self, url_or_resource, *, document_class=None):
+    def __init__(self, url_or_resource, *,
+                 document_class=None, design_document_class=None):
         if document_class is not None:
             self.document_class = document_class
+        if design_document_class is not None:
+            self.design_document_class = design_document_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
@@ -65,6 +71,33 @@ class Database(object):
 
     #: alias for :meth:`aiocouchdb.database.Database.document`
     doc = document
+
+    @asyncio.coroutine
+    def design_document(self, docid, *, auth=None):
+        """Returns :class:`~aiocouchdb.designdoc.DesignDocument` instance
+        against specified document ID. This ID may startswith with ``_design/``
+        prefix and if it's not prefix will be added automatically.
+
+        If document isn't accessible for auth provided credentials, this method
+        raises :exc:`aiocouchdb.errors.HttpErrorException` with the related
+        response status code.
+
+        :param str docid: Document ID
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: :attr:`aiocouchdb.database.Database.design_document_class`
+        """
+        if not docid.startswith('_design/'):
+            docid = '_design/' + docid
+        doc_resource = self.resource(*docid.split('/', 1))
+        resp = yield from doc_resource.head(auth=auth)
+        if resp.status != 404:
+            yield from resp.maybe_raise_error()
+        yield from resp.read()
+        return self.design_document_class(doc_resource)
+
+    #: alias for :meth:`aiocouchdb.database.Database.design_document`
+    ddoc = design_document
 
     @asyncio.coroutine
     def exists(self, *, auth=None):

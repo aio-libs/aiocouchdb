@@ -28,5 +28,6 @@ from .errors import (
 from .attachment import Attachment
 from .database import Database
 from .document import Document
+from .designdoc import DesignDocument
 from .server import Server
 from .version import __version__, __version_info__
