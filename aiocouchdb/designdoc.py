@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 from .client import Resource
 from .document import Document
 
@@ -37,3 +38,15 @@ class DesignDocument(object):
 
     #: alias for :meth:`aiocouchdb.designdoc.DesignDocument.document`
     doc = document
+
+    @asyncio.coroutine
+    def info(self, *, auth=None):
+        """:ref:`Returns view index information <api/ddoc/info>`.
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        resp = yield from self.resource.get('_info', auth=auth)
+        yield from resp.maybe_raise_error()
+        return (yield from resp.json())

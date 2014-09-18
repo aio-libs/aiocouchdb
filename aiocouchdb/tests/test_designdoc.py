@@ -40,3 +40,11 @@ class DesignDocTestCase(utils.TestCase):
         ddoc = aiocouchdb.designdoc.DesignDocument('', document_class=CustomDoc)
         self.assertIsInstance(ddoc.doc, CustomDoc)
         self.assertIsInstance(ddoc.document, CustomDoc)
+
+    def test_info(self):
+        resp = self.mock_json_response(data=b'{}')
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.ddoc.info())
+        self.assert_request_called_with('GET', 'db', '_design', 'ddoc', '_info')
+        self.assertIsInstance(result, dict)
