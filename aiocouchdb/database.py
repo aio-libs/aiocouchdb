@@ -168,6 +168,7 @@ class Database(object):
     @asyncio.coroutine
     def all_docs(self, *keys,
                  auth=None,
+                 att_encoding_info=None,
                  attachments=None,
                  conflicts=None,
                  descending=None,
@@ -189,6 +190,8 @@ class Database(object):
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
+        :param bool att_encoding_info: Includes encoding information in an
+                                       attachment stubs
         :param bool attachments: Includes attachments content into documents.
                                  **Warning**: use with caution!
         :param bool conflicts: Includes conflicts information into documents
