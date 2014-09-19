@@ -7,8 +7,10 @@
 # you should have received as part of this distribution.
 #
 
+import json
 import aiocouchdb.document
 import aiocouchdb.designdoc
+import aiocouchdb.feeds
 import aiocouchdb.tests.utils as utils
 from aiocouchdb.client import urljoin
 
@@ -48,3 +50,63 @@ class DesignDocTestCase(utils.TestCase):
         result = self.run_loop(self.ddoc.info())
         self.assert_request_called_with('GET', 'db', '_design', 'ddoc', '_info')
         self.assertIsInstance(result, dict)
+
+    def test_view(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.view('viewname'))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_view', 'viewname')
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_view_key(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.ddoc.view('viewname', 'foo'))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_view', 'viewname',
+            params={'key': '"foo"'})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_view_keys(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.ddoc.view('viewname', 'foo', 'bar'))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_view', 'viewname',
+            data={'keys': ('foo', 'bar')})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_view_params(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        all_params = {
+            'att_encoding_info': False,
+            'attachments': False,
+            'conflicts': True,
+            'descending': True,
+            'endkey': 'foo',
+            'endkey_docid': 'foo_id',
+            'group': False,
+            'group_level': 10,
+            'include_docs': True,
+            'inclusive_end': False,
+            'limit': 10,
+            'reduce': True,
+            'skip': 20,
+            'stale': 'ok',
+            'startkey': 'bar',
+            'startkey_docid': 'bar_id',
+            'update_seq': True
+        }
+
+        for key, value in all_params.items():
+            result = self.run_loop(self.ddoc.view('viewname', **{key: value}))
+            if key in ('endkey', 'startkey'):
+                value = json.dumps(value)
+            self.assert_request_called_with(
+                'GET', 'db', '_design', 'ddoc', '_view', 'viewname',
+                params={key: value})
+            self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)

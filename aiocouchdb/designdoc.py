@@ -10,6 +10,7 @@
 import asyncio
 from .client import Resource
 from .document import Document
+from .views import View
 
 
 class DesignDocument(object):
@@ -17,12 +18,18 @@ class DesignDocument(object):
 
     #: Default :class:`~aiocouchdb.document.Document` instance class.
     document_class = Document
+    #: :class:`Views requesting  helper<aiocouchdb.views.Views>`
+    view_class = View
 
-    def __init__(self, url_or_resource, *, document_class=None):
+    def __init__(self, url_or_resource, *,
+                 document_class=None,
+                 view_class=None):
         if document_class is not None:
             self.document_class = document_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
+        if view_class is not None:
+            self.view_class = view_class
         self.resource = url_or_resource
         self._document = self.document_class(self.resource)
 
@@ -50,3 +57,72 @@ class DesignDocument(object):
         resp = yield from self.resource.get('_info', auth=auth)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
+
+    @asyncio.coroutine
+    def view(self, view_name, *keys,
+             auth=None,
+             att_encoding_info=None,
+             attachments=None,
+             conflicts=None,
+             descending=None,
+             endkey=None,
+             endkey_docid=None,
+             group=None,
+             group_level=None,
+             include_docs=None,
+             inclusive_end=None,
+             limit=None,
+             reduce=None,
+             skip=None,
+             stale=None,
+             startkey=None,
+             startkey_docid=None,
+             update_seq=None):
+        """Queries a :ref:`stored view <api/ddoc/view>` by the name with
+        the specified parameters.
+
+        :param str view_name: Name of view stored in the related design document
+        :param str keys: List of view index keys to fetch. This method is smart
+                         enough to use `GET` or `POST` request depending on
+                         amount of ``keys``
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :param bool att_encoding_info: Includes encoding information in an
+                                       attachment stubs
+        :param bool attachments: Includes attachments content into documents.
+                                 **Warning**: use with caution!
+        :param bool conflicts: Includes conflicts information into documents
+        :param bool descending: Return rows in descending by key order
+        :param str endkey: Stop fetching rows when the specified key is reached
+        :param str endkey_docid: Stop fetching rows when the specified
+                                 document ID is reached
+        :param bool group: Reduces the view result grouping by unique keys
+        :param int group_level: Reduces the view result grouping the keys
+                                with defined level
+        :param str include_docs: Include document body for each row
+        :param bool inclusive_end: When ``False``, doesn't includes ``endkey``
+                                   in returned rows
+        :param int limit: Limits the number of the returned rows by
+                          the specified number
+        :param bool reduce: Defines is the reduce function needs to be applied
+                            or not
+        :param int skip: Skips specified number of rows before starting
+                         to return the actual result
+        :param str stale: Allow to fetch the rows from a stale view, without
+                          triggering index update. Supported values: ``ok``
+                          and ``update_after``
+        :param str startkey: Return rows starting with the specified key
+        :param str startkey_docid: Return rows starting with the specified
+                                   document ID
+        :param bool update_seq: Include an ``update_seq`` value into view
+                                results header
+
+        :rtype: :class:`aiocouchdb.feeds.ViewFeed`
+        """
+        params = locals()
+        for key in ('self', 'auth', 'view_name'):
+            params.pop(key)
+
+        view = self.view_class(self.resource('_view', view_name))
+        return (yield from view.request(auth=auth, params=params))
