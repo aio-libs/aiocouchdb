@@ -84,6 +84,12 @@ Multipart
 .. automodule:: aiocouchdb.multipart
   :members:
 
+Views
+=====
+
+.. automodule:: aiocouchdb.views
+  :members:
+
 Errors
 ======
 

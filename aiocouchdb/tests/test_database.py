@@ -611,11 +611,16 @@ class DatabaseTestCase(utils.TestCase):
 
         for key, value in all_params.items():
             self.run_loop(self.db.temp_view('fun(_)-> ok end', **{key: value}))
-            if key in ('keys', 'endkey', 'startkey'):
+            if key in ('endkey', 'startkey'):
                 value = json.dumps(value)
-            self.assert_request_called_with('POST', 'db', '_temp_view',
-                                            data={'map': 'fun(_)-> ok end'},
-                                            params={key: value})
+            if key == 'keys':
+                self.assert_request_called_with('POST', 'db', '_temp_view',
+                                                data={'map': 'fun(_)-> ok end',
+                                                      key: value})
+            else:
+                self.assert_request_called_with('POST', 'db', '_temp_view',
+                                                data={'map': 'fun(_)-> ok end'},
+                                                params={key: value})
 
     def test_view_cleanup(self):
         resp = self.mock_json_response()

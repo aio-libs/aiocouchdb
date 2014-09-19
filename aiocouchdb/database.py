@@ -15,10 +15,10 @@ from .client import Resource
 from .document import Document
 from .designdoc import DesignDocument
 from .feeds import (
-    ViewFeed,
     ChangesFeed, LongPollChangesFeed,
     ContinuousChangesFeed, EventSourceChangesFeed
 )
+from .views import View
 
 
 class Database(object):
@@ -28,13 +28,19 @@ class Database(object):
     document_class = Document
     #: Default :class:`~aiocouchdb.designdoc.DesignDocument` instance class
     design_document_class = DesignDocument
+    #: :class:`Views requesting  helper<aiocouchdb.views.Views>`
+    view_class = View
 
     def __init__(self, url_or_resource, *,
-                 document_class=None, design_document_class=None):
+                 document_class=None,
+                 design_document_class=None,
+                 view_class=None):
         if document_class is not None:
             self.document_class = document_class
         if design_document_class is not None:
             self.design_document_class = design_document_class
+        if view_class is not None:
+            self.view_class = view_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
@@ -208,40 +214,11 @@ class Database(object):
 
         :rtype: :class:`aiocouchdb.feeds.ViewFeed`
         """
-        params = {}
-        maybe_set_param = (
-            lambda *kv: (None if kv[1] is None else params.update([kv])))
-        maybe_set_param('attachments', attachments)
-        maybe_set_param('conflicts', conflicts)
-        maybe_set_param('descending', descending)
-        maybe_set_param('endkey', endkey)
-        maybe_set_param('endkey_docid', endkey_docid)
-        maybe_set_param('include_docs', include_docs)
-        maybe_set_param('inclusive_end', inclusive_end)
-        maybe_set_param('limit', limit)
-        maybe_set_param('skip', skip)
-        maybe_set_param('stale', stale)
-        maybe_set_param('startkey', startkey)
-        maybe_set_param('startkey_docid', startkey_docid)
-        maybe_set_param('update_seq', update_seq)
-
-        data = None
-        if len(keys) > 2:
-            data = {'keys': keys}
-            request = self.resource.post
-        else:
-            maybe_set_param('key', keys[0] if keys else None)
-            request = self.resource.get
-
-        # CouchDB requires these params have valid JSON value
-        for param in ('key', 'startkey', 'endkey'):
-            if param in params:
-                params[param] = json.dumps(params[param])
-
-        resp = yield from request('_all_docs', auth=auth, data=data,
-                                  params=params)
-        yield from resp.maybe_raise_error()
-        return ViewFeed(resp)
+        params = locals()
+        for key in ('self', 'auth'):
+            params.pop(key)
+        view = self.view_class(self.resource('_all_docs'))
+        return (yield from view.request(auth=auth, params=params))
 
     def bulk_docs(self, docs, *, auth=None, all_or_nothing=None,
                   new_edits=None):
@@ -539,27 +516,9 @@ class Database(object):
 
         :rtype: :class:`aiocouchdb.feeds.ViewFeed`
         """
-        params = {}
-        maybe_set_param = (
-            lambda *kv: (None if kv[1] is None else params.update([kv])))
-        maybe_set_param('att_encoding_info', att_encoding_info)
-        maybe_set_param('attachments', attachments)
-        maybe_set_param('conflicts', conflicts)
-        maybe_set_param('descending', descending)
-        maybe_set_param('endkey', endkey)
-        maybe_set_param('endkey_docid', endkey_docid)
-        maybe_set_param('include_docs', include_docs)
-        maybe_set_param('inclusive_end', inclusive_end)
-        maybe_set_param('group', group)
-        maybe_set_param('group_level', group_level)
-        maybe_set_param('keys', keys)
-        maybe_set_param('limit', limit)
-        maybe_set_param('reduce', reduce)
-        maybe_set_param('skip', skip)
-        maybe_set_param('stale', stale)
-        maybe_set_param('startkey', startkey)
-        maybe_set_param('startkey_docid', startkey_docid)
-        maybe_set_param('update_seq', update_seq)
+        params = locals()
+        for key in ('self', 'auth', 'map_fun', 'red_fun', 'language'):
+            params.pop(key)
 
         data = {'map': map_fun}
         if red_fun is not None:
@@ -567,15 +526,8 @@ class Database(object):
         if language is not None:
             data['language'] = language
 
-        # CouchDB requires these params have valid JSON value
-        for param in ('keys', 'startkey', 'endkey'):
-            if param in params:
-                params[param] = json.dumps(params[param])
-
-        resp = yield from self.resource.post('_temp_view', auth=auth, data=data,
-                                             params=params)
-        yield from resp.maybe_raise_error()
-        return ViewFeed(resp)
+        view = self.view_class(self.resource('_temp_view'))
+        return (yield from view.request(auth=auth, data=data, params=params))
 
     @asyncio.coroutine
     def view_cleanup(self, *, auth=None):
