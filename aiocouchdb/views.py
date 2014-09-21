@@ -28,29 +28,9 @@ class View(object):
 
         :rtype: :class:`aiocouchdb.feeds.ViewFeed`
         """
-        if params is None:
-            params = {}
-        else:
-            params = dict((key, value)
-                          for key, value in params.items()
-                          if value is not None)
-
-            keys = params.pop('keys', ())
-            if keys:
-                assert not isinstance(keys, (bytes, str))
-
-                if len(keys) >= 2:
-                    if data is None:
-                        data = {'keys': keys}
-                    else:
-                        data['keys'] = keys
-                elif keys:
-                    params['key'] = json.dumps(keys[0])
-
-            # CouchDB requires these params have valid JSON value
-            for param in ('key', 'startkey', 'endkey'):
-                if param in params:
-                    params[param] = json.dumps(params[param])
+        if params is not None:
+            params, data = self.handle_keys_param(params, data)
+            params = self.prepare_params(params)
 
         if data:
             request = self.resource.post
@@ -60,3 +40,35 @@ class View(object):
         resp = yield from request(auth=auth, data=data, params=params)
         yield from resp.maybe_raise_error()
         return ViewFeed(resp)
+
+    @staticmethod
+    def prepare_params(params):
+        params = dict((key, value)
+                      for key, value in params.items()
+                      if value is not None)
+
+        # CouchDB requires these params have valid JSON value
+        for param in ('key', 'keys', 'startkey', 'endkey'):
+            if param in params:
+                params[param] = json.dumps(params[param])
+        return params
+
+    @staticmethod
+    def handle_keys_param(params, data):
+        keys = params.pop('keys', ())
+        if not keys:
+            return params, data
+        assert not isinstance(keys, (bytes, str))
+
+        if len(keys) >= 2:
+            if data is None:
+                data = {'keys': keys}
+            elif isinstance(data, dict):
+                data['keys'] = keys
+            else:
+                params['keys'] = keys
+        elif keys:
+            assert params.get('key') is None
+            params['key'] = keys[0]
+
+        return params, data
