@@ -59,6 +59,78 @@ class DesignDocument(object):
         return (yield from resp.json())
 
     @asyncio.coroutine
+    def list(self, list_name, view_name=None, *keys,
+             auth=None,
+             method=None,
+             headers=None,
+             data=None,
+             params=None,
+             format=None,
+             att_encoding_info=None,
+             attachments=None,
+             conflicts=None,
+             descending=None,
+             endkey=None,
+             endkey_docid=None,
+             group=None,
+             group_level=None,
+             include_docs=None,
+             inclusive_end=None,
+             limit=None,
+             reduce=None,
+             skip=None,
+             stale=None,
+             startkey=None,
+             startkey_docid=None,
+             update_seq=None):
+        """Calls a :ref:`list function <api/ddoc/list>` and returns a raw
+        response object.
+
+        :param str list_name: List function name
+        :param str view_name: View function name
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str method: HTTP request method
+        :param dict headers: Additional request headers
+        :param data: Request payload
+        :param dict params: Additional request query parameters
+        :param str format: List function output format
+
+        For other parameters see
+        :meth:`aiocouchdb.designdoc.DesignDocument.view` method docstring.
+
+        :rtype: :class:`~aiocouchdb.client.HttpResponse`
+        """
+        assert headers is None or isinstance(headers, dict)
+        assert params is None or isinstance(params, dict)
+
+        view_params = locals()
+        for key in ('self', 'list_name', 'view_name', 'auth',
+                    'method', 'headers', 'data', 'params'):
+            view_params.pop(key)
+
+        view_params, data = self.view_class.handle_keys_param(view_params, data)
+        view_params = self.view_class.prepare_params(view_params)
+
+        if params is None:
+            params = view_params
+        else:
+            params.update(view_params)
+
+        if method is None:
+            method = 'GET' if data is None else 'POST'
+
+        path = ['_list', list_name]
+        if view_name:
+            path.extend(view_name.split('/', 1))
+        resp = yield from self.resource(*path).request(method,
+                                                       auth=auth,
+                                                       data=data,
+                                                       params=params,
+                                                       headers=headers)
+        return resp
+
+    @asyncio.coroutine
     def view(self, view_name, *keys,
              auth=None,
              att_encoding_info=None,

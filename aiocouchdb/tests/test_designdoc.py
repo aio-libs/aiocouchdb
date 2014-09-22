@@ -8,6 +8,7 @@
 #
 
 import json
+import aiocouchdb.client
 import aiocouchdb.document
 import aiocouchdb.designdoc
 import aiocouchdb.feeds
@@ -110,3 +111,108 @@ class DesignDocTestCase(utils.TestCase):
                 'GET', 'db', '_design', 'ddoc', '_view', 'viewname',
                 params={key: value})
             self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_list(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.list('listname'))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_list', 'listname')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_view(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.list('listname', 'viewname'))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_list', 'listname', 'viewname')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_view_ddoc(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.list('listname', 'ddoc/view'))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_list', 'listname', 'ddoc', 'view')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_params(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        all_params = {
+            'att_encoding_info': False,
+            'attachments': False,
+            'conflicts': True,
+            'descending': True,
+            'endkey': 'foo',
+            'endkey_docid': 'foo_id',
+            'format': 'json',
+            'group': False,
+            'group_level': 10,
+            'include_docs': True,
+            'inclusive_end': False,
+            'limit': 10,
+            'reduce': True,
+            'skip': 20,
+            'stale': 'ok',
+            'startkey': 'bar',
+            'startkey_docid': 'bar_id',
+            'update_seq': True
+        }
+
+        for key, value in all_params.items():
+            result = self.run_loop(self.ddoc.list('listname', 'viewname',
+                                                  **{key: value}))
+            if key in ('endkey', 'startkey'):
+                value = json.dumps(value)
+            self.assert_request_called_with(
+                'GET', 'db', '_design', 'ddoc', '_list', 'listname', 'viewname',
+                params={key: value})
+            self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_custom_method(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.list('listname', method='POST'))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_list', 'listname')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_custom_headers(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.list('listname', headers={'Foo': '1'}))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_list', 'listname',
+            headers={'Foo': '1'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_custom_params(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.list('listname', params={'foo': '1'}))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_list', 'listname',
+            params={'foo': '1'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_key(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.ddoc.list('listname', 'viewname', 'foo'))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_list', 'listname', 'viewname',
+            params={'key': '"foo"'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_list_keys(self):
+        resp = self.mock_json_response()
+        self.request.return_value = self.future(resp)
+
+        result = self.run_loop(self.ddoc.list('listname', 'viewname',
+                                              'foo', 'bar'))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_list', 'listname', 'viewname',
+            data={'keys': ('foo', 'bar')})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
