@@ -131,6 +131,47 @@ class DesignDocument(object):
         return resp
 
     @asyncio.coroutine
+    def show(self, show_name, docid=None, *,
+             auth=None, method=None, headers=None, data=None, params=None,
+             format=None):
+        """Calls a :ref:`show function <api/ddoc/show>` and returns a raw
+        response object.
+
+        :param str show_name: Show function name
+        :param str docid: Document ID
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str method: HTTP request method
+        :param dict headers: Additional request headers
+        :param data: Request payload
+        :param dict params: Additional request query parameters
+        :param str format: Show function output format
+
+        :rtype: :class:`~aiocouchdb.client.HttpResponse`
+        """
+        assert headers is None or isinstance(headers, dict)
+        assert params is None or isinstance(params, dict)
+
+        if method is None:
+            method = 'GET' if data is None else 'POST'
+
+        if format is not None:
+            if params is None:
+                params = {}
+            assert 'format' not in params
+            params['format'] = format
+
+        path = ['_show', show_name]
+        if docid is not None:
+            path.append(docid)
+        resp = yield from self.resource(*path).request(method,
+                                                       auth=auth,
+                                                       data=data,
+                                                       params=params,
+                                                       headers=headers)
+        return resp
+
+    @asyncio.coroutine
     def view(self, view_name, *keys,
              auth=None,
              att_encoding_info=None,
