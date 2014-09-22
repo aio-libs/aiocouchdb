@@ -276,3 +276,54 @@ class DesignDocTestCase(utils.TestCase):
             'GET', 'db', '_design', 'ddoc', '_show', 'time',
             params={'format': 'xml'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_update(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.update('fun'))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_update', 'fun')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_update_docid(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.update('fun', 'docid'))
+        self.assert_request_called_with(
+            'PUT', 'db', '_design', 'ddoc', '_update', 'fun', 'docid')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_update_custom_method(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.update('fun', method='HEAD'))
+        self.assert_request_called_with(
+            'HEAD', 'db', '_design', 'ddoc', '_update', 'fun')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_update_custom_headers(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.update('fun', headers={'foo': 'bar'}))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_update', 'fun',
+            headers={'foo': 'bar'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_update_custom_data(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.update('fun', data={'foo': 'bar'}))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_update', 'fun',
+            data={'foo': 'bar'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_update_custom_params(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.update('fun', params={'foo': 'bar'}))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_update', 'fun',
+            params={'foo': 'bar'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)

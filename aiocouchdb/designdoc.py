@@ -172,6 +172,39 @@ class DesignDocument(object):
         return resp
 
     @asyncio.coroutine
+    def update(self, update_name, docid=None, *,
+               auth=None, method=None, headers=None, data=None, params=None):
+        """Calls a :ref:`show function <api/ddoc/update>` and returns a raw
+        response object.
+
+        :param str update_name: Update function name
+        :param str docid: Document ID
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str method: HTTP request method
+        :param dict headers: Additional request headers
+        :param data: Request payload
+        :param dict params: Additional request query parameters
+
+        :rtype: :class:`~aiocouchdb.client.HttpResponse`
+        """
+        assert headers is None or isinstance(headers, dict)
+        assert params is None or isinstance(params, dict)
+
+        if method is None:
+            method = 'POST' if docid is None else 'PUT'
+
+        path = ['_update', update_name]
+        if docid is not None:
+            path.append(docid)
+        resp = yield from self.resource(*path).request(method,
+                                                       auth=auth,
+                                                       data=data,
+                                                       params=params,
+                                                       headers=headers)
+        return resp
+
+    @asyncio.coroutine
     def view(self, view_name, *keys,
              auth=None,
              att_encoding_info=None,
