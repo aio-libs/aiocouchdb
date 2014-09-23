@@ -170,14 +170,6 @@ class DesignDocTestCase(utils.TestCase):
                 params={key: value})
             self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
-    def test_list_custom_method(self):
-        self.request.return_value = self.future(self.mock_json_response())
-
-        result = self.run_loop(self.ddoc.list('listname', method='POST'))
-        self.assert_request_called_with(
-            'POST', 'db', '_design', 'ddoc', '_list', 'listname')
-        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
-
     def test_list_custom_headers(self):
         self.request.return_value = self.future(self.mock_json_response())
 

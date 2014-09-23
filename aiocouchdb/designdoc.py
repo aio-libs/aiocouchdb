@@ -61,7 +61,6 @@ class DesignDocument(object):
     @asyncio.coroutine
     def list(self, list_name, view_name=None, *keys,
              auth=None,
-             method=None,
              headers=None,
              data=None,
              params=None,
@@ -90,7 +89,6 @@ class DesignDocument(object):
         :param str view_name: View function name
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param str method: HTTP request method
         :param dict headers: Additional request headers
         :param data: Request payload
         :param dict params: Additional request query parameters
@@ -103,10 +101,11 @@ class DesignDocument(object):
         """
         assert headers is None or isinstance(headers, dict)
         assert params is None or isinstance(params, dict)
+        assert data is None or isinstance(data, dict)
 
         view_params = locals()
         for key in ('self', 'list_name', 'view_name', 'auth',
-                    'method', 'headers', 'data', 'params'):
+                    'headers', 'data', 'params'):
             view_params.pop(key)
 
         view_params, data = self.view_class.handle_keys_param(view_params, data)
@@ -117,8 +116,7 @@ class DesignDocument(object):
         else:
             params.update(view_params)
 
-        if method is None:
-            method = 'GET' if data is None else 'POST'
+        method = 'GET' if data is None else 'POST'
 
         path = ['_list', list_name]
         if view_name:
