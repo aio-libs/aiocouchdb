@@ -319,3 +319,46 @@ class DesignDocTestCase(utils.TestCase):
             'POST', 'db', '_design', 'ddoc', '_update', 'fun',
             params={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_rewrite(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.rewrite('rewrite', 'me'))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_rewrite', 'rewrite', 'me')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_rewrite_custom_method(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.rewrite('path', method='HEAD'))
+        self.assert_request_called_with(
+            'HEAD', 'db', '_design', 'ddoc', '_rewrite', 'path')
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_rewrite_custom_headers(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.rewrite('path', headers={'foo': '42'}))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_rewrite', 'path',
+            headers={'foo': '42'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_rewrite_custom_data(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.rewrite('path', data={'foo': 'bar'}))
+        self.assert_request_called_with(
+            'POST', 'db', '_design', 'ddoc', '_rewrite', 'path',
+            data={'foo': 'bar'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
+
+    def test_rewrite_custom_params(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        result = self.run_loop(self.ddoc.rewrite('path', params={'foo': 'bar'}))
+        self.assert_request_called_with(
+            'GET', 'db', '_design', 'ddoc', '_rewrite', 'path',
+            params={'foo': 'bar'})
+        self.assertIsInstance(result, aiocouchdb.client.HttpResponse)

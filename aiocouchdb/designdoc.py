@@ -129,6 +129,28 @@ class DesignDocument(object):
         return resp
 
     @asyncio.coroutine
+    def rewrite(self, *path,
+                auth=None, method=None, headers=None, data=None, params=None):
+        """Requests :ref:`rewrite <api/ddoc/rewrite>` resource and returns a
+        raw response object.
+
+        :param str path: Request path by segments
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str method: HTTP request method
+        :param dict headers: Additional request headers
+        :param data: Request payload
+        :param dict params: Additional request query parameters
+
+        :rtype: :class:`~aiocouchdb.client.HttpResponse`
+        """
+        if method is None:
+            method = 'GET' if data is None else 'POST'
+
+        resp = yield from self.resource('_rewrite', *path).request(
+            method, auth=auth, data=data, params=params, headers=headers)
+        return resp
+
+    @asyncio.coroutine
     def show(self, show_name, docid=None, *,
              auth=None, method=None, headers=None, data=None, params=None,
              format=None):
