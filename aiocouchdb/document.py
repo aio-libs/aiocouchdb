@@ -125,8 +125,8 @@ class Document(object):
         :param bool deleted_conflicts: Includes information about deleted
                                        conflicted revisions in the document
         :param bool local_seq: Includes local sequence number in the document
-        :param bool meta: Includes meta information in the document.
-        :param list open_revs: Returns the specified leaf revisions.
+        :param bool meta: Includes meta information in the document
+        :param list open_revs: Returns the specified leaf revisions
         :param bool revs: Includes information about all known revisions
         :param bool revs_info: Includes information about all known revisions
                                and their status
@@ -303,7 +303,7 @@ class Document(object):
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :param str batch: Updates in batch mode (asynchronously).
+        :param str batch: Updates in batch mode (asynchronously)
                           This argument accepts only ``"ok"`` value.
         :param bool new_edits: Signs about new document edition. When ``False``
                                allows to create conflicts manually

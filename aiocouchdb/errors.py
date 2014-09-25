@@ -126,8 +126,8 @@ HTTP_ERROR_BY_CODE = {err.code: err
 
 @asyncio.coroutine
 def maybe_raise_error(resp):
-    """Raises :exc:`aiohttp.errors.HttpErrorException` exception in case of >=400
-    response status code."""
+    """Raises :exc:`aiohttp.errors.HttpErrorException` exception in case of
+    ``>=400`` response status code."""
     if resp.status < 400:
         return
     exc_cls = HTTP_ERROR_BY_CODE[resp.status]

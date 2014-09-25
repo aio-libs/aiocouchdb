@@ -148,7 +148,7 @@ class Server(object):
             params['bytes'] = bytes
         if offset is not None:
             params['offset'] = offset
-        resp = yield from self.resource.get('_log',  auth=auth, params=params)
+        resp = yield from self.resource.get('_log', auth=auth, params=params)
         yield from resp.maybe_raise_error()
         return (yield from resp.read()).decode('utf-8')
 

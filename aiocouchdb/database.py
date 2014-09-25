@@ -149,7 +149,6 @@ class Database(object):
         status = yield from resp.json()
         return status['ok']
 
-
     @asyncio.coroutine
     def delete(self, *, auth=None):
         """`Deletes a database`_.
@@ -406,7 +405,7 @@ class Database(object):
         <api/db/purge>` from the database.
 
         :param dict id_revs: Mapping between document ID and list of his
-                             revisions to purge.
+                             revisions to purge
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: dict
@@ -422,7 +421,7 @@ class Database(object):
         in the database by given document-revisions mapping.
 
         :param dict id_revs: Mapping between document ID and list of his
-                             revisions to compare.
+                             revisions to compare
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         :rtype: dict
@@ -446,7 +445,7 @@ class Database(object):
             resp = yield from self.resource.get('_revs_limit', auth=auth)
         else:
             resp = yield from self.resource.put('_revs_limit',
-                                                 auth=auth, data=count)
+                                                auth=auth, data=count)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
