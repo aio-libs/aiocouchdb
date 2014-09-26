@@ -1,0 +1,8 @@
+include LICENSE
+include CHANGES.rst
+include README.rst
+include Makefile
+graft aiocouchdb
+graft docs
+prune docs/_build
+global-exclude *.pyc

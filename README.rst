@@ -3,8 +3,12 @@ aiocouchdb
 
 CouchDB client built on top of `aiohttp`_.
 
-Current status: **alpha**. Not all CouchDB API is implemented yet, please
-consult with `CHANGES.rst` for available API calls and features.
+Current status: **beta**. ``aiocouchdb`` has all CouchDB API implements up to
+1.6 release. However, it may lack of some usability and stability bits, but
+work is in progress. Feel free to `send pull request`_ or `open issue`_ if you
+find something that should be fixed.
+
+Also don't miss the docs: http://aiocouchdb.readthedocs.org/en/latest/
 
 Example
 -------
@@ -38,14 +42,14 @@ Example
                 break
             dbname = event['db_name']
 
-            # what use raw queries? that's easy
+            # want to use raw queries? that's easy
             resp = yield from server.resource.get(dbname, auth=user)
             if resp.status == 403:
                 # ignore Forbidden errors
                 continue
             # but respect everyone else
             yield from resp.maybe_raise_error()
-            dbinfo = yield from resp.json(close=True)  # release connection
+            dbinfo = yield from resp.json()
             print(dbinfo)
 
         # close sessions
@@ -80,3 +84,5 @@ BSD
 
 .. _aiohttp: https://github.com/KeepSafe/aiohttp
 .. _oauthlib: https://github.com/idan/oauthlib
+.. _open issue: https://github.com/kxepal/aiocouchdb/issues
+.. _send pull request: https://github.com/kxepal/aiocouchdb/pulls

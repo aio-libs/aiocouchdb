@@ -1,5 +1,9 @@
-0.5.0 (dev)
------------
+0.5.0 (2014-09-26)
+------------------
+
+- Last checkpoint release. It's in beta now!
+- Implements CouchDB Design Documents HTTP API
+- Views refactoring and implementation consolidation
 
 0.4.0 (2014-09-17)
 ------------------
