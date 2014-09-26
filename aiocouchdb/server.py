@@ -50,7 +50,7 @@ class Server(object):
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.database_class(db_resource)
+        return self.database_class(db_resource, dbname=dbname)
 
     #: alias for :meth:`aiocouchdb.server.Server.database`
     db = database

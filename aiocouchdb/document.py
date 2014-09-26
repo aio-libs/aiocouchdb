@@ -23,17 +23,18 @@ class Document(object):
 
     attachment_class = Attachment
 
-    def __init__(self, url_or_resource, *, attachment_class=None):
+    def __init__(self, url_or_resource, *, docid=None, attachment_class=None):
         if attachment_class is not None:
             self.attachment_class = attachment_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
+        self._docid = docid
 
     @property
     def id(self):
-        """Returns associated document ID."""
-        return self.resource.url.rsplit('/', 1)[-1]
+        """Returns a document id specified in class constructor."""
+        return self._docid
 
     @asyncio.coroutine
     def attachment(self, attname, *, auth=None):
@@ -54,7 +55,7 @@ class Document(object):
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.attachment_class(att_resource)
+        return self.attachment_class(att_resource, name=attname)
 
     #: alias for :meth:`aiocouchdb.document.Document.attachment`
     att = attachment

@@ -9,6 +9,7 @@
 
 import json
 import aiocouchdb.client
+import aiocouchdb.database
 import aiocouchdb.document
 import aiocouchdb.designdoc
 import aiocouchdb.feeds
@@ -32,13 +33,35 @@ class DesignDocTestCase(utils.TestCase):
         self.assertIsInstance(ddoc.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url_ddoc, ddoc.resource.url)
 
+    def test_init_with_id(self):
+        res = aiocouchdb.client.Resource(self.url_ddoc)
+        ddoc = aiocouchdb.designdoc.DesignDocument(res, docid='foo')
+        self.assertEqual(ddoc.id, 'foo')
+
+    def test_init_with_id_from_database(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        db = aiocouchdb.database.Database(self.url)
+        ddoc = self.run_loop(db.ddoc('foo'))
+        self.assertEqual(ddoc.id, '_design/foo')
+
+    def test_ddoc_name(self):
+        res = aiocouchdb.client.Resource(self.url_ddoc)
+        ddoc = aiocouchdb.designdoc.DesignDocument(res, docid='_design/bar')
+        self.assertEqual(ddoc.name, 'bar')
+
+    def test_ddoc_bad_name_because_of_bad_id(self):
+        res = aiocouchdb.client.Resource(self.url_ddoc)
+        ddoc = aiocouchdb.designdoc.DesignDocument(res, docid='bar')
+        self.assertEqual(ddoc.name, None)
+
     def test_access_to_document_api(self):
         self.assertIsInstance(self.ddoc.doc, aiocouchdb.document.Document)
         self.assertIsInstance(self.ddoc.document, aiocouchdb.document.Document)
 
     def test_access_to_custom_document_api(self):
         class CustomDoc(object):
-            def __init__(self, resource):
+            def __init__(self, resource, **kwargs):
                 pass
         ddoc = aiocouchdb.designdoc.DesignDocument('', document_class=CustomDoc)
         self.assertIsInstance(ddoc.doc, CustomDoc)

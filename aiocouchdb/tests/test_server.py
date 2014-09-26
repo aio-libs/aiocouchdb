@@ -68,7 +68,7 @@ class ServerTestCase(utils.TestCase):
 
     def test_database_custom_class(self):
         class CustomDatabase(object):
-            def __init__(self, thing):
+            def __init__(self, thing, **kwargs):
                 self.resource = thing
         server = aiocouchdb.server.Server(self.url,
                                           database_class=CustomDatabase)

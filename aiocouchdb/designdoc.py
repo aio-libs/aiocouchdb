@@ -22,6 +22,7 @@ class DesignDocument(object):
     view_class = View
 
     def __init__(self, url_or_resource, *,
+                 docid=None,
                  document_class=None,
                  view_class=None):
         if document_class is not None:
@@ -31,7 +32,20 @@ class DesignDocument(object):
         if view_class is not None:
             self.view_class = view_class
         self.resource = url_or_resource
-        self._document = self.document_class(self.resource)
+        self._document = self.document_class(self.resource, docid=docid)
+
+    @property
+    def id(self):
+        """Returns a document id specified in class constructor."""
+        return self.document.id
+
+    @property
+    def name(self):
+        """Returns a document id specified in class constructor."""
+        docid = self.document.id
+        if docid is not None and '/' in docid:
+            return docid.split('/', 1)[1]
+        return None
 
     @property
     def document(self):

@@ -16,10 +16,15 @@ from io import RawIOBase
 class Attachment(object):
     """Implementation of :ref:`CouchDB Attachment API <api/doc/attachment>`."""
 
-    def __init__(self, url_or_resource):
+    def __init__(self, url_or_resource, *, name=None):
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
 
     @asyncio.coroutine
     def exists(self, rev=None, *, auth=None):

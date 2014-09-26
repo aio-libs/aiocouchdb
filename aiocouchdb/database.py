@@ -32,6 +32,7 @@ class Database(object):
     view_class = View
 
     def __init__(self, url_or_resource, *,
+                 dbname=None,
                  document_class=None,
                  design_document_class=None,
                  view_class=None):
@@ -45,6 +46,12 @@ class Database(object):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
         self._security = Security(self.resource)
+        self._dbname = dbname
+
+    @property
+    def name(self):
+        """Returns a database name specified in class constructor."""
+        return self._dbname
 
     @asyncio.coroutine
     def document(self, docid=None, *, auth=None, idfun=uuid.uuid4):
@@ -73,7 +80,7 @@ class Database(object):
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.document_class(doc_resource)
+        return self.document_class(doc_resource, docid=docid)
 
     #: alias for :meth:`aiocouchdb.database.Database.document`
     doc = document
@@ -100,7 +107,7 @@ class Database(object):
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.design_document_class(doc_resource)
+        return self.design_document_class(doc_resource, docid=docid)
 
     #: alias for :meth:`aiocouchdb.database.Database.design_document`
     ddoc = design_document

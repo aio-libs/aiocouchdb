@@ -9,6 +9,7 @@
 
 import json
 import aiocouchdb.client
+import aiocouchdb.database
 import aiocouchdb.document
 import aiocouchdb.tests.utils as utils
 from aiocouchdb.client import urljoin
@@ -30,6 +31,18 @@ class DocumentTestCase(utils.TestCase):
         doc = aiocouchdb.document.Document(res)
         self.assertIsInstance(doc.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url_doc, doc.resource.url)
+
+    def test_init_with_id(self):
+        res = aiocouchdb.client.Resource(self.url_doc)
+        doc = aiocouchdb.designdoc.DesignDocument(res, docid='foo')
+        self.assertEqual(doc.id, 'foo')
+
+    def test_init_with_id_from_database(self):
+        self.request.return_value = self.future(self.mock_json_response())
+
+        db = aiocouchdb.database.Database(self.url)
+        doc = self.run_loop(db.doc('foo'))
+        self.assertEqual(doc.id, 'foo')
 
     def test_exists(self):
         resp = self.mock_json_response()
@@ -95,7 +108,7 @@ class DocumentTestCase(utils.TestCase):
 
     def test_attachment_custom_class(self):
         class CustomAttachment(object):
-            def __init__(self, thing):
+            def __init__(self, thing, **kwargs):
                 self.resource = thing
         doc = aiocouchdb.document.Document(self.url_doc,
                                            attachment_class=CustomAttachment)
