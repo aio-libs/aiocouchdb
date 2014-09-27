@@ -345,6 +345,18 @@ class DatabaseTestCase(utils.TestCase):
         self.assertIsInstance(result, CustomDocument)
         self.assertIsInstance(result.resource, aiocouchdb.client.Resource)
 
+    def test_document_get_item(self):
+        doc = self.db['docid']
+        with self.assertRaises(AssertionError):
+            self.assert_request_called_with('HEAD', 'db', 'docid')
+        self.assertIsInstance(doc, self.db.document_class)
+
+    def test_design_document_get_item(self):
+        doc = self.db['_design/ddoc']
+        with self.assertRaises(AssertionError):
+            self.assert_request_called_with('HEAD', 'db', '_design', 'ddoc')
+        self.assertIsInstance(doc, self.db.design_document_class)
+
     def test_ensure_full_commit(self):
         resp = self.mock_json_response()
         self.request.return_value = self.future(resp)

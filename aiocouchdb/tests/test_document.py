@@ -121,6 +121,12 @@ class DocumentTestCase(utils.TestCase):
         self.assertIsInstance(result, CustomAttachment)
         self.assertIsInstance(result.resource, aiocouchdb.client.Resource)
 
+    def test_attachment_get_item(self):
+        att = self.doc['attname']
+        with self.assertRaises(AssertionError):
+            self.assert_request_called_with('HEAD', 'db', 'docid', 'attname')
+        self.assertIsInstance(att, self.doc.attachment_class)
+
     def test_get(self):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)

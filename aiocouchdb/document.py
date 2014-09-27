@@ -31,6 +31,10 @@ class Document(object):
         self.resource = url_or_resource
         self._docid = docid
 
+    def __getitem__(self, attname):
+        resource = self.resource(*attname.split('/'))
+        return self.attachment_class(resource, name=attname)
+
     @property
     def id(self):
         """Returns a document id specified in class constructor."""
@@ -50,12 +54,12 @@ class Document(object):
 
         :rtype: :attr:`aiocouchdb.document.Document.attachment_class`
         """
-        att_resource = self.resource(*attname.split('/'))
-        resp = yield from att_resource.head(auth=auth)
+        att = self[attname]
+        resp = yield from att.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.attachment_class(att_resource, name=attname)
+        return att
 
     #: alias for :meth:`aiocouchdb.document.Document.attachment`
     att = attachment

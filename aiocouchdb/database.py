@@ -48,6 +48,13 @@ class Database(object):
         self._security = Security(self.resource)
         self._dbname = dbname
 
+    def __getitem__(self, docid):
+        if docid.startswith('_design/'):
+            resource = self.resource(*docid.split('/', 1))
+            return self.design_document_class(resource, docid=docid)
+        else:
+            return self.document_class(self.resource(docid), docid=docid)
+
     @property
     def name(self):
         """Returns a database name specified in class constructor."""
@@ -75,12 +82,12 @@ class Database(object):
         """
         if docid is None:
             docid = str(idfun())
-        doc_resource = self.resource(docid)
-        resp = yield from doc_resource.head(auth=auth)
+        doc = self[docid]
+        resp = yield from doc.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.document_class(doc_resource, docid=docid)
+        return doc
 
     #: alias for :meth:`aiocouchdb.database.Database.document`
     doc = document
@@ -102,12 +109,12 @@ class Database(object):
         """
         if not docid.startswith('_design/'):
             docid = '_design/' + docid
-        doc_resource = self.resource(*docid.split('/', 1))
-        resp = yield from doc_resource.head(auth=auth)
+        ddoc = self[docid]
+        resp = yield from ddoc.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.design_document_class(doc_resource, docid=docid)
+        return ddoc
 
     #: alias for :meth:`aiocouchdb.database.Database.design_document`
     ddoc = design_document

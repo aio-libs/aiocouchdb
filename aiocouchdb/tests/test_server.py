@@ -81,6 +81,12 @@ class ServerTestCase(utils.TestCase):
         self.assertIsInstance(result, CustomDatabase)
         self.assertIsInstance(result.resource, aiocouchdb.client.Resource)
 
+    def test_database_get_item(self):
+        db = self.server['db']
+        with self.assertRaises(AssertionError):
+            self.assert_request_called_with('HEAD', 'db')
+        self.assertIsInstance(db, self.server.database_class)
+
     def test_db_updates(self):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)

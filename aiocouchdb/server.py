@@ -31,6 +31,9 @@ class Server(object):
         self._session = Session(self.resource)
         self._config = Config(self.resource)
 
+    def __getitem__(self, dbname):
+        return self.database_class(self.resource(dbname), dbname=dbname)
+
     @asyncio.coroutine
     def database(self, dbname, *, auth=None):
         """Returns :class:`~aiocouchdb.database.Database` instance against
@@ -45,12 +48,12 @@ class Server(object):
 
         :rtype: :attr:`aiocouchdb.server.Server.database_class`
         """
-        db_resource = self.resource(dbname)
-        resp = yield from db_resource.head(auth=auth)
+        db = self[dbname]
+        resp = yield from db.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
         yield from resp.read()
-        return self.database_class(db_resource, dbname=dbname)
+        return db
 
     #: alias for :meth:`aiocouchdb.server.Server.database`
     db = database

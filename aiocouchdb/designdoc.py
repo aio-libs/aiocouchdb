@@ -34,6 +34,9 @@ class DesignDocument(object):
         self.resource = url_or_resource
         self._document = self.document_class(self.resource, docid=docid)
 
+    def __getitem__(self, attname):
+        return self._document[attname]
+
     @property
     def id(self):
         """Returns a document id specified in class constructor."""

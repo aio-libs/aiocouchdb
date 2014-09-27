@@ -45,6 +45,13 @@ class DesignDocTestCase(utils.TestCase):
         ddoc = self.run_loop(db.ddoc('foo'))
         self.assertEqual(ddoc.id, '_design/foo')
 
+    def test_get_item_returns_attachment(self):
+        att = self.ddoc['attname']
+        with self.assertRaises(AssertionError):
+            self.assert_request_called_with('HEAD', 'db', '_design', 'ddoc',
+                                            'attname')
+        self.assertIsInstance(att, self.ddoc.document_class.attachment_class)
+
     def test_ddoc_name(self):
         res = aiocouchdb.client.Resource(self.url_ddoc)
         ddoc = aiocouchdb.designdoc.DesignDocument(res, docid='_design/bar')
