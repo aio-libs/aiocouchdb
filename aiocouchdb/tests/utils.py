@@ -68,7 +68,7 @@ class TestCase(unittest.TestCase):
         return self.mock_response(status, headers, data)
 
     def assert_request_called_with(self, method, *path, **kwargs):
-        self.assertTrue(self.request.called_once)
+        self.assertTrue(self.request.called and self.request.call_count >= 1)
         call_args, call_kwargs = self.request.call_args
         self.assertEqual((method, urljoin(self.url, *path)), call_args)
         kwargs.setdefault('data', None)
