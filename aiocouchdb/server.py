@@ -113,7 +113,7 @@ class Server(object):
 
         - :class:`dict` - for default or ``longpoll`` feed
         - :class:`aiocouchdb.feeds.JsonFeed` - for ``continuous`` feed
-        - :class:`aiocouchdb.feeds.Feed` - for ``eventsource`` feed
+        - :class:`aiocouchdb.feeds.EventSourceFeed` - for ``eventsource`` feed
         """
         params = {}
         if feed is not None:
