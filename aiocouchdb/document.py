@@ -41,7 +41,7 @@ class Document(object):
         return self._docid
 
     @asyncio.coroutine
-    def attachment(self, attname, *, auth=None):
+    def att(self, attname, *, auth=None):
         """Returns :class:`~aiocouchdb.attachment.Attachment` instance against
         specified attachment.
 
@@ -60,9 +60,6 @@ class Document(object):
             yield from resp.maybe_raise_error()
         yield from resp.read()
         return att
-
-    #: alias for :meth:`aiocouchdb.document.Document.attachment`
-    att = attachment
 
     @asyncio.coroutine
     def exists(self, rev=None, *, auth=None):

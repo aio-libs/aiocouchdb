@@ -61,7 +61,7 @@ class Database(object):
         return self._dbname
 
     @asyncio.coroutine
-    def document(self, docid=None, *, auth=None, idfun=uuid.uuid4):
+    def doc(self, docid=None, *, auth=None, idfun=uuid.uuid4):
         """Returns :class:`~aiocouchdb.document.Document` instance against
         specified document ID.
 
@@ -89,11 +89,8 @@ class Database(object):
         yield from resp.read()
         return doc
 
-    #: alias for :meth:`aiocouchdb.database.Database.document`
-    doc = document
-
     @asyncio.coroutine
-    def design_document(self, docid, *, auth=None):
+    def ddoc(self, docid, *, auth=None):
         """Returns :class:`~aiocouchdb.designdoc.DesignDocument` instance
         against specified document ID. This ID may startswith with ``_design/``
         prefix and if it's not prefix will be added automatically.
@@ -115,9 +112,6 @@ class Database(object):
             yield from resp.maybe_raise_error()
         yield from resp.read()
         return ddoc
-
-    #: alias for :meth:`aiocouchdb.database.Database.design_document`
-    ddoc = design_document
 
     @asyncio.coroutine
     def exists(self, *, auth=None):

@@ -64,7 +64,6 @@ class DesignDocTestCase(utils.TestCase):
 
     def test_access_to_document_api(self):
         self.assertIsInstance(self.ddoc.doc, aiocouchdb.document.Document)
-        self.assertIsInstance(self.ddoc.document, aiocouchdb.document.Document)
 
     def test_access_to_custom_document_api(self):
         class CustomDoc(object):
@@ -72,7 +71,6 @@ class DesignDocTestCase(utils.TestCase):
                 pass
         ddoc = aiocouchdb.designdoc.DesignDocument('', document_class=CustomDoc)
         self.assertIsInstance(ddoc.doc, CustomDoc)
-        self.assertIsInstance(ddoc.document, CustomDoc)
 
     def test_info(self):
         resp = self.mock_json_response(data=b'{}')

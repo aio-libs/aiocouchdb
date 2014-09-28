@@ -40,18 +40,18 @@ class DesignDocument(object):
     @property
     def id(self):
         """Returns a document id specified in class constructor."""
-        return self.document.id
+        return self.doc.id
 
     @property
     def name(self):
         """Returns a document id specified in class constructor."""
-        docid = self.document.id
+        docid = self.doc.id
         if docid is not None and '/' in docid:
             return docid.split('/', 1)[1]
         return None
 
     @property
-    def document(self):
+    def doc(self):
         """Returns :class:`~aiocouchdb.designdoc.DesignDocument.document_class`
         instance to operate with design document as with regular CouchDB
         document.
@@ -59,9 +59,6 @@ class DesignDocument(object):
         :rtype: :class:`~aiocouchdb.document.Document`
         """
         return self._document
-
-    #: alias for :meth:`aiocouchdb.designdoc.DesignDocument.document`
-    doc = document
 
     @asyncio.coroutine
     def info(self, *, auth=None):

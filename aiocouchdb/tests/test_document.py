@@ -102,7 +102,7 @@ class DocumentTestCase(utils.TestCase):
         resp = self.mock_json_response()
         self.request.return_value = self.future(resp)
 
-        result = self.run_loop(self.doc.attachment('attname'))
+        result = self.run_loop(self.doc.att('attname'))
         self.assert_request_called_with('HEAD', 'db', 'docid', 'attname')
         self.assertIsInstance(result, self.doc.attachment_class)
 

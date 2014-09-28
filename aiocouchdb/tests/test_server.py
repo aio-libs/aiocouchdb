@@ -62,7 +62,7 @@ class ServerTestCase(utils.TestCase):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)
 
-        result = self.run_loop(self.server.database('db'))
+        result = self.run_loop(self.server.db('db'))
         self.assert_request_called_with('HEAD', 'db')
         self.assertIsInstance(result, self.server.database_class)
 
@@ -76,7 +76,7 @@ class ServerTestCase(utils.TestCase):
         resp = self.mock_json_response(data=b'{}')
         self.request.return_value = self.future(resp)
 
-        result = self.run_loop(server.database('db'))
+        result = self.run_loop(server.db('db'))
         self.assert_request_called_with('HEAD', 'db')
         self.assertIsInstance(result, CustomDatabase)
         self.assertIsInstance(result.resource, aiocouchdb.client.Resource)

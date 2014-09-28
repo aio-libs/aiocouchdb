@@ -35,7 +35,7 @@ class Server(object):
         return self.database_class(self.resource(dbname), dbname=dbname)
 
     @asyncio.coroutine
-    def database(self, dbname, *, auth=None):
+    def db(self, dbname, *, auth=None):
         """Returns :class:`~aiocouchdb.database.Database` instance against
         specified database name.
 
@@ -54,9 +54,6 @@ class Server(object):
             yield from resp.maybe_raise_error()
         yield from resp.read()
         return db
-
-    #: alias for :meth:`aiocouchdb.server.Server.database`
-    db = database
 
     @asyncio.coroutine
     def info(self, *, auth=None):

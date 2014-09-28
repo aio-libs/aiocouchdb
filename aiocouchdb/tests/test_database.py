@@ -282,7 +282,7 @@ class DatabaseTestCase(utils.TestCase):
         resp = self.mock_json_response()
         self.request.return_value = self.future(resp)
 
-        result = self.run_loop(self.db.document('docid'))
+        result = self.run_loop(self.db.doc('docid'))
         self.assert_request_called_with('HEAD', 'db', 'docid')
         self.assertIsInstance(result, self.db.document_class)
 
@@ -307,7 +307,7 @@ class DatabaseTestCase(utils.TestCase):
         resp = self.mock_json_response()
         self.request.return_value = self.future(resp)
 
-        result = self.run_loop(self.db.document(idfun=custom_id))
+        result = self.run_loop(self.db.doc(idfun=custom_id))
         self.assert_request_called_with('HEAD', 'db', 'foo')
         self.assertIsInstance(result, self.db.document_class)
 
@@ -315,7 +315,7 @@ class DatabaseTestCase(utils.TestCase):
         resp = self.mock_json_response()
         self.request.return_value = self.future(resp)
 
-        result = self.run_loop(self.db.document())
+        result = self.run_loop(self.db.doc())
         call_args, _ = self.request.call_args
         docid = call_args[-1].rsplit('/', 1)[-1]
         self.assertRegex(docid, '[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}')
@@ -326,7 +326,7 @@ class DatabaseTestCase(utils.TestCase):
         resp = self.mock_json_response()
         self.request.return_value = self.future(resp)
 
-        result = self.run_loop(self.db.design_document('ddoc'))
+        result = self.run_loop(self.db.ddoc('ddoc'))
         self.assert_request_called_with('HEAD', 'db', '_design', 'ddoc')
         self.assertIsInstance(result, self.db.design_document_class)
 
