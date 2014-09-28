@@ -19,7 +19,7 @@ install:
 check:
 	${NOSE} --with-doctest aiocouchdb
 
-cover: test
+cover:
 	${NOSE} --with-coverage --cover-html --cover-erase --cover-package=aiocouchdb
 
 docs:
