@@ -99,6 +99,20 @@ class Document(object):
         return resp.status != 304
 
     @asyncio.coroutine
+    def rev(self, *, auth=None):
+        """Returns current document revision by using `HEAD request`_.
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: str
+
+        .. _HEAD request: http://docs.couchdb.org/en/latest/api/document/common.html#head--db-docid
+        """
+        resp = yield from self.resource.head(auth=auth)
+        yield from resp.maybe_raise_error()
+        return resp.headers['ETAG'].strip('"')
+
+    @asyncio.coroutine
     def get(self, rev=None, *,
             auth=None,
             att_encoding_info=None,
