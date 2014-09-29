@@ -12,7 +12,7 @@ import json
 import uuid
 
 from .client import Resource
-from .document import Document
+from .document import Document, UserDocument
 from .designdoc import DesignDocument
 from .feeds import (
     ChangesFeed, LongPollChangesFeed,
@@ -652,3 +652,20 @@ class Security(object):
             'roles': [] if roles is None else roles
         }
         return self.update(auth=auth, members=members, merge=merge)
+
+
+class AuthDatabase(Database):
+    """Represents system authentication database.
+    Used via :attr:`aiocouchdb.server.Server.authdb`."""
+
+    document_class = UserDocument
+
+    def __getitem__(self, docid):
+        if docid.startswith('_design/'):
+            resource = self.resource(*docid.split('/', 1))
+            return self.design_document_class(resource, docid=docid)
+        elif docid.startswith(self.document_class.doc_prefix):
+            return self.document_class(self.resource(docid), docid=docid)
+        else:
+            docid = self.document_class.doc_prefix + docid
+            return self.document_class(self.resource(docid), docid=docid)

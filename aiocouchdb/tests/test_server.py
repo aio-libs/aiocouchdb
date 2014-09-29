@@ -55,6 +55,26 @@ class ServerTestCase(utils.TestCase):
         self.assertIsInstance(result, list)
         self.assert_request_called_with('GET', '_all_dbs')
 
+    def test_authdb(self):
+        db = self.server.authdb
+        self.assertFalse(self.request.called)
+        self.assertIsInstance(db, self.server.authdb_class)
+
+    def test_authdb_custom_class(self):
+        class CustomDatabase(object):
+            def __init__(self, thing, **kwargs):
+                self.resource = thing
+        server = aiocouchdb.server.Server(authdb_class=CustomDatabase)
+        db = server.authdb
+        self.assertFalse(self.request.called)
+        self.assertIsInstance(db, server.authdb_class)
+
+    def test_authdb_name(self):
+        self.assertEqual(self.server.authdb.name, '_users')
+
+        server = aiocouchdb.server.Server(authdb_name='_authdb')
+        self.assertEqual(server.authdb.name, '_authdb')
+
     def test_contig(self):
         self.assertIsInstance(self.server.config, aiocouchdb.server.Config)
 

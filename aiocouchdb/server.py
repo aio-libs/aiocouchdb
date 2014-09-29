@@ -11,7 +11,7 @@ import asyncio
 
 from .authn import CookieAuthProvider
 from .client import Resource
-from .database import Database
+from .database import Database, AuthDatabase
 from .feeds import EventSourceFeed, JsonFeed
 
 
@@ -21,18 +21,38 @@ class Server(object):
     #: Default :class:`~aiocouchdb.database.Database` instance class
     database_class = Database
 
+    #: Authentication database name
+    authdb_name = '_users'
+
+    #: Authentication database class
+    authdb_class = AuthDatabase
+
     def __init__(self, url_or_resource='http://localhost:5984', *,
+                 authdb_class=None,
+                 authdb_name=None,
                  database_class=None):
+        if authdb_class is not None:
+            self.authdb_class = authdb_class
+        if authdb_name is not None:
+            self.authdb_name = authdb_name
         if database_class is not None:
             self.database_class = database_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
-        self._session = Session(self.resource)
+        self._authdb = self.authdb_class(self.resource(self.authdb_name),
+                                         dbname=self.authdb_name)
         self._config = Config(self.resource)
+        self._session = Session(self.resource)
 
     def __getitem__(self, dbname):
         return self.database_class(self.resource(dbname), dbname=dbname)
+
+    @property
+    def authdb(self):
+        """Proxy to the :class:`authentication database
+        <aiocouchdb.database.AuthDatabase>` instance."""
+        return self._authdb
 
     @asyncio.coroutine
     def db(self, dbname, *, auth=None):

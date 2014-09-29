@@ -404,6 +404,57 @@ class Document(object):
         return (yield from resp.json())
 
 
+class UserDocument(Document):
+    """Represents user document for the :class:`authentication database
+    <aiocouchdb.database.AuthDatabase>`."""
+
+    doc_prefix = 'org.couchdb.user:'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self._docid is None:
+            raise ValueError('docid must be specified for User documents.')
+
+    @property
+    def name(self):
+        """Returns username."""
+        return self.id.split(self.doc_prefix, 1)[-1]
+
+    @asyncio.coroutine
+    def register(self, password, *, auth=None, **additional_data):
+        """Helper method over :meth:`aiocouchdb.document.Document.update`
+        to change a user password.
+
+        :param str password: User's password
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        data = {
+            '_id': self.id,
+            'name': self.name,
+            'password': password,
+            'roles': [],
+            'type': 'user'
+        }
+        data.update(additional_data)
+        return (yield from self.update(data, auth=auth))
+
+    @asyncio.coroutine
+    def update_password(self, password, *, auth=None):
+        """Helper method over :meth:`aiocouchdb.document.Document.update`
+        to change a user password.
+
+        :param str password: New password
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: dict
+        """
+        data = yield from self.get(auth=auth)
+        data['password'] = password
+        return (yield from self.update(data, auth=auth))
+
+
 class DocAttachmentsMultipartReader(MultipartBodyReader):
     """Special multipart reader optimized for requesting single document with
     attachments. Matches output with :class:`OpenRevsMultipartReader`."""

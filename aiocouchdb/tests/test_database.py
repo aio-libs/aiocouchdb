@@ -653,3 +653,18 @@ class DatabaseTestCase(utils.TestCase):
 
         self.run_loop(self.db.view_cleanup())
         self.assert_request_called_with('POST', 'db', '_view_cleanup')
+
+
+class AuthDatabaseTestCase(utils.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.url_db = urljoin(self.url, '_users')
+        self.db = aiocouchdb.database.AuthDatabase(self.url_db)
+
+    def test_get_doc_with_prefix(self):
+        doc = self.db['test']
+        self.assertEqual(doc.id, self.db.document_class.doc_prefix + 'test')
+
+        doc = self.db[self.db.document_class.doc_prefix + 'test']
+        self.assertEqual(doc.id, self.db.document_class.doc_prefix + 'test')
