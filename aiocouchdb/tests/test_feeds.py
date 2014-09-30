@@ -46,27 +46,10 @@ class FeedTestCase(utils.TestCase):
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
-    def test_read_json_chunks(self):
-        resp = self.mock_response(data=[b'{"foo": true}\r\n',
-                                        b'{"bar": null}\r\n'])
-
-        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
-        self.assertTrue(feed.is_active())
-
-        result = self.run_loop(feed.next())
-        self.assertEqual({'foo': True}, result)
-
-        result = self.run_loop(feed.next())
-        self.assertEqual({'bar': None}, result)
-
-        result = self.run_loop(feed.next())
-        self.assertEqual(None, result)
-        self.assertFalse(feed.is_active())
-
     def test_read_empty_json_feed(self):
         resp = self.mock_response()
 
-        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.run_loop(feed.next())
@@ -77,7 +60,7 @@ class FeedTestCase(utils.TestCase):
     def test_calling_inactive_feed_returns_none(self):
         resp = self.mock_response()
 
-        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         self.run_loop(feed.next())
@@ -90,7 +73,7 @@ class FeedTestCase(utils.TestCase):
     def test_close_resp_on_feed_end(self):
         resp = self.mock_response()
 
-        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         self.run_loop(feed.next())
@@ -101,7 +84,7 @@ class FeedTestCase(utils.TestCase):
     def test_force_close_resp_on_error(self):
         resp = self.mock_response(err=ValueError)
 
-        feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
+        feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         self.assertRaises(ValueError,
@@ -115,16 +98,21 @@ class FeedTestCase(utils.TestCase):
 class JsonFeedTestCase(utils.TestCase):
 
     def test_read_json_chunks(self):
-        resp = self.mock_response(data=[b'"foo"\r\n', b'{"bar": "baz"}\r\n'])
+        resp = self.mock_response(data=[b'{"foo": true}\r\n',
+                                        b'"foo"\r\n',
+                                        b'{"bar": null}\r\n'])
 
         feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
         result = self.run_loop(feed.next())
+        self.assertEqual({'foo': True}, result)
+
+        result = self.run_loop(feed.next())
         self.assertEqual('foo', result)
 
         result = self.run_loop(feed.next())
-        self.assertEqual({'bar': 'baz'}, result)
+        self.assertEqual({'bar': None}, result)
 
         result = self.run_loop(feed.next())
         self.assertEqual(None, result)
