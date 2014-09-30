@@ -120,14 +120,21 @@ class Server(object):
         return self._config
 
     @asyncio.coroutine
-    def db_updates(self, *, feed=None, timeout=None, heartbeat=None, auth=None):
+    def db_updates(self, *,
+                   auth=None,
+                   feed_buffer_size=None,
+                   feed=None,
+                   timeout=None,
+                   heartbeat=None):
         """Emits :ref:`databases events <api/server/db_updates>` for
         the related server instance.
+
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param int feed_buffer_size: Internal buffer size for fetched feed items
 
         :param str feed: Feed type
         :param int timeout: Timeout in milliseconds
         :param bool heartbeat: Whenever use heartbeats to keep connection alive
-        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
         Depending on feed type returns:
 
@@ -146,9 +153,9 @@ class Server(object):
                                             auth=auth, params=params)
         yield from resp.maybe_raise_error()
         if feed == 'continuous':
-            return JsonFeed(resp)
+            return JsonFeed(resp, buffer_size=feed_buffer_size)
         elif feed == 'eventsource':
-            return EventSourceFeed(resp)
+            return EventSourceFeed(resp, buffer_size=feed_buffer_size)
         else:
             return (yield from resp.json())
 

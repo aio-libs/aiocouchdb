@@ -94,6 +94,34 @@ class FeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
         resp.close.assert_called_with(force=True)
 
+    def test_buffer_workflow(self):
+        resp = self.mock_response(data=[b'foo\r\n', b'bar\r\n',
+                                        b'baz\r\n', b'boo\r\n'])
+
+        buf_size = 2
+        feed = aiocouchdb.feeds.Feed(resp, buffer_size=buf_size, loop=self.loop)
+        self.assertTrue(feed.is_active())
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(feed._queue.qsize(), buf_size)
+        self.assertEqual(b'foo\r\n', result)
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(feed._queue.qsize(), buf_size)
+        self.assertEqual(b'bar\r\n', result)
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(feed._queue.qsize(), buf_size - 1)
+        self.assertEqual(b'baz\r\n', result)
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(feed._queue.qsize(), 0)
+        self.assertEqual(b'boo\r\n', result)
+
+        result = self.run_loop(feed.next())
+        self.assertEqual(None, result)
+        self.assertFalse(feed.is_active())
+
 
 class JsonFeedTestCase(utils.TestCase):
 

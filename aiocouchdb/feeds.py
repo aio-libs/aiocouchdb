@@ -16,25 +16,32 @@ class Feed(object):
     """Wrapper over :class:`HttpResponse` content to stream continuous response
     by emitted chunks."""
 
-    def __init__(self, resp, *, loop=None):
-        self._queue = asyncio.Queue(loop=loop)
+    #: Limits amount of items feed would fetch and keep for further iteration.
+    buffer_size = 1024  # fairly chosen by random dice roll
+
+    def __init__(self, resp, *, loop=None, buffer_size=buffer_size):
         self._active = True
+        self._exc = None
+        self._queue = asyncio.Queue(maxsize=buffer_size or self.buffer_size,
+                                    loop=loop)
         self._resp = resp
+
         ctype = resp.headers.get('CONTENT-TYPE', '').lower()
         *_, params = parse_mimetype(ctype)
         self._encoding = params.get('charset', 'utf-8')
+
         asyncio.Task(self._loop(), loop=loop)
 
     @asyncio.coroutine
     def _loop(self):
         try:
-            while not self._resp.content.at_eof():
+            while not self._resp.content.at_eof() and self._active:
                 chunk = yield from self._resp.content.read()
                 if not chunk or chunk == b'\n':  # ignore heartbeats
                     continue
-                self._queue.put_nowait(chunk)
+                yield from self._queue.put(chunk)
         except Exception as exc:
-            self._queue.put_nowait(exc)
+            self._exc = exc
             self.close(True)
         else:
             self.close()
@@ -46,11 +53,10 @@ class Feed(object):
         :rtype: bytearray
         """
         if not self.is_active():
+            if self._exc is not None:
+                raise self._exc from None
             return None
         chunk = yield from self._queue.get()
-        if isinstance(chunk, BaseException):
-            yield from self._queue.get()
-            raise chunk from None
         return chunk
 
     def is_active(self):
@@ -61,13 +67,13 @@ class Feed(object):
         return self._active or not self._queue.empty()
 
     def close(self, force=False):
-        """Closes feed and the related request connection.
+        """Closes feed and the related request connection. Closing feed doesnt
+        means that all
 
         :param bool force: In case of True, close connection instead of release.
                            See :meth:`aiohttp.client.ClientResponse.close` for
                            the details
         """
-        self._queue.put_nowait(None)
         self._active = False
         self._resp.close(force=force)
 

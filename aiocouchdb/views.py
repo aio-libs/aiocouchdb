@@ -19,10 +19,15 @@ class View(object):
         self.resource = resource
 
     @asyncio.coroutine
-    def request(self, *, auth=None, data=None, params=None):
+    def request(self, *,
+                auth=None,
+                feed_buffer_size=None,
+                data=None,
+                params=None):
         """Requests a view associated with the owned resource.
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param int feed_buffer_size: Internal buffer size for fetched feed items
         :param dict data: View request payload
         :param dict params: View request query parameters
 
@@ -39,7 +44,7 @@ class View(object):
 
         resp = yield from request(auth=auth, data=data, params=params)
         yield from resp.maybe_raise_error()
-        return ViewFeed(resp)
+        return ViewFeed(resp, buffer_size=feed_buffer_size)
 
     @staticmethod
     def prepare_params(params):

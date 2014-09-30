@@ -175,6 +175,7 @@ class Database(object):
     @asyncio.coroutine
     def all_docs(self, *keys,
                  auth=None,
+                 feed_buffer_size=None,
                  att_encoding_info=None,
                  attachments=None,
                  conflicts=None,
@@ -196,6 +197,7 @@ class Database(object):
                          amount of ``keys``
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param int feed_buffer_size: Internal buffer size for fetched feed items
 
         :param bool att_encoding_info: Includes encoding information in an
                                        attachment stubs
@@ -225,10 +227,12 @@ class Database(object):
         :rtype: :class:`aiocouchdb.feeds.ViewFeed`
         """
         params = locals()
-        for key in ('self', 'auth'):
+        for key in ('self', 'auth', 'feed_buffer_size'):
             params.pop(key)
         view = self.view_class(self.resource('_all_docs'))
-        return (yield from view.request(auth=auth, params=params))
+        return (yield from view.request(auth=auth,
+                                        feed_buffer_size=feed_buffer_size,
+                                        params=params))
 
     def bulk_docs(self, docs, *, auth=None, all_or_nothing=None,
                   new_edits=None):
@@ -265,6 +269,7 @@ class Database(object):
 
     def changes(self, *doc_ids,
                 auth=None,
+                feed_buffer_size=None,
                 att_encoding_info=None,
                 attachments=None,
                 conflicts=None,
@@ -287,6 +292,7 @@ class Database(object):
                             value.
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param int feed_buffer_size: Internal buffer size for fetched feed items
 
         :param bool att_encoding_info: Includes encoding information in an
                                        attachment stubs
@@ -352,13 +358,13 @@ class Database(object):
         yield from resp.maybe_raise_error()
 
         if feed == 'continuous':
-            return ContinuousChangesFeed(resp)
+            return ContinuousChangesFeed(resp, buffer_size=feed_buffer_size)
         elif feed == 'eventsource':
-            return EventSourceChangesFeed(resp)
+            return EventSourceChangesFeed(resp, buffer_size=feed_buffer_size)
         elif feed == 'longpoll':
-            return LongPollChangesFeed(resp)
+            return LongPollChangesFeed(resp, buffer_size=feed_buffer_size)
         else:
-            return ChangesFeed(resp)
+            return ChangesFeed(resp, buffer_size=feed_buffer_size)
 
     @asyncio.coroutine
     def compact(self, ddoc_name=None, *, auth=None):
@@ -466,6 +472,7 @@ class Database(object):
     @asyncio.coroutine
     def temp_view(self, map_fun, red_fun=None, language=None, *,
                   auth=None,
+                  feed_buffer_size=None,
                   att_encoding_info=None,
                   attachments=None,
                   conflicts=None,
@@ -492,6 +499,7 @@ class Database(object):
         :param str language: Query server language to process the view
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param int feed_buffer_size: Internal buffer size for fetched feed items
 
         :param bool att_encoding_info: Includes encoding information in an
                                        attachment stubs
@@ -527,7 +535,8 @@ class Database(object):
         :rtype: :class:`aiocouchdb.feeds.ViewFeed`
         """
         params = locals()
-        for key in ('self', 'auth', 'map_fun', 'red_fun', 'language'):
+        for key in ('self', 'auth', 'map_fun', 'red_fun', 'language',
+                    'feed_buffer_size'):
             params.pop(key)
 
         data = {'map': map_fun}
@@ -537,7 +546,10 @@ class Database(object):
             data['language'] = language
 
         view = self.view_class(self.resource('_temp_view'))
-        return (yield from view.request(auth=auth, data=data, params=params))
+        return (yield from view.request(auth=auth,
+                                        feed_buffer_size=feed_buffer_size,
+                                        data=data,
+                                        params=params))
 
     @asyncio.coroutine
     def view_cleanup(self, *, auth=None):

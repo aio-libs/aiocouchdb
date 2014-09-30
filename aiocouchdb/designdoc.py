@@ -241,6 +241,7 @@ class DesignDocument(object):
     @asyncio.coroutine
     def view(self, view_name, *keys,
              auth=None,
+             feed_buffer_size=None,
              att_encoding_info=None,
              attachments=None,
              conflicts=None,
@@ -267,6 +268,7 @@ class DesignDocument(object):
                          amount of ``keys``
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param int feed_buffer_size: Internal buffer size for fetched feed items
 
         :param bool att_encoding_info: Includes encoding information in an
                                        attachment stubs
@@ -301,8 +303,10 @@ class DesignDocument(object):
         :rtype: :class:`aiocouchdb.feeds.ViewFeed`
         """
         params = locals()
-        for key in ('self', 'auth', 'view_name'):
+        for key in ('self', 'auth', 'feed_buffer_size', 'view_name'):
             params.pop(key)
 
         view = self.view_class(self.resource('_view', view_name))
-        return (yield from view.request(auth=auth, params=params))
+        return (yield from view.request(auth=auth,
+                                        feed_buffer_size=feed_buffer_size,
+                                        params=params))
