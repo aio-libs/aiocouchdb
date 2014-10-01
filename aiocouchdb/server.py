@@ -9,9 +9,10 @@
 
 import asyncio
 
+from .authdb import AuthDatabase
 from .authn import CookieAuthProvider
 from .client import Resource
-from .database import Database, AuthDatabase
+from .database import Database
 from .feeds import EventSourceFeed, JsonFeed
 
 
