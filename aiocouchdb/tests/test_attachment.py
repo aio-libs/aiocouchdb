@@ -22,8 +22,11 @@ class AttachmentTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.url_att = urljoin(self.url, 'db', 'docid', 'att')
+        self.url_att = urljoin(self.url, *self.request_path())
         self.att = aiocouchdb.attachment.Attachment(self.url_att)
+
+    def request_path(self, *parts):
+        return ['db', 'docid', 'att'] + list(parts)
 
     def test_init_with_url(self):
         self.assertIsInstance(self.att.resource, aiocouchdb.client.Resource)
@@ -40,78 +43,58 @@ class AttachmentTestCase(utils.TestCase):
         self.assertEqual(db.name, 'foo')
 
     def test_init_with_name_from_doc(self):
-        self.request.return_value = self.future(self.mock_json_response())
-
         doc = aiocouchdb.document.Document(self.url)
         att = self.run_loop(doc.att('bar.txt'))
         self.assertEqual(att.name, 'bar.txt')
 
     def test_exists(self):
-        resp = self.mock_json_response()
-        self.request.return_value = self.future(resp)
-
         result = self.run_loop(self.att.exists())
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att')
+        self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
 
     def test_exists_rev(self):
-        resp = self.mock_json_response()
-        self.request.return_value = self.future(resp)
-
         result = self.run_loop(self.att.exists('1-ABC'))
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att',
+        self.assert_request_called_with('HEAD', *self.request_path(),
                                         params={'rev': '1-ABC'})
         self.assertTrue(result)
 
     def test_exists_forbidden(self):
-        resp = self.mock_json_response()
-        resp.status = 403
-        self.request.return_value = self.future(resp)
+        self.mock_json_response(status=403)
 
         result = self.run_loop(self.att.exists())
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att')
+        self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_exists_not_found(self):
-        resp = self.mock_json_response()
-        resp.status = 404
-        self.request.return_value = self.future(resp)
+        self.mock_json_response(status=404)
 
         result = self.run_loop(self.att.exists())
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att')
+        self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_modified(self):
-        resp = self.mock_json_response()
-        self.request.return_value = self.future(resp)
-
         digest = hashlib.md5(b'foo').digest()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
         result = self.run_loop(self.att.modified(digest))
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att',
+        self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertTrue(result)
 
     def test_not_modified(self):
-        resp = self.mock_json_response()
-        resp.status = 304
-        self.request.return_value = self.future(resp)
+        self.mock_json_response(status=304)
 
         digest = hashlib.md5(b'foo').digest()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
         result = self.run_loop(self.att.modified(digest))
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att',
+        self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertFalse(result)
 
     def test_modified_with_base64_digest(self):
-        resp = self.mock_json_response()
-        self.request.return_value = self.future(resp)
-
         digest = base64.b64encode(hashlib.md5(b'foo').digest()).decode()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
         result = self.run_loop(self.att.modified(digest))
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att',
+        self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertTrue(result)
 
@@ -121,114 +104,89 @@ class AttachmentTestCase(utils.TestCase):
         self.assertRaises(ValueError, self.run_loop, self.att.modified('bar'))
 
     def test_accepts_range(self):
-        resp = self.mock_json_response()
-        resp.headers['ACCEPT_RANGE'] = 'bytes'
-        self.request.return_value = self.future(resp)
+        self.mock_json_response(headers={
+            'ACCEPT_RANGE': 'bytes'
+        })
 
         result = self.run_loop(self.att.accepts_range())
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att')
+        self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
 
     def test_accepts_range_not(self):
-        self.request.return_value = self.future(self.mock_json_response())
-
         result = self.run_loop(self.att.accepts_range())
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att')
+        self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_accepts_range_with_rev(self):
-        self.request.return_value = self.future(self.mock_json_response())
-
         result = self.run_loop(self.att.accepts_range(rev='1-ABC'))
-        self.assert_request_called_with('HEAD', 'db', 'docid', 'att',
+        self.assert_request_called_with('HEAD', *self.request_path(),
                                         params={'rev': '1-ABC'})
         self.assertFalse(result)
 
     def test_get(self):
-        self.request.return_value = self.future(self.mock_response())
-
         result = self.run_loop(self.att.get())
-        self.assert_request_called_with('GET', 'db', 'docid', 'att')
+        self.assert_request_called_with('GET', *self.request_path())
         self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
 
     def test_get_rev(self):
-        self.request.return_value = self.future(self.mock_response())
-
         result = self.run_loop(self.att.get('1-ABC'))
-        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+        self.assert_request_called_with('GET', *self.request_path(),
                                         params={'rev': '1-ABC'})
         self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
 
     def test_get_range(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.get(range=slice(24, 42)))
-        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+        self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=24-42'})
 
     def test_get_range_from_start(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.get(range=slice(42)))
-        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+        self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=0-42'})
 
     def test_get_range_iterable(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.get(range=[11, 22]))
-        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+        self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=11-22'})
 
     def test_get_range_int(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.get(range=42))
-        self.assert_request_called_with('GET', 'db', 'docid', 'att',
+        self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=0-42'})
 
     def test_update(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.update(io.BytesIO(b'')))
         self.assert_request_called_with(
-            'PUT', 'db', 'docid', 'att',
+            'PUT', *self.request_path(),
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'application/octet-stream'})
 
     def test_update_ctype(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.update(io.BytesIO(b''), content_type='foo/bar'))
         self.assert_request_called_with(
-            'PUT', 'db', 'docid', 'att',
+            'PUT', *self.request_path(),
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'foo/bar'})
 
     def test_update_with_encoding(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.update(io.BytesIO(b''), content_encoding='gzip'))
         self.assert_request_called_with(
-            'PUT', 'db', 'docid', 'att',
+            'PUT', *self.request_path(),
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'application/octet-stream',
                      'CONTENT-ENCODING': 'gzip'})
 
     def test_update_rev(self):
-        self.request.return_value = self.future(self.mock_response())
-
         self.run_loop(self.att.update(io.BytesIO(b''), rev='1-ABC'))
         self.assert_request_called_with(
-            'PUT', 'db', 'docid', 'att',
+            'PUT', *self.request_path(),
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'application/octet-stream'},
             params={'rev': '1-ABC'})
 
     def test_remove(self):
-        self.request.return_value = self.future(self.mock_response())
         self.run_loop(self.att.remove('1-ABC'))
-        self.assert_request_called_with('DELETE', 'db', 'docid', 'att',
+        self.assert_request_called_with('DELETE', *self.request_path(),
                                         params={'rev': '1-ABC'})
 
 

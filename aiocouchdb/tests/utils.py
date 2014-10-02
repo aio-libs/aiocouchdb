@@ -26,6 +26,7 @@ class TestCase(unittest.TestCase):
 
         self.patch = mock.patch('aiohttp.request')
         self.request = self.patch.start()
+        self.mock_json_response()
 
     def tearDown(self):
         self.patch.stop()
@@ -60,6 +61,7 @@ class TestCase(unittest.TestCase):
         resp.content.at_eof.return_value = False
         resp.content.read.side_effect = side_effect
         resp.close = mock.Mock()
+        self.request.return_value = self.future(resp)
         return resp
 
     def mock_json_response(self, status=200, headers=None, data=b''):

@@ -44,8 +44,6 @@ class UserDocumentTestCase(utils.TestCase):
         self.assertEqual(self.doc.name, 'username')
 
     def test_register(self):
-        self.request.return_value = self.future(self.mock_json_response())
-
         self.run_loop(self.doc.register('s3cr1t'))
         self.assert_request_called_with(
             'PUT', '_users', self.doc.id,
@@ -58,8 +56,6 @@ class UserDocumentTestCase(utils.TestCase):
             })
 
     def test_register_with_additional_data(self):
-        self.request.return_value = self.future(self.mock_json_response())
-
         self.run_loop(self.doc.register('s3cr1t', email='user@example.com'))
         self.assert_request_called_with(
             'PUT', '_users', self.doc.id,
@@ -73,8 +69,7 @@ class UserDocumentTestCase(utils.TestCase):
             })
 
     def test_change_password(self):
-        self.request.return_value = self.future(
-            self.mock_json_response(data=b'{"existed": "field"}'))
+        self.mock_json_response(data=b'{"existed": "field"}')
 
         self.run_loop(self.doc.update_password('s3cr1t'))
         self.assert_request_called_with(
