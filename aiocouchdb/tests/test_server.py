@@ -72,7 +72,7 @@ class ServerTestCase(utils.TestCase):
         server = aiocouchdb.server.Server(authdb_name='_authdb')
         self.assertEqual(server.authdb.name, '_authdb')
 
-    def test_contig(self):
+    def test_config(self):
         self.assertIsInstance(self.server.config, aiocouchdb.server.Config)
 
     def test_database(self):
