@@ -17,7 +17,7 @@ class Feed(object):
     by emitted chunks."""
 
     #: Limits amount of items feed would fetch and keep for further iteration.
-    buffer_size = 1024  # fairly chosen by random dice roll
+    buffer_size = 0
 
     def __init__(self, resp, *, loop=None, buffer_size=buffer_size):
         self._active = True
