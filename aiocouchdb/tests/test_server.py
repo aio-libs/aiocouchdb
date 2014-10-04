@@ -17,7 +17,6 @@ import aiocouchdb.tests.utils as utils
 
 
 class ServerTestCase(utils.TestCase):
-
     def setUp(self):
         super().setUp()
         self.server = aiocouchdb.server.Server(self.url)
@@ -61,6 +60,7 @@ class ServerTestCase(utils.TestCase):
         class CustomDatabase(object):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
+
         server = aiocouchdb.server.Server(authdb_class=CustomDatabase)
         db = server.authdb
         self.assertFalse(self.request.called)
@@ -84,6 +84,7 @@ class ServerTestCase(utils.TestCase):
         class CustomDatabase(object):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
+
         server = aiocouchdb.server.Server(self.url,
                                           database_class=CustomDatabase)
 
@@ -201,7 +202,6 @@ class ServerTestCase(utils.TestCase):
 
 
 class ServerConfigFunctionalTestCase(utils.TestCase):
-
     def setUp(self):
         super().setUp()
         self.server = aiocouchdb.server.Server(self.url)
@@ -230,14 +230,13 @@ class ServerConfigFunctionalTestCase(utils.TestCase):
     def test_config_del_option(self):
         self.mock_response(data=b'"passed"')
 
-        result = self.run_loop(self.server.config.remove('test', 'aiocouchdb'))
+        result = self.run_loop(self.server.config.delete('test', 'aiocouchdb'))
         self.assertIsInstance(result, str)
         self.assert_request_called_with('DELETE',
                                         '_config', 'test', 'aiocouchdb')
 
 
 class SessionTestCase(utils.TestCase):
-
     def setUp(self):
         super().setUp()
         self.server = aiocouchdb.server.Server(self.url)

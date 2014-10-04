@@ -164,7 +164,7 @@ class Attachment(object):
         return (yield from resp.json())
 
     @asyncio.coroutine
-    def remove(self, rev, *, auth=None):
+    def delete(self, rev, *, auth=None):
         """`Deletes an attachment`_.
 
         :param str rev: Document revision

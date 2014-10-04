@@ -328,7 +328,7 @@ class Document(object):
         return (yield from resp.json())
 
     @asyncio.coroutine
-    def remove(self, rev, *, auth=None, preserve_content=None):
+    def delete(self, rev, *, auth=None, preserve_content=None):
         """`Deletes a document`_ from server.
 
         By default document will be deleted using `DELETE` HTTP method.

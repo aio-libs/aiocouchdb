@@ -17,7 +17,6 @@ from .test_multipart import Stream
 
 
 class DocumentTestCase(utils.TestCase):
-
     def setUp(self):
         super().setUp()
         self.url_doc = urljoin(self.url, *self.request_path())
@@ -95,6 +94,7 @@ class DocumentTestCase(utils.TestCase):
         class CustomAttachment(object):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
+
         doc = aiocouchdb.document.Document(self.url_doc,
                                            attachment_class=CustomAttachment)
 
@@ -106,7 +106,8 @@ class DocumentTestCase(utils.TestCase):
     def test_attachment_get_item(self):
         att = self.doc['attname']
         with self.assertRaises(AssertionError):
-            self.assert_request_called_with('HEAD', *self.request_path('attname'))
+            self.assert_request_called_with('HEAD',
+                                            *self.request_path('attname'))
         self.assertIsInstance(att, self.doc.attachment_class)
 
     def test_rev(self):
@@ -209,7 +210,8 @@ class DocumentTestCase(utils.TestCase):
             params={'attachments': True})
         self.assertIsInstance(
             result,
-            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
+            aiocouchdb.document.DocAttachmentsMultipartReader
+            .response_wrapper_cls)
         self.assertIsInstance(
             result.stream,
             aiocouchdb.document.DocAttachmentsMultipartReader)
@@ -226,7 +228,8 @@ class DocumentTestCase(utils.TestCase):
             params={'attachments': True})
         self.assertIsInstance(
             result,
-            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
+            aiocouchdb.document.DocAttachmentsMultipartReader
+            .response_wrapper_cls)
         self.assertIsInstance(
             result.stream,
             aiocouchdb.document.DocAttachmentsMultipartReader)
@@ -311,16 +314,16 @@ class DocumentTestCase(utils.TestCase):
                           self.run_loop,
                           self.doc.update({'_id': 'foo'}))
 
-    def test_remove(self):
-        self.run_loop(self.doc.remove('1-ABC'))
+    def test_delete(self):
+        self.run_loop(self.doc.delete('1-ABC'))
         self.assert_request_called_with('DELETE', *self.request_path(),
                                         params={'rev': '1-ABC'})
 
-    def test_remove_preserve_content(self):
+    def test_delete_preserve_content(self):
         resp = self.mock_json_response(data=b'{"_id": "foo", "bar": "baz"}')
         self.request.return_value = self.future(resp)
 
-        self.run_loop(self.doc.remove('1-ABC', preserve_content=True))
+        self.run_loop(self.doc.delete('1-ABC', preserve_content=True))
         self.assert_request_called_with('PUT', *self.request_path(),
                                         data={'_id': 'foo',
                                               '_deleted': True,
@@ -339,7 +342,6 @@ class DocumentTestCase(utils.TestCase):
 
 
 class OpenRevsMultipartReader(utils.TestCase):
-
     def test_next(self):
         reader = aiocouchdb.document.OpenRevsMultipartReader(
             {'CONTENT-TYPE': 'multipart/mixed;boundary=:'},

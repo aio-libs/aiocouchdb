@@ -377,8 +377,8 @@ class Config(object):
         return (yield from resp.json())
 
     @asyncio.coroutine
-    def remove(self, section, key, *, auth=None):
-        """Removes specific :ref:`configuration option <api/config/section/key>`
+    def delete(self, section, key, *, auth=None):
+        """Deletes specific :ref:`configuration option <api/config/section/key>`
         and returns it value back.
 
         :param string section: Configuration section name

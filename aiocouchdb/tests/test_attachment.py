@@ -19,7 +19,6 @@ from aiocouchdb.client import urljoin
 
 
 class AttachmentTestCase(utils.TestCase):
-
     def setUp(self):
         super().setUp()
         self.url_att = urljoin(self.url, *self.request_path())
@@ -184,14 +183,13 @@ class AttachmentTestCase(utils.TestCase):
             headers={'CONTENT-TYPE': 'application/octet-stream'},
             params={'rev': '1-ABC'})
 
-    def test_remove(self):
-        self.run_loop(self.att.remove('1-ABC'))
+    def test_delete(self):
+        self.run_loop(self.att.delete('1-ABC'))
         self.assert_request_called_with('DELETE', *self.request_path(),
                                         params={'rev': '1-ABC'})
 
 
 class AttachmentReaderTestCase(utils.TestCase):
-
     def setUp(self):
         super().setUp()
         self.att = aiocouchdb.attachment.AttachmentReader(self.request)
