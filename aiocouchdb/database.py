@@ -319,22 +319,10 @@ class Database(object):
 
         :rtype: :class:`aiocouchdb.feeds.ChangesFeed`
         """
-        params = {}
-        maybe_set_param = (
-            lambda *kv: (None if kv[1] is None else params.update([kv])))
-        maybe_set_param('att_encoding_info', att_encoding_info)
-        maybe_set_param('attachments', attachments)
-        maybe_set_param('conflicts', conflicts)
-        maybe_set_param('descending', descending)
-        maybe_set_param('feed', feed)
-        maybe_set_param('filter', filter)
-        maybe_set_param('heartbeat', heartbeat)
-        maybe_set_param('include_docs', include_docs)
-        maybe_set_param('limit', limit)
-        maybe_set_param('since', since)
-        maybe_set_param('style', style)
-        maybe_set_param('timeout', timeout)
-        maybe_set_param('view', view)
+        params = dict((key, value)
+                      for key, value in locals().items()
+                      if key not in {'self', 'doc_ids', 'auth'} and
+                         value is not None)
 
         if doc_ids:
             data = {'doc_ids': doc_ids}

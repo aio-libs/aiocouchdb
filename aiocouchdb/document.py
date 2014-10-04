@@ -151,20 +151,10 @@ class Document(object):
 
         .. _Returns a document: http://docs.couchdb.org/en/latest/api/document/common.html#get--db-docid
         """
-        params = {}
-        maybe_set_param = (
-            lambda *kv: (None if kv[1] is None else params.update([kv])))
-        maybe_set_param('att_encoding_info', att_encoding_info)
-        maybe_set_param('attachments', attachments)
-        maybe_set_param('atts_since', atts_since)
-        maybe_set_param('conflicts', conflicts)
-        maybe_set_param('deleted_conflicts', deleted_conflicts)
-        maybe_set_param('local_seq', local_seq)
-        maybe_set_param('meta', meta)
-        maybe_set_param('open_revs', open_revs)
-        maybe_set_param('rev', rev)
-        maybe_set_param('revs', revs)
-        maybe_set_param('revs_info', revs_info)
+        params = dict((key, value)
+                      for key, value in locals().items()
+                      if key not in {'self', 'auth'} and
+                         value is not None)
 
         if atts_since is not None:
             params['atts_since'] = json.dumps(atts_since)
@@ -208,13 +198,10 @@ class Document(object):
 
         :rtype: :class:`~aiocouchdb.document.OpenRevsMultipartReader`
         """
-        params = {}
-        maybe_set_param = (
-            lambda *kv: (None if kv[1] is None else params.update([kv])))
-        maybe_set_param('att_encoding_info', att_encoding_info)
-        maybe_set_param('atts_since', atts_since)
-        maybe_set_param('local_seq', local_seq)
-        maybe_set_param('revs', revs)
+        params = dict((key, value)
+                      for key, value in locals().items()
+                      if key not in {'self', 'auth'} and
+                         value is not None)
 
         if atts_since is not None:
             params['atts_since'] = json.dumps(atts_since)
@@ -266,18 +253,11 @@ class Document(object):
 
         :rtype: :class:`~aiocouchdb.document.DocAttachmentsMultipartReader`
         """
-        params = {'attachments': True}
-        maybe_set_param = (
-            lambda *kv: (None if kv[1] is None else params.update([kv])))
-        maybe_set_param('att_encoding_info', att_encoding_info)
-        maybe_set_param('atts_since', atts_since)
-        maybe_set_param('conflicts', conflicts)
-        maybe_set_param('deleted_conflicts', deleted_conflicts)
-        maybe_set_param('local_seq', local_seq)
-        maybe_set_param('meta', meta)
-        maybe_set_param('rev', rev)
-        maybe_set_param('revs', revs)
-        maybe_set_param('revs_info', revs_info)
+        params = dict((key, value)
+                      for key, value in locals().items()
+                      if key not in {'self', 'auth'} and
+                         value is not None)
+        params['attachments'] = True
 
         if atts_since is not None:
             params['atts_since'] = json.dumps(atts_since)
@@ -330,12 +310,10 @@ class Document(object):
 
         .. _Updates a document: http://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
         """
-        params = {}
-        maybe_set_param = (
-            lambda *kv: (None if kv[1] is None else params.update([kv])))
-        maybe_set_param('batch', batch)
-        maybe_set_param('new_edits', new_edits)
-        maybe_set_param('rev', rev)
+        params = dict((key, value)
+                      for key, value in locals().items()
+                      if key not in {'self', 'doc', 'auth'} and
+                         value is not None)
 
         if not isinstance(doc, Mapping):
             raise TypeError('Mapping instance expected, dict - preferred')

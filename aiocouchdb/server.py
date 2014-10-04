@@ -243,27 +243,17 @@ class Server(object):
         .. _worker_processes: http://docs.couchdb.org/en/latest/config/replicator.html#replicator/worker_processes
 
         """
+        params = dict((key, value)
+                      for key, value in locals().items()
+                      if key not in {'self', 'source', 'target', 'auth'} and
+                         value is not None)
+
+        if authobj is not None:
+            params['auth'] = params.pop('authobj')
+
         doc = {'source': source, 'target': target}
-        maybe_set_param = (
-            lambda doc, *kv: (None if kv[1] is None else doc.update([kv])))
-        maybe_set_param(doc, 'auth', authobj)
-        maybe_set_param(doc, 'cancel', cancel)
-        maybe_set_param(doc, 'continuous', continuous)
-        maybe_set_param(doc, 'create_target', create_target)
-        maybe_set_param(doc, 'doc_ids', doc_ids)
-        maybe_set_param(doc, 'filter', filter)
-        maybe_set_param(doc, 'headers', headers)
-        maybe_set_param(doc, 'proxy', proxy)
-        maybe_set_param(doc, 'query_params', query_params)
-        maybe_set_param(doc, 'since_seq', since_seq)
-        maybe_set_param(doc, 'checkpoint_interval', checkpoint_interval)
-        maybe_set_param(doc, 'connection_timeout', connection_timeout)
-        maybe_set_param(doc, 'http_connections', http_connections)
-        maybe_set_param(doc, 'retries_per_request', retries_per_request)
-        maybe_set_param(doc, 'socket_options', socket_options)
-        maybe_set_param(doc, 'use_checkpoints', use_checkpoints)
-        maybe_set_param(doc, 'worker_batch_size', worker_batch_size)
-        maybe_set_param(doc, 'worker_processes', worker_processes)
+        doc.update(params)
+
         resp = yield from self.resource.post('_replicate', auth=auth, data=doc)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
