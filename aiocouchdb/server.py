@@ -331,6 +331,21 @@ class Config(object):
         self.resource = resource('_config')
 
     @asyncio.coroutine
+    def exists(self, section, key, *, auth=None):
+        """Checks if :ref:`configuration option <api/config/section/key>`
+        exists.
+
+        :param str section: Section name
+        :param str key: Option name
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+
+        :rtype: bool
+        """
+        resp = yield from self.resource(section, key).head(auth=auth)
+        yield from resp.read()
+        return resp.status == 200
+
+    @asyncio.coroutine
     def get(self, section=None, key=None, *, auth=None):
         """Returns :ref:`server configuration <api/config>`. Depending on
         specified arguments returns:

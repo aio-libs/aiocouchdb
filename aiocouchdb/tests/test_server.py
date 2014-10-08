@@ -235,6 +235,18 @@ class ServerConfigFunctionalTestCase(utils.TestCase):
         self.assert_request_called_with('DELETE',
                                         '_config', 'test', 'aiocouchdb')
 
+    def test_config_option_exists(self):
+        with self.response(status=200):
+            result = yield from self.server.config.exists('couchdb', 'uuid')
+        self.assert_request_called_with('HEAD', '_config', 'couchdb', 'uuid')
+        self.assertTrue(result)
+
+    def test_config_option_not_exists(self):
+        with self.response(status=404):
+            result = yield from self.server.config.exists('foo', 'bar')
+        self.assert_request_called_with('HEAD', '_config', 'foo', 'bar')
+        self.assertFalse(result)
+
 
 class SessionTestCase(utils.TestCase):
     def setUp(self):
