@@ -43,8 +43,6 @@ class DocumentTestCase(utils.TestCase):
         self.assertEqual(doc.id, 'foo')
 
     def test_init_with_id_from_database(self):
-        self.request.return_value = self.future(self.mock_json_response())
-
         db = aiocouchdb.database.Database(self.url)
         doc = yield from db.doc('foo')
         self.assertEqual(doc.id, 'foo')
@@ -61,17 +59,15 @@ class DocumentTestCase(utils.TestCase):
         self.assertTrue(result)
 
     def test_exists_forbidden(self):
-        self.mock_json_response(status=403)
-
-        result = yield from self.doc.exists()
-        self.assert_request_called_with('HEAD', *self.request_path())
+        with self.response(status=403):
+            result = yield from self.doc.exists()
+            self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_exists_not_found(self):
-        self.mock_json_response(status=404)
-
-        result = yield from self.doc.exists()
-        self.assert_request_called_with('HEAD', *self.request_path())
+        with self.response(status=404):
+            result = yield from self.doc.exists()
+            self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_modified(self):
@@ -81,11 +77,11 @@ class DocumentTestCase(utils.TestCase):
         self.assertTrue(result)
 
     def test_not_modified(self):
-        self.mock_json_response(status=304)
-
-        result = yield from self.doc.modified('1-ABC')
-        self.assert_request_called_with('HEAD', *self.request_path(),
-                                        headers={'IF-NONE-MATCH': '"1-ABC"'})
+        with self.response(status=304):
+            result = yield from self.doc.modified('1-ABC')
+            self.assert_request_called_with(
+                'HEAD', *self.request_path(),
+                headers={'IF-NONE-MATCH': '"1-ABC"'})
         self.assertFalse(result)
 
     def test_attachment(self):
@@ -114,12 +110,9 @@ class DocumentTestCase(utils.TestCase):
         self.assertIsInstance(att, self.doc.attachment_class)
 
     def test_rev(self):
-        self.mock_json_response(headers={
-            'ETAG': '"1-ABC"'
-        })
-
-        result = yield from self.doc.rev()
-        self.assert_request_called_with('HEAD', *self.request_path())
+        with self.response(headers={'ETAG': '"1-ABC"'}):
+            result = yield from self.doc.rev()
+            self.assert_request_called_with('HEAD', *self.request_path())
         self.assertEqual('1-ABC', result)
 
     def test_get(self):
@@ -154,14 +147,13 @@ class DocumentTestCase(utils.TestCase):
                                             params={key: value})
 
     def test_get_open_revs(self):
-        self.mock_response(headers={
+        with self.response(headers={
             'CONTENT-TYPE': 'multipart/mixed;boundary=:'
-        })
-
-        result = yield from self.doc.get_open_revs()
-        self.assert_request_called_with('GET', *self.request_path(),
-                                        headers={'ACCEPT': 'multipart/*'},
-                                        params={'open_revs': 'all'})
+        }):
+            result = yield from self.doc.get_open_revs()
+            self.assert_request_called_with('GET', *self.request_path(),
+                                            headers={'ACCEPT': 'multipart/*'},
+                                            params={'open_revs': 'all'})
         self.assertIsInstance(
             result,
             aiocouchdb.document.OpenRevsMultipartReader.response_wrapper_cls)
@@ -170,21 +162,16 @@ class DocumentTestCase(utils.TestCase):
             aiocouchdb.document.OpenRevsMultipartReader)
 
     def test_get_open_revs_list(self):
-        self.mock_response(headers={
+        with self.response(headers={
             'CONTENT-TYPE': 'multipart/mixed;boundary=:'
-        })
-
-        yield from self.doc.get_open_revs('1-ABC', '2-CDE')
-        self.assert_request_called_with(
-            'GET', *self.request_path(),
-            headers={'ACCEPT': 'multipart/*'},
-            params={'open_revs': '["1-ABC", "2-CDE"]'})
+        }):
+            yield from self.doc.get_open_revs('1-ABC', '2-CDE')
+            self.assert_request_called_with(
+                'GET', *self.request_path(),
+                headers={'ACCEPT': 'multipart/*'},
+                params={'open_revs': '["1-ABC", "2-CDE"]'})
 
     def test_get_open_revs_params(self):
-        self.mock_response(headers={
-            'CONTENT-TYPE': 'multipart/mixed;boundary=:'
-        })
-
         all_params = {
             'att_encoding_info': True,
             'atts_since': ['1-ABC'],
@@ -193,61 +180,62 @@ class DocumentTestCase(utils.TestCase):
         }
 
         for key, value in all_params.items():
-            yield from self.doc.get_open_revs(**{key: value})
-            if key == 'atts_since':
-                value = json.dumps(value)
-            self.assert_request_called_with('GET', *self.request_path(),
-                                            headers={'ACCEPT': 'multipart/*'},
-                                            params={key: value,
-                                                    'open_revs': 'all'})
+            with self.response(headers={
+                'CONTENT-TYPE': 'multipart/mixed;boundary=:'
+            }):
+                yield from self.doc.get_open_revs(**{key: value})
+
+                if key == 'atts_since':
+                    value = json.dumps(value)
+
+                self.assert_request_called_with(
+                    'GET', *self.request_path(),
+                    headers={'ACCEPT': 'multipart/*'},
+                    params={key: value,
+                            'open_revs': 'all'})
 
     def test_get_with_atts(self):
-        self.mock_response(
+        with self.response(
             headers={'CONTENT-TYPE': 'multipart/related;boundary=:'}
-        )
-
-        result = yield from self.doc.get_with_atts()
-        self.assert_request_called_with(
-            'GET', *self.request_path(),
-            headers={'ACCEPT': 'multipart/*, application/json'},
-            params={'attachments': True})
+        ):
+            result = yield from self.doc.get_with_atts()
+            self.assert_request_called_with(
+                'GET', *self.request_path(),
+                headers={'ACCEPT': 'multipart/*, application/json'},
+                params={'attachments': True})
         self.assertIsInstance(
             result,
-            aiocouchdb.document.DocAttachmentsMultipartReader
-            .response_wrapper_cls)
+            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
         self.assertIsInstance(
             result.stream,
             aiocouchdb.document.DocAttachmentsMultipartReader)
 
     def test_get_wth_atts_json(self):
-        self.mock_response(headers={
+        with self.response(headers={
             'CONTENT-TYPE': 'application/json'
-        })
-
-        result = yield from self.doc.get_with_atts()
-        self.assert_request_called_with(
-            'GET', *self.request_path(),
-            headers={'ACCEPT': 'multipart/*, application/json'},
-            params={'attachments': True})
+        }):
+            result = yield from self.doc.get_with_atts()
+            self.assert_request_called_with(
+                'GET', *self.request_path(),
+                headers={'ACCEPT': 'multipart/*, application/json'},
+                params={'attachments': True})
         self.assertIsInstance(
             result,
-            aiocouchdb.document.DocAttachmentsMultipartReader
-            .response_wrapper_cls)
+            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
         self.assertIsInstance(
             result.stream,
             aiocouchdb.document.DocAttachmentsMultipartReader)
 
     def test_get_wth_atts_json_hacks(self):
-        self.mock_response(
+        with self.response(
             data=b'{"_id": "foo"}',
             headers={'CONTENT-TYPE': 'application/json'}
-        )
-
-        result = yield from self.doc.get_with_atts()
-        self.assert_request_called_with(
-            'GET', *self.request_path(),
-            headers={'ACCEPT': 'multipart/*, application/json'},
-            params={'attachments': True})
+        ):
+            result = yield from self.doc.get_with_atts()
+            self.assert_request_called_with(
+                'GET', *self.request_path(),
+                headers={'ACCEPT': 'multipart/*, application/json'},
+                params={'attachments': True})
 
         resp = result.resp
         self.assertTrue(
@@ -260,10 +248,6 @@ class DocumentTestCase(utils.TestCase):
             b'\r\n'.join(body))
 
     def test_get_with_atts_params(self):
-        self.mock_response(headers={
-            'CONTENT-TYPE': 'multipart/related;boundary=:'
-        })
-
         all_params = {
             'att_encoding_info': True,
             'atts_since': ['1-ABC'],
@@ -277,13 +261,18 @@ class DocumentTestCase(utils.TestCase):
         }
 
         for key, value in all_params.items():
-            yield from self.doc.get_with_atts(**{key: value})
-            if key == 'atts_since':
-                value = json.dumps(value)
-            self.assert_request_called_with(
-                'GET', *self.request_path(),
-                headers={'ACCEPT': 'multipart/*, application/json'},
-                params={key: value, 'attachments': True})
+            with self.response(headers={
+                'CONTENT-TYPE': 'multipart/related;boundary=:'
+            }):
+                yield from self.doc.get_with_atts(**{key: value})
+
+                if key == 'atts_since':
+                    value = json.dumps(value)
+
+                self.assert_request_called_with(
+                    'GET', *self.request_path(),
+                    headers={'ACCEPT': 'multipart/*, application/json'},
+                    params={key: value, 'attachments': True})
 
     def test_update(self):
         yield from self.doc.update({})
@@ -323,15 +312,13 @@ class DocumentTestCase(utils.TestCase):
                                         params={'rev': '1-ABC'})
 
     def test_delete_preserve_content(self):
-        resp = self.mock_json_response(data=b'{"_id": "foo", "bar": "baz"}')
-        self.request.return_value = self.future(resp)
-
-        yield from self.doc.delete('1-ABC', preserve_content=True)
-        self.assert_request_called_with('PUT', *self.request_path(),
-                                        data={'_id': 'foo',
-                                              '_deleted': True,
-                                              'bar': 'baz'},
-                                        params={'rev': '1-ABC'})
+        with self.response(data=b'{"_id": "foo", "bar": "baz"}'):
+            yield from self.doc.delete('1-ABC', preserve_content=True)
+            self.assert_request_called_with('PUT', *self.request_path(),
+                                            data={'_id': 'foo',
+                                                  '_deleted': True,
+                                                  'bar': 'baz'},
+                                            params={'rev': '1-ABC'})
 
     def test_copy(self):
         yield from self.doc.copy('newid')

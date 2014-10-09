@@ -16,7 +16,7 @@ from . import utils
 class FeedTestCase(utils.TestCase):
 
     def test_read_chunks(self):
-        resp = self.mock_response(data=[b'foo\r\n', b'bar\r\n'])
+        resp = self.prepare_response(data=[b'foo\r\n', b'bar\r\n'])
 
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
@@ -32,8 +32,10 @@ class FeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_ignore_empty_chunks(self):
-        resp = self.mock_response(data=[b'foo\r\n', b'\n',  b'\n',
-                                        b'\n',  b'\n', b'bar\r\n'])
+        resp = self.prepare_response(data=[
+            b'foo\r\n', b'\n',  b'\n',
+            b'\n',  b'\n', b'bar\r\n'
+        ])
 
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
@@ -49,7 +51,7 @@ class FeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_read_empty_json_feed(self):
-        resp = self.mock_response()
+        resp = self.prepare_response()
 
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
@@ -60,7 +62,7 @@ class FeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_calling_inactive_feed_returns_none(self):
-        resp = self.mock_response()
+        resp = self.prepare_response()
 
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
@@ -73,7 +75,7 @@ class FeedTestCase(utils.TestCase):
         self.assertEqual(None, result)
 
     def test_close_resp_on_feed_end(self):
-        resp = self.mock_response()
+        resp = self.prepare_response()
 
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
@@ -84,7 +86,7 @@ class FeedTestCase(utils.TestCase):
         self.assertTrue(resp.close.called)
 
     def test_force_close_resp_on_error(self):
-        resp = self.mock_response(err=ValueError)
+        resp = self.prepare_response(err=ValueError)
 
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
@@ -96,8 +98,10 @@ class FeedTestCase(utils.TestCase):
         resp.close.assert_called_with(force=True)
 
     def test_buffer_workflow(self):
-        resp = self.mock_response(data=[b'foo\r\n', b'bar\r\n',
-                                        b'baz\r\n', b'boo\r\n'])
+        resp = self.prepare_response(data=[
+            b'foo\r\n', b'bar\r\n',
+            b'baz\r\n', b'boo\r\n'
+        ])
 
         buf_size = 2
         feed = aiocouchdb.feeds.Feed(resp, buffer_size=buf_size, loop=self.loop)
@@ -127,9 +131,11 @@ class FeedTestCase(utils.TestCase):
 class JsonFeedTestCase(utils.TestCase):
 
     def test_read_json_chunks(self):
-        resp = self.mock_response(data=[b'{"foo": true}\r\n',
-                                        b'"foo"\r\n',
-                                        b'{"bar": null}\r\n'])
+        resp = self.prepare_response(data=[
+            b'{"foo": true}\r\n',
+            b'"foo"\r\n',
+            b'{"bar": null}\r\n'
+        ])
 
         feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
@@ -151,7 +157,7 @@ class JsonFeedTestCase(utils.TestCase):
 class ViewFeedTestCase(utils.TestCase):
 
     def test_read_empty_view(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"total_rows": 0, "offset": 0, "rows": [\r\n',
             b'\n',
             b']}\r\n'
@@ -165,7 +171,7 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_read_reduced_empty_view(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"rows": [\r\n',
             b'\r\n]}'
         ])
@@ -178,7 +184,7 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_read_view(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"total_rows": 3, "offset": 0, "rows": [\r\n',
             b'{"id": "foo", "key": null, "value": false}',
             b',\r\n{"id": "bar", "key": null, "value": false}',
@@ -197,7 +203,7 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_view_header(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"total_rows": 3, "offset": 0, "rows": [\r\n',
             b'{"id": "foo", "key": null, "value": false}',
             b',\r\n{"id": "bar", "key": null, "value": false}',
@@ -218,7 +224,7 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertIsNone(feed.update_seq)
 
     def test_reduced_view_header(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"rows": [\r\n',
             b'{"key": null, "value": 1}',
             b',\r\n{"key": true, "value": 2}',
@@ -242,7 +248,7 @@ class ViewFeedTestCase(utils.TestCase):
 class EventSourceFeedTestCase(utils.TestCase):
 
     def test_read_event(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'data: {"type":"updated","db_name":"db"}\n\n',
         ])
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
@@ -256,7 +262,7 @@ class EventSourceFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_read_empty_data(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'event: heartbeat\ndata: \n\n'
         ])
 
@@ -271,7 +277,7 @@ class EventSourceFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_read_multiple_data(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'data: [\ndata:"foo",\ndata: "bar"\ndata:] \n\n'
         ])
 
@@ -286,7 +292,7 @@ class EventSourceFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_no_colon(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'id\n\n'
         ])
 
@@ -301,7 +307,7 @@ class EventSourceFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_leading_colon(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b':id\n\n'
         ])
 
@@ -316,7 +322,7 @@ class EventSourceFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_decode_retry_with_int(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'retry: 10\n\n'
         ])
 
@@ -331,7 +337,7 @@ class EventSourceFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
     def test_ignore_unknown_field(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'data: "foo"\nfoo: bar\n\n'
         ])
 
@@ -358,7 +364,7 @@ class ChangesFeedTestCase(utils.TestCase):
         ]
 
     def test_read_changes(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"results":[\n',
             b'{"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}',
             b',\n{"seq":90,"id":"bar","changes":[{"rev":"12-ABC"}]}',
@@ -370,7 +376,7 @@ class ChangesFeedTestCase(utils.TestCase):
         yield from self.check_feed_output(feed, self.output)
 
     def test_read_changes_longpoll(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"results":[\n',
             b'{"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}',
             b',\n{"seq":90,"id":"bar","changes":[{"rev":"12-ABC"}]}',
@@ -382,7 +388,7 @@ class ChangesFeedTestCase(utils.TestCase):
         yield from self.check_feed_output(feed, self.output)
 
     def test_read_changes_continuous(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'{"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}\n',
             b'{"seq":90,"id":"bar","changes":[{"rev":"12-ABC"}]}\n',
             b'{"seq":91,"id":"baz","changes":[{"rev":"11-EFG"}],'
@@ -393,7 +399,7 @@ class ChangesFeedTestCase(utils.TestCase):
         yield from self.check_feed_output(feed, self.output)
 
     def test_read_changes_eventsource(self):
-        resp = self.mock_response(data=[
+        resp = self.prepare_response(data=[
             b'data: {"seq":77,"id":"foo","changes":[{"rev":"9-CDE"}]}\n'
             b'id: 77\n\n',
             b'event: heartbeat\ndata: \n\n',

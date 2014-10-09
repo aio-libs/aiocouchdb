@@ -69,13 +69,12 @@ class UserDocumentTestCase(utils.TestCase):
             })
 
     def test_change_password(self):
-        self.mock_json_response(data=b'{"existed": "field"}')
-
-        yield from self.doc.update_password('s3cr1t')
-        self.assert_request_called_with(
-            'PUT', '_users', self.doc.id,
-            data={
-                'existed': 'field',
-                'password': 's3cr1t'
-            })
+        with self.response(data=b'{"existed": "field"}'):
+            yield from self.doc.update_password('s3cr1t')
+            self.assert_request_called_with(
+                'PUT', '_users', self.doc.id,
+                data={
+                    'existed': 'field',
+                    'password': 's3cr1t'
+                })
 

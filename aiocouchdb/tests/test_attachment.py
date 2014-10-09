@@ -60,17 +60,15 @@ class AttachmentTestCase(utils.TestCase):
         self.assertTrue(result)
 
     def test_exists_forbidden(self):
-        self.mock_json_response(status=403)
-
-        result = yield from self.att.exists()
-        self.assert_request_called_with('HEAD', *self.request_path())
+        with self.response(status=403):
+            result = yield from self.att.exists()
+            self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_exists_not_found(self):
-        self.mock_json_response(status=404)
-
-        result = yield from self.att.exists()
-        self.assert_request_called_with('HEAD', *self.request_path())
+        with self.response(status=404):
+            result = yield from self.att.exists()
+            self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_modified(self):
@@ -82,13 +80,14 @@ class AttachmentTestCase(utils.TestCase):
         self.assertTrue(result)
 
     def test_not_modified(self):
-        self.mock_json_response(status=304)
-
         digest = hashlib.md5(b'foo').digest()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
-        result = yield from self.att.modified(digest)
-        self.assert_request_called_with('HEAD', *self.request_path(),
-                                        headers={'IF-NONE-MATCH': reqdigest})
+
+        with self.response(status=304):
+            result = yield from self.att.modified(digest)
+            self.assert_request_called_with(
+                'HEAD', *self.request_path(),
+                headers={'IF-NONE-MATCH': reqdigest})
         self.assertFalse(result)
 
     def test_modified_with_base64_digest(self):
@@ -110,12 +109,9 @@ class AttachmentTestCase(utils.TestCase):
             yield from self.att.modified('bar')
 
     def test_accepts_range(self):
-        self.mock_json_response(headers={
-            'ACCEPT_RANGE': 'bytes'
-        })
-
-        result = yield from self.att.accepts_range()
-        self.assert_request_called_with('HEAD', *self.request_path())
+        with self.response(headers={'ACCEPT_RANGE': 'bytes'}):
+            result = yield from self.att.accepts_range()
+            self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
 
     def test_accepts_range_not(self):
@@ -234,10 +230,9 @@ class AttachmentReaderTestCase(utils.TestCase):
         self.request.content.read.assert_called_once_with(10)
 
     def test_readall(self):
-        resp = self.mock_response(data=[b'...', b'---'])
-        self.att._resp = resp
-
-        res = yield from self.att.readall()
+        with self.response(data=[b'...', b'---']) as resp:
+            self.att._resp = resp
+            res = yield from self.att.readall()
 
         resp.content.read.assert_called_with(8192)
         self.assertEqual(resp.content.read.call_count, 3)
@@ -248,33 +243,30 @@ class AttachmentReaderTestCase(utils.TestCase):
         self.request.content.readline.assert_called_once_with()
 
     def test_readlines(self):
-        resp = self.mock_response(data=[b'...', b'---'])
-        resp.content.readline = resp.content.read
-        self.att._resp = resp
-
-        res = yield from self.att.readlines()
+        with self.response(data=[b'...', b'---']) as resp:
+            resp.content.readline = resp.content.read
+            self.att._resp = resp
+            res = yield from self.att.readlines()
 
         self.assertTrue(resp.content.readline.called)
         self.assertEqual(resp.content.read.call_count, 3)
         self.assertEqual(res, [b'...', b'---'])
 
     def test_readlines_hint(self):
-        resp = self.mock_response(data=[b'...', b'---'])
-        resp.content.readline = resp.content.read
-        self.att._resp = resp
-
-        res = yield from self.att.readlines(2)
+        with self.response(data=[b'...', b'---']) as resp:
+            resp.content.readline = resp.content.read
+            self.att._resp = resp
+            res = yield from self.att.readlines(2)
 
         self.assertTrue(resp.content.readline.called)
         self.assertEqual(resp.content.read.call_count, 1)
         self.assertEqual(res, [b'...'])
 
     def test_readlines_hint_more(self):
-        resp = self.mock_response(data=[b'...', b'---'])
-        resp.content.readline = resp.content.read
-        self.att._resp = resp
-
-        res = yield from self.att.readlines(42)
+        with self.response(data=[b'...', b'---']) as resp:
+            resp.content.readline = resp.content.read
+            self.att._resp = resp
+            res = yield from self.att.readlines(42)
 
         self.assertTrue(resp.content.readline.called)
         self.assertEqual(resp.content.read.call_count, 3)

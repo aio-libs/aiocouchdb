@@ -33,25 +33,22 @@ class ServerTestCase(utils.TestCase):
         self.assertEqual(self.url, self.server.resource.url)
 
     def test_info(self):
-        self.mock_json_response(data=b'{}')
-
-        result = yield from self.server.info()
+        with self.response(data=b'{}'):
+            result = yield from self.server.info()
+            self.assert_request_called_with('GET')
         self.assertIsInstance(result, dict)
-        self.assert_request_called_with('GET')
 
     def test_active_tasks(self):
-        self.mock_json_response(data=b'[]')
-
-        result = yield from self.server.active_tasks()
+        with self.response(data=b'[]'):
+            result = yield from self.server.active_tasks()
+            self.assert_request_called_with('GET', '_active_tasks')
         self.assertIsInstance(result, list)
-        self.assert_request_called_with('GET', '_active_tasks')
 
     def test_all_dbs(self):
-        self.mock_json_response(data=b'[]')
-
-        result = yield from self.server.all_dbs()
+        with self.response(data=b'[]'):
+            result = yield from self.server.all_dbs()
+            self.assert_request_called_with('GET', '_all_dbs')
         self.assertIsInstance(result, list)
-        self.assert_request_called_with('GET', '_all_dbs')
 
     def test_authdb(self):
         db = self.server.authdb
@@ -102,10 +99,9 @@ class ServerTestCase(utils.TestCase):
         self.assertIsInstance(db, self.server.database_class)
 
     def test_db_updates(self):
-        self.mock_json_response(data=b'{}')
-
-        result = yield from self.server.db_updates()
-        self.assert_request_called_with('GET', '_db_updates')
+        with self.response(data=b'{}'):
+            result = yield from self.server.db_updates()
+            self.assert_request_called_with('GET', '_db_updates')
         self.assertIsInstance(result, dict)
 
     def test_db_updates_feed_continuous(self):
@@ -188,23 +184,22 @@ class ServerTestCase(utils.TestCase):
             yield from self.server.stats('httpd')
 
     def test_uuids(self):
-        self.mock_json_response(data=b'{"uuids": ["foo"]}')
-
-        result = yield from self.server.uuids()
+        with self.response(data=b'{"uuids": ["foo"]}'):
+            result = yield from self.server.uuids()
+            self.assert_request_called_with('GET', '_uuids')
         self.assertIsInstance(result, list)
         self.assertEqual(['foo'], result)
-        self.assert_request_called_with('GET', '_uuids')
 
     def test_uuids_count(self):
-        self.mock_json_response(data=b'{"uuids": ["foo", "bar"]}')
-
-        result = yield from self.server.uuids(count=2)
+        with self.response(data=b'{"uuids": ["foo", "bar"]}'):
+            result = yield from self.server.uuids(count=2)
+            self.assert_request_called_with('GET', '_uuids',
+                                            params={'count': 2})
         self.assertIsInstance(result, list)
         self.assertEqual(['foo', 'bar'], result)
-        self.assert_request_called_with('GET', '_uuids', params={'count': 2})
 
 
-class ServerConfigFunctionalTestCase(utils.TestCase):
+class ConfigTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
@@ -223,34 +218,34 @@ class ServerConfigFunctionalTestCase(utils.TestCase):
         self.assert_request_called_with('GET', '_config', 'couchdb', 'uuid')
 
     def test_config_set_option(self):
-        self.mock_response(data=b'"relax!"')
-
-        result = yield from self.server.config.update('test',
-                                                      'aiocouchdb',
-                                                      'passed')
+        with self.response(data=b'"relax!"'):
+            result = yield from self.server.config.update('test',
+                                                          'aiocouchdb',
+                                                          'passed')
+            self.assert_request_called_with('PUT', '_config',
+                                            'test', 'aiocouchdb',
+                                            data='passed')
         self.assertIsInstance(result, str)
-        self.assert_request_called_with('PUT', '_config', 'test', 'aiocouchdb',
-                                        data='passed')
 
     def test_config_del_option(self):
-        self.mock_response(data=b'"passed"')
-
-        result = yield from self.server.config.delete('test', 'aiocouchdb')
-        self.assertIsInstance(result, str)
-        self.assert_request_called_with('DELETE',
-                                        '_config', 'test', 'aiocouchdb')
+        with self.response(data=b'"passed"'):
+            result = yield from self.server.config.delete('test', 'aiocouchdb')
+            self.assert_request_called_with('DELETE', '_config',
+                                            'test', 'aiocouchdb')
+            self.assertIsInstance(result, str)
 
     def test_config_option_exists(self):
         with self.response(status=200):
             result = yield from self.server.config.exists('couchdb', 'uuid')
-        self.assert_request_called_with('HEAD', '_config', 'couchdb', 'uuid')
-        self.assertTrue(result)
+            self.assert_request_called_with('HEAD', '_config',
+                                            'couchdb', 'uuid')
+            self.assertTrue(result)
 
     def test_config_option_not_exists(self):
         with self.response(status=404):
             result = yield from self.server.config.exists('foo', 'bar')
-        self.assert_request_called_with('HEAD', '_config', 'foo', 'bar')
-        self.assertFalse(result)
+            self.assert_request_called_with('HEAD', '_config', 'foo', 'bar')
+            self.assertFalse(result)
 
 
 class SessionTestCase(utils.TestCase):
@@ -258,25 +253,27 @@ class SessionTestCase(utils.TestCase):
     def setUp(self):
         super().setUp()
         self.server = aiocouchdb.server.Server(self.url)
-        self.resp = self.mock_json_response(data=b'{"ok": true}')
-        self.resp.cookies = http.cookies.SimpleCookie()
 
     def test_open_session(self):
-        self.resp.cookies = http.cookies.SimpleCookie({'AuthSession': 'secret'})
-        auth = yield from self.server.session.open('foo', 'bar')
-
+        cookies = http.cookies.SimpleCookie({'AuthSession': 'secret'})
+        with self.response(data=b'{"ok": true}') as resp:
+            resp.cookies = cookies
+            auth = yield from self.server.session.open('foo', 'bar')
+            self.assert_request_called_with('POST', '_session',
+                                            data={'name': 'foo',
+                                                  'password': 'bar'})
         self.assertIsInstance(auth, aiocouchdb.authn.CookieAuthProvider)
-        self.assertIs(auth._cookies, self.resp.cookies)
-
-        self.assert_request_called_with(
-            'POST', '_session', data={'name': 'foo', 'password': 'bar'})
+        self.assertIs(auth._cookies, resp.cookies)
 
     def test_session_info(self):
-        result = yield from self.server.session.info()
+        with self.response(data=b'{}'):
+            result = yield from self.server.session.info()
+            self.assert_request_called_with('GET', '_session')
         self.assertIsInstance(result, dict)
-        self.assert_request_called_with('GET', '_session')
 
     def test_close_session(self):
-        result = yield from self.server.session.close()
+        with self.response(data=b'{"ok": true}'):
+            result = yield from self.server.session.close()
+            self.assert_request_called_with('DELETE', '_session')
         self.assertIsInstance(result, dict)
-        self.assert_request_called_with('DELETE', '_session')
+

@@ -51,38 +51,33 @@ class DatabaseTestCase(utils.TestCase):
         self.assertTrue(result)
 
     def test_exists_forbidden(self):
-        self.mock_json_response(status=403)
-
-        result = yield from self.db.exists()
-        self.assert_request_called_with('HEAD', 'db')
+        with self.response(status=403):
+            result = yield from self.db.exists()
+            self.assert_request_called_with('HEAD', 'db')
         self.assertFalse(result)
 
     def test_exists_not_found(self):
-        self.mock_json_response(status=404)
-
-        result = yield from self.db.exists()
-        self.assert_request_called_with('HEAD', 'db')
+        with self.response(status=404):
+            result = yield from self.db.exists()
+            self.assert_request_called_with('HEAD', 'db')
         self.assertFalse(result)
 
     def test_info(self):
-        self.mock_json_response(data=b'{}')
-
-        result = yield from self.db.info()
-        self.assert_request_called_with('GET', 'db')
+        with self.response(data=b'{}'):
+            result = yield from self.db.info()
+            self.assert_request_called_with('GET', 'db')
         self.assertIsInstance(result, dict)
 
     def test_create(self):
-        self.mock_json_response(data=b'{"ok": true}')
-
-        result = yield from self.db.create()
-        self.assert_request_called_with('PUT', 'db')
+        with self.response(data=b'{"ok": true}'):
+            result = yield from self.db.create()
+            self.assert_request_called_with('PUT', 'db')
         self.assertTrue(result)
 
     def test_delete(self):
-        self.mock_json_response(data=b'{"ok": true}')
-
-        result = yield from self.db.delete()
-        self.assert_request_called_with('DELETE', 'db')
+        with self.response(data=b'{"ok": true}'):
+            result = yield from self.db.delete()
+            self.assert_request_called_with('DELETE', 'db')
         self.assertTrue(result)
 
     def test_all_docs(self):
@@ -306,10 +301,9 @@ class DatabaseTestCase(utils.TestCase):
         self.assert_request_called_with('PUT', 'db', '_revs_limit', data=42)
 
     def test_security_get(self):
-        self.mock_json_response(data=b'{"admins": {}, "members": {}}')
-
-        result = yield from self.db.security.get()
-        self.assert_request_called_with('GET', 'db', '_security')
+        with self.response(data=b'{"admins": {}, "members": {}}'):
+            result = yield from self.db.security.get()
+            self.assert_request_called_with('GET', 'db', '_security')
         self.assertEqual({'admins': {}, 'members': {}}, result)
 
     def test_security_get_empty(self):
@@ -345,7 +339,7 @@ class DatabaseTestCase(utils.TestCase):
         self.assert_request_called_with('PUT', 'db', '_security', data=data)
 
     def test_security_update_merge(self):
-        self.mock_json_response(data=b'''{
+        with self.response(data=b'''{
             "admins": {
                 "users": ["foo"],
                 "roles": []
@@ -354,26 +348,24 @@ class DatabaseTestCase(utils.TestCase):
                 "users": [],
                 "roles": ["bar", "baz"]
             }
-        }''')
-
-        data = {
-            'admins': {
-                'users': ['foo'],
-                'roles': ['zoo']
-            },
-            'members': {
-                'users': ['boo'],
-                'roles': ['bar', 'baz']
+        }'''):
+            yield from self.db.security.update(admins={'roles': ['zoo']},
+                                               members={'users': ['boo']},
+                                               merge=True)
+            data = {
+                'admins': {
+                    'users': ['foo'],
+                    'roles': ['zoo']
+                },
+                'members': {
+                    'users': ['boo'],
+                    'roles': ['bar', 'baz']
+                }
             }
-        }
-
-        yield from self.db.security.update(admins={'roles': ['zoo']},
-                                           members={'users': ['boo']},
-                                           merge=True)
-        self.assert_request_called_with('PUT', 'db', '_security', data=data)
+            self.assert_request_called_with('PUT', 'db', '_security', data=data)
 
     def test_security_update_merge_duplicate(self):
-        self.mock_json_response(data=b'''{
+        with self.response(data=b'''{
             "admins": {
                 "users": ["foo"],
                 "roles": []
@@ -382,93 +374,82 @@ class DatabaseTestCase(utils.TestCase):
                 "users": [],
                 "roles": ["bar", "baz"]
             }
-        }''')
-
-        data = {
-            'admins': {
-                'users': ['foo', 'bar'],
-                'roles': []
-            },
-            'members': {
-                'users': [],
-                'roles': ['bar', 'baz']
+        }'''):
+            yield from self.db.security.update(admins={'users': ['foo', 'bar']},
+                                               merge=True)
+            data = {
+                'admins': {
+                    'users': ['foo', 'bar'],
+                    'roles': []
+                },
+                'members': {
+                    'users': [],
+                    'roles': ['bar', 'baz']
+                }
             }
-        }
-
-        yield from self.db.security.update(admins={'users': ['foo', 'bar']},
-                                           merge=True)
-        self.assert_request_called_with('PUT', 'db', '_security', data=data)
+            self.assert_request_called_with('PUT', 'db', '_security', data=data)
 
     def test_security_update_empty_admins(self):
-        self.mock_json_response(data=b'{}')
-
-        data = {
-            'admins': {
-                'users': [],
-                'roles': []
-            },
-            'members': {
-                'users': [],
-                'roles': []
+        with self.response(data=b'{}'):
+            yield from self.db.security.update_admins()
+            data = {
+                'admins': {
+                    'users': [],
+                    'roles': []
+                },
+                'members': {
+                    'users': [],
+                    'roles': []
+                }
             }
-        }
-
-        yield from self.db.security.update_admins()
-        self.assert_request_called_with('PUT', 'db', '_security', data=data)
+            self.assert_request_called_with('PUT', 'db', '_security', data=data)
 
     def test_security_update_some_admins(self):
-        self.mock_json_response(data=b'{}')
-
-        data = {
-            'admins': {
-                'users': ['foo'],
-                'roles': ['bar', 'baz']
-            },
-            'members': {
-                'users': [],
-                'roles': []
+        with self.response(data=b'{}'):
+            yield from self.db.security.update_admins(users=['foo'],
+                                                      roles=['bar', 'baz'])
+            data = {
+                'admins': {
+                    'users': ['foo'],
+                    'roles': ['bar', 'baz']
+                },
+                'members': {
+                    'users': [],
+                    'roles': []
+                }
             }
-        }
-
-        yield from self.db.security.update_admins(users=['foo'],
-                                                  roles=['bar', 'baz'])
-        self.assert_request_called_with('PUT', 'db', '_security', data=data)
+            self.assert_request_called_with('PUT', 'db', '_security', data=data)
 
     def test_security_update_empty_members(self):
-        self.mock_json_response(data=b'{}')
-
-        data = {
-            'admins': {
-                'users': [],
-                'roles': []
-            },
-            'members': {
-                'users': [],
-                'roles': []
+        with self.response(data=b'{}'):
+            yield from self.db.security.update_members()
+            data = {
+                'admins': {
+                    'users': [],
+                    'roles': []
+                },
+                'members': {
+                    'users': [],
+                    'roles': []
+                }
             }
-        }
-
-        yield from self.db.security.update_members()
-        self.assert_request_called_with('PUT', 'db', '_security', data=data)
+            self.assert_request_called_with('PUT', 'db', '_security', data=data)
 
     def test_security_update_some_members(self):
-        self.mock_json_response(data=b'{}')
-
-
-        data = {
-            'admins': {
-                'users': [],
-                'roles': []
-            },
-            'members': {
-                'users': ['foo'],
-                'roles': ['bar', 'baz']
+        with self.response(data=b'{}'):
+            yield from self.db.security.update_members(users=['foo'],
+                                                       roles=['bar', 'baz'])
+            data = {
+                'admins': {
+                    'users': [],
+                    'roles': []
+                },
+                'members': {
+                    'users': ['foo'],
+                    'roles': ['bar', 'baz']
+                }
             }
-        }
-
-        yield from self.db.security.update_members(users=['foo'],
-                                                   roles=['bar', 'baz'])
-        self.assert_request_called_with('PUT', 'db', '_security', data=data)
+            self.assert_request_called_with('PUT', 'db', '_security', data=data)
 
     def test_temp_view(self):
         result = yield from self.db.temp_view('fun(_)-> ok end')

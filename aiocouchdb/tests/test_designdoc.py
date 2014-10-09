@@ -76,10 +76,9 @@ class DesignDocTestCase(utils.TestCase):
         self.assertIsInstance(ddoc.doc, CustomDoc)
 
     def test_info(self):
-        self.mock_json_response(data=b'{}')
-
-        result = yield from self.ddoc.info()
-        self.assert_request_called_with('GET', *self.request_path('_info'))
+        with self.response(data=b'{}'):
+            result = yield from self.ddoc.info()
+            self.assert_request_called_with('GET', *self.request_path('_info'))
         self.assertIsInstance(result, dict)
 
     def test_view(self):

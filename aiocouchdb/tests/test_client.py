@@ -144,19 +144,16 @@ class HttpRequestTestCase(utils.TestCase):
 class HttpResponseTestCase(utils.TestCase):
 
     def test_read_body(self):
-        resp = self.mock_response(data=b'{"couchdb": "Welcome!"}')
-
-        result = yield from resp.read()
+        with self.response(data=b'{"couchdb": "Welcome!"}') as resp:
+            result = yield from resp.read()
         self.assertEqual(b'{"couchdb": "Welcome!"}', result)
 
     def test_decode_json_body(self):
-        resp = self.mock_json_response(data=b'{"couchdb": "Welcome!"}')
-
-        result = yield from resp.json()
+        with self.response(data=b'{"couchdb": "Welcome!"}') as resp:
+            result = yield from resp.json()
         self.assertEqual({'couchdb': 'Welcome!'}, result)
 
     def test_decode_json_from_empty_body(self):
-        resp = self.mock_json_response()
-
-        result = yield from resp.json()
+        with self.response(data=b'') as resp:
+            result = yield from resp.json()
         self.assertEqual(None, result)

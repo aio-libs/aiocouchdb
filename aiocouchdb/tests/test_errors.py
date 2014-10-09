@@ -19,8 +19,9 @@ class HttpErrorsTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.resp = self.mock_json_response(
-            500, data=b'{"error": "test", "reason": "passed"}')
+        self.resp = self.prepare_response(
+            status=500,
+            data=b'{"error": "test", "reason": "passed"}')
 
     def test_should_not_raise_error_on_success_response(self):
         self.resp.status = 200
