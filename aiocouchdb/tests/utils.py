@@ -22,7 +22,9 @@ def run_in_loop(f):
     @functools.wraps(f)
     def wrapper(testcase, *args, **kwargs):
         coro = asyncio.coroutine(f)
-        return testcase.loop.run_until_complete(coro(testcase, *args, **kwargs))
+        future = asyncio.wait_for(coro(testcase, *args, **kwargs),
+                                  timeout=testcase.timeout)
+        return testcase.loop.run_until_complete(future)
     return wrapper
 
 
@@ -38,6 +40,7 @@ class MetaAioTestCase(type):
 class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
     url = 'http://localhost:5984'
+    timeout = 5
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
