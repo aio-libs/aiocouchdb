@@ -8,13 +8,15 @@
 #
 
 import json
+
 import aiocouchdb.client
 import aiocouchdb.database
 import aiocouchdb.document
 import aiocouchdb.designdoc
 import aiocouchdb.feeds
-import aiocouchdb.tests.utils as utils
+
 from aiocouchdb.client import urljoin
+from . import utils
 
 
 class DesignDocTestCase(utils.TestCase):
@@ -43,7 +45,7 @@ class DesignDocTestCase(utils.TestCase):
 
     def test_init_with_id_from_database(self):
         db = aiocouchdb.database.Database(self.url)
-        ddoc = self.run_loop(db.ddoc('foo'))
+        ddoc = yield from db.ddoc('foo')
         self.assertEqual(ddoc.id, '_design/foo')
 
     def test_get_item_returns_attachment(self):
@@ -76,25 +78,25 @@ class DesignDocTestCase(utils.TestCase):
     def test_info(self):
         self.mock_json_response(data=b'{}')
 
-        result = self.run_loop(self.ddoc.info())
+        result = yield from self.ddoc.info()
         self.assert_request_called_with('GET', *self.request_path('_info'))
         self.assertIsInstance(result, dict)
 
     def test_view(self):
-        result = self.run_loop(self.ddoc.view('viewname'))
+        result = yield from self.ddoc.view('viewname')
         self.assert_request_called_with(
             'GET', *self.request_path('_view', 'viewname'))
         self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
 
     def test_view_key(self):
-        result = self.run_loop(self.ddoc.view('viewname', 'foo'))
+        result = yield from self.ddoc.view('viewname', 'foo')
         self.assert_request_called_with(
             'GET', *self.request_path('_view', 'viewname'),
             params={'key': '"foo"'})
         self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
 
     def test_view_keys(self):
-        result = self.run_loop(self.ddoc.view('viewname', 'foo', 'bar'))
+        result = yield from self.ddoc.view('viewname', 'foo', 'bar')
         self.assert_request_called_with(
             'POST', *self.request_path('_view', 'viewname'),
             data={'keys': ('foo', 'bar')})
@@ -122,7 +124,7 @@ class DesignDocTestCase(utils.TestCase):
         }
 
         for key, value in all_params.items():
-            result = self.run_loop(self.ddoc.view('viewname', **{key: value}))
+            result = yield from self.ddoc.view('viewname', **{key: value})
             if key in ('endkey', 'startkey'):
                 value = json.dumps(value)
             self.assert_request_called_with(
@@ -131,19 +133,19 @@ class DesignDocTestCase(utils.TestCase):
             self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
 
     def test_list(self):
-        result = self.run_loop(self.ddoc.list('listname'))
+        result = yield from self.ddoc.list('listname')
         self.assert_request_called_with(
             'GET', *self.request_path('_list', 'listname'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_list_view(self):
-        result = self.run_loop(self.ddoc.list('listname', 'viewname'))
+        result = yield from self.ddoc.list('listname', 'viewname')
         self.assert_request_called_with(
             'GET', *self.request_path('_list', 'listname', 'viewname'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_list_view_ddoc(self):
-        result = self.run_loop(self.ddoc.list('listname', 'ddoc/view'))
+        result = yield from self.ddoc.list('listname', 'ddoc/view')
         self.assert_request_called_with(
             'GET', *self.request_path('_list', 'listname', 'ddoc', 'view'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
@@ -171,8 +173,8 @@ class DesignDocTestCase(utils.TestCase):
         }
 
         for key, value in all_params.items():
-            result = self.run_loop(self.ddoc.list('listname', 'viewname',
-                                                  **{key: value}))
+            result = yield from self.ddoc.list('listname', 'viewname',
+                                               **{key: value})
             if key in ('endkey', 'startkey'):
                 value = json.dumps(value)
             self.assert_request_called_with(
@@ -181,147 +183,147 @@ class DesignDocTestCase(utils.TestCase):
             self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_list_custom_headers(self):
-        result = self.run_loop(self.ddoc.list('listname', headers={'Foo': '1'}))
+        result = yield from self.ddoc.list('listname', headers={'Foo': '1'})
         self.assert_request_called_with(
             'GET', *self.request_path('_list', 'listname'),
             headers={'Foo': '1'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_list_custom_params(self):
-        result = self.run_loop(self.ddoc.list('listname', params={'foo': '1'}))
+        result = yield from self.ddoc.list('listname', params={'foo': '1'})
         self.assert_request_called_with(
             'GET', *self.request_path('_list', 'listname'),
             params={'foo': '1'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_list_key(self):
-        result = self.run_loop(self.ddoc.list('listname', 'viewname', 'foo'))
+        result = yield from self.ddoc.list('listname', 'viewname', 'foo')
         self.assert_request_called_with(
             'GET', *self.request_path('_list', 'listname', 'viewname'),
             params={'key': '"foo"'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_list_keys(self):
-        result = self.run_loop(self.ddoc.list('listname', 'viewname',
-                                              'foo', 'bar'))
+        result = yield from self.ddoc.list('listname', 'viewname',
+                                           'foo', 'bar')
         self.assert_request_called_with(
             'POST', *self.request_path('_list', 'listname', 'viewname'),
             data={'keys': ('foo', 'bar')})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_show(self):
-        result = self.run_loop(self.ddoc.show('time'))
+        result = yield from self.ddoc.show('time')
         self.assert_request_called_with(
             'GET', *self.request_path('_show', 'time'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_show_docid(self):
-        result = self.run_loop(self.ddoc.show('time', 'docid'))
+        result = yield from self.ddoc.show('time', 'docid')
         self.assert_request_called_with(
             'GET', *self.request_path('_show', 'time', 'docid'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_show_custom_method(self):
-        result = self.run_loop(self.ddoc.show('time', method='HEAD'))
+        result = yield from self.ddoc.show('time', method='HEAD')
         self.assert_request_called_with(
             'HEAD', *self.request_path('_show', 'time'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_show_custom_headers(self):
-        result = self.run_loop(self.ddoc.show('time', headers={'foo': 'bar'}))
+        result = yield from self.ddoc.show('time', headers={'foo': 'bar'})
         self.assert_request_called_with(
             'GET', *self.request_path('_show', 'time'),
             headers={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_show_custom_data(self):
-        result = self.run_loop(self.ddoc.show('time', data={'foo': 'bar'}))
+        result = yield from self.ddoc.show('time', data={'foo': 'bar'})
         self.assert_request_called_with(
             'POST', *self.request_path('_show', 'time'),
             data={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_show_custom_params(self):
-        result = self.run_loop(self.ddoc.show('time', params={'foo': 'bar'}))
+        result = yield from self.ddoc.show('time', params={'foo': 'bar'})
         self.assert_request_called_with(
             'GET', *self.request_path('_show', 'time'),
             params={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_show_format(self):
-        result = self.run_loop(self.ddoc.show('time', format='xml'))
+        result = yield from self.ddoc.show('time', format='xml')
         self.assert_request_called_with(
             'GET', *self.request_path('_show', 'time'),
             params={'format': 'xml'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_update(self):
-        result = self.run_loop(self.ddoc.update('fun'))
+        result = yield from self.ddoc.update('fun')
         self.assert_request_called_with(
             'POST', *self.request_path('_update', 'fun'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_update_docid(self):
-        result = self.run_loop(self.ddoc.update('fun', 'docid'))
+        result = yield from self.ddoc.update('fun', 'docid')
         self.assert_request_called_with(
             'PUT', *self.request_path('_update', 'fun', 'docid'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_update_custom_method(self):
-        result = self.run_loop(self.ddoc.update('fun', method='HEAD'))
+        result = yield from self.ddoc.update('fun', method='HEAD')
         self.assert_request_called_with(
             'HEAD', *self.request_path('_update', 'fun'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_update_custom_headers(self):
-        result = self.run_loop(self.ddoc.update('fun', headers={'foo': 'bar'}))
+        result = yield from self.ddoc.update('fun', headers={'foo': 'bar'})
         self.assert_request_called_with(
             'POST', *self.request_path('_update', 'fun'),
             headers={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_update_custom_data(self):
-        result = self.run_loop(self.ddoc.update('fun', data={'foo': 'bar'}))
+        result = yield from self.ddoc.update('fun', data={'foo': 'bar'})
         self.assert_request_called_with(
             'POST', *self.request_path('_update', 'fun'),
             data={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_update_custom_params(self):
-        result = self.run_loop(self.ddoc.update('fun', params={'foo': 'bar'}))
+        result = yield from self.ddoc.update('fun', params={'foo': 'bar'})
         self.assert_request_called_with(
             'POST', *self.request_path('_update', 'fun'),
             params={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_rewrite(self):
-        result = self.run_loop(self.ddoc.rewrite('rewrite', 'me'))
+        result = yield from self.ddoc.rewrite('rewrite', 'me')
         self.assert_request_called_with(
             'GET', *self.request_path('_rewrite', 'rewrite', 'me'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_rewrite_custom_method(self):
-        result = self.run_loop(self.ddoc.rewrite('path', method='HEAD'))
+        result = yield from self.ddoc.rewrite('path', method='HEAD')
         self.assert_request_called_with(
             'HEAD', *self.request_path('_rewrite', 'path'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_rewrite_custom_headers(self):
-        result = self.run_loop(self.ddoc.rewrite('path', headers={'foo': '42'}))
+        result = yield from self.ddoc.rewrite('path', headers={'foo': '42'})
         self.assert_request_called_with(
             'GET', *self.request_path('_rewrite', 'path'),
             headers={'foo': '42'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_rewrite_custom_data(self):
-        result = self.run_loop(self.ddoc.rewrite('path', data={'foo': 'bar'}))
+        result = yield from self.ddoc.rewrite('path', data={'foo': 'bar'})
         self.assert_request_called_with(
             'POST', *self.request_path('_rewrite', 'path'),
             data={'foo': 'bar'})
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
     def test_rewrite_custom_params(self):
-        result = self.run_loop(self.ddoc.rewrite('path', params={'foo': 'bar'}))
+        result = yield from self.ddoc.rewrite('path', params={'foo': 'bar'})
         self.assert_request_called_with(
             'GET', *self.request_path('_rewrite', 'path'),
             params={'foo': 'bar'})

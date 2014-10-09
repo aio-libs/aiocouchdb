@@ -14,11 +14,13 @@ import io
 import aiocouchdb.client
 import aiocouchdb.attachment
 import aiocouchdb.document
-import aiocouchdb.tests.utils as utils
+
 from aiocouchdb.client import urljoin
+from . import utils
 
 
 class AttachmentTestCase(utils.TestCase):
+
     def setUp(self):
         super().setUp()
         self.url_att = urljoin(self.url, *self.request_path())
@@ -43,16 +45,16 @@ class AttachmentTestCase(utils.TestCase):
 
     def test_init_with_name_from_doc(self):
         doc = aiocouchdb.document.Document(self.url)
-        att = self.run_loop(doc.att('bar.txt'))
+        att = yield from doc.att('bar.txt')
         self.assertEqual(att.name, 'bar.txt')
 
     def test_exists(self):
-        result = self.run_loop(self.att.exists())
+        result = yield from self.att.exists()
         self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
 
     def test_exists_rev(self):
-        result = self.run_loop(self.att.exists('1-ABC'))
+        result = yield from self.att.exists('1-ABC')
         self.assert_request_called_with('HEAD', *self.request_path(),
                                         params={'rev': '1-ABC'})
         self.assertTrue(result)
@@ -60,21 +62,21 @@ class AttachmentTestCase(utils.TestCase):
     def test_exists_forbidden(self):
         self.mock_json_response(status=403)
 
-        result = self.run_loop(self.att.exists())
+        result = yield from self.att.exists()
         self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_exists_not_found(self):
         self.mock_json_response(status=404)
 
-        result = self.run_loop(self.att.exists())
+        result = yield from self.att.exists()
         self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_modified(self):
         digest = hashlib.md5(b'foo').digest()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
-        result = self.run_loop(self.att.modified(digest))
+        result = yield from self.att.modified(digest)
         self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertTrue(result)
@@ -84,7 +86,7 @@ class AttachmentTestCase(utils.TestCase):
 
         digest = hashlib.md5(b'foo').digest()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
-        result = self.run_loop(self.att.modified(digest))
+        result = yield from self.att.modified(digest)
         self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertFalse(result)
@@ -92,83 +94,88 @@ class AttachmentTestCase(utils.TestCase):
     def test_modified_with_base64_digest(self):
         digest = base64.b64encode(hashlib.md5(b'foo').digest()).decode()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
-        result = self.run_loop(self.att.modified(digest))
+        result = yield from self.att.modified(digest)
         self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertTrue(result)
 
     def test_modified_invalid_digest(self):
-        self.assertRaises(TypeError, self.run_loop, self.att.modified({}))
-        self.assertRaises(ValueError, self.run_loop, self.att.modified(b'foo'))
-        self.assertRaises(ValueError, self.run_loop, self.att.modified('bar'))
+        with self.assertRaises(TypeError):
+            yield from self.att.modified({})
+
+        with self.assertRaises(ValueError):
+            yield from self.att.modified(b'foo')
+
+        with self.assertRaises(ValueError):
+            yield from self.att.modified('bar')
 
     def test_accepts_range(self):
         self.mock_json_response(headers={
             'ACCEPT_RANGE': 'bytes'
         })
 
-        result = self.run_loop(self.att.accepts_range())
+        result = yield from self.att.accepts_range()
         self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
 
     def test_accepts_range_not(self):
-        result = self.run_loop(self.att.accepts_range())
+        result = yield from self.att.accepts_range()
         self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_accepts_range_with_rev(self):
-        result = self.run_loop(self.att.accepts_range(rev='1-ABC'))
+        result = yield from self.att.accepts_range(rev='1-ABC')
         self.assert_request_called_with('HEAD', *self.request_path(),
                                         params={'rev': '1-ABC'})
         self.assertFalse(result)
 
     def test_get(self):
-        result = self.run_loop(self.att.get())
+        result = yield from self.att.get()
         self.assert_request_called_with('GET', *self.request_path())
         self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
 
     def test_get_rev(self):
-        result = self.run_loop(self.att.get('1-ABC'))
+        result = yield from self.att.get('1-ABC')
         self.assert_request_called_with('GET', *self.request_path(),
                                         params={'rev': '1-ABC'})
         self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
 
     def test_get_range(self):
-        self.run_loop(self.att.get(range=slice(24, 42)))
+        yield from self.att.get(range=slice(24, 42))
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=24-42'})
 
     def test_get_range_from_start(self):
-        self.run_loop(self.att.get(range=slice(42)))
+        yield from self.att.get(range=slice(42))
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=0-42'})
 
     def test_get_range_iterable(self):
-        self.run_loop(self.att.get(range=[11, 22]))
+        yield from self.att.get(range=[11, 22])
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=11-22'})
 
     def test_get_range_int(self):
-        self.run_loop(self.att.get(range=42))
+        yield from self.att.get(range=42)
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=0-42'})
 
     def test_update(self):
-        self.run_loop(self.att.update(io.BytesIO(b'')))
+        yield from self.att.update(io.BytesIO(b''))
         self.assert_request_called_with(
             'PUT', *self.request_path(),
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'application/octet-stream'})
 
     def test_update_ctype(self):
-        self.run_loop(self.att.update(io.BytesIO(b''), content_type='foo/bar'))
+        yield from self.att.update(io.BytesIO(b''), content_type='foo/bar')
         self.assert_request_called_with(
             'PUT', *self.request_path(),
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'foo/bar'})
 
     def test_update_with_encoding(self):
-        self.run_loop(self.att.update(io.BytesIO(b''), content_encoding='gzip'))
+        yield from self.att.update(io.BytesIO(b''), content_encoding='gzip')
         self.assert_request_called_with(
             'PUT', *self.request_path(),
             data=Ellipsis,
@@ -176,7 +183,7 @@ class AttachmentTestCase(utils.TestCase):
                      'CONTENT-ENCODING': 'gzip'})
 
     def test_update_rev(self):
-        self.run_loop(self.att.update(io.BytesIO(b''), rev='1-ABC'))
+        yield from self.att.update(io.BytesIO(b''), rev='1-ABC')
         self.assert_request_called_with(
             'PUT', *self.request_path(),
             data=Ellipsis,
@@ -184,12 +191,13 @@ class AttachmentTestCase(utils.TestCase):
             params={'rev': '1-ABC'})
 
     def test_delete(self):
-        self.run_loop(self.att.delete('1-ABC'))
+        yield from self.att.delete('1-ABC')
         self.assert_request_called_with('DELETE', *self.request_path(),
                                         params={'rev': '1-ABC'})
 
 
 class AttachmentReaderTestCase(utils.TestCase):
+
     def setUp(self):
         super().setUp()
         self.att = aiocouchdb.attachment.AttachmentReader(self.request)
@@ -218,25 +226,25 @@ class AttachmentReaderTestCase(utils.TestCase):
         self.assertFalse(self.att.seekable())
 
     def test_read(self):
-        self.run_loop(self.att.read())
+        yield from self.att.read()
         self.request.content.read.assert_called_once_with(-1)
 
     def test_read_some(self):
-        self.run_loop(self.att.read(10))
+        yield from self.att.read(10)
         self.request.content.read.assert_called_once_with(10)
 
     def test_readall(self):
         resp = self.mock_response(data=[b'...', b'---'])
         self.att._resp = resp
 
-        res = self.run_loop(self.att.readall())
+        res = yield from self.att.readall()
 
         resp.content.read.assert_called_with(8192)
         self.assertEqual(resp.content.read.call_count, 3)
         self.assertIsInstance(res, bytearray)
 
     def test_readline(self):
-        self.run_loop(self.att.readline())
+        yield from self.att.readline()
         self.request.content.readline.assert_called_once_with()
 
     def test_readlines(self):
@@ -244,7 +252,7 @@ class AttachmentReaderTestCase(utils.TestCase):
         resp.content.readline = resp.content.read
         self.att._resp = resp
 
-        res = self.run_loop(self.att.readlines())
+        res = yield from self.att.readlines()
 
         self.assertTrue(resp.content.readline.called)
         self.assertEqual(resp.content.read.call_count, 3)
@@ -255,7 +263,7 @@ class AttachmentReaderTestCase(utils.TestCase):
         resp.content.readline = resp.content.read
         self.att._resp = resp
 
-        res = self.run_loop(self.att.readlines(2))
+        res = yield from self.att.readlines(2)
 
         self.assertTrue(resp.content.readline.called)
         self.assertEqual(resp.content.read.call_count, 1)
@@ -266,7 +274,7 @@ class AttachmentReaderTestCase(utils.TestCase):
         resp.content.readline = resp.content.read
         self.att._resp = resp
 
-        res = self.run_loop(self.att.readlines(42))
+        res = yield from self.att.readlines(42)
 
         self.assertTrue(resp.content.readline.called)
         self.assertEqual(resp.content.read.call_count, 3)

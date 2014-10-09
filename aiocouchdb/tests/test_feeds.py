@@ -7,8 +7,10 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 import aiocouchdb.feeds
-import aiocouchdb.tests.utils as utils
+
+from . import utils
 
 
 class FeedTestCase(utils.TestCase):
@@ -19,13 +21,13 @@ class FeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(b'foo\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(b'bar\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
@@ -36,13 +38,13 @@ class FeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(b'foo\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(b'bar\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
@@ -52,7 +54,7 @@ class FeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
 
         self.assertFalse(feed.is_active())
@@ -63,11 +65,11 @@ class FeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        self.run_loop(feed.next())
+        yield from feed.next()
 
         self.assertFalse(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
 
     def test_close_resp_on_feed_end(self):
@@ -76,7 +78,7 @@ class FeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        self.run_loop(feed.next())
+        yield from feed.next()
 
         self.assertFalse(feed.is_active())
         self.assertTrue(resp.close.called)
@@ -87,9 +89,8 @@ class FeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.Feed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        self.assertRaises(ValueError,
-                          self.loop.run_until_complete,
-                          feed.next())
+        with self.assertRaises(ValueError):
+            yield from feed.next()
 
         self.assertFalse(feed.is_active())
         resp.close.assert_called_with(force=True)
@@ -102,23 +103,23 @@ class FeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.Feed(resp, buffer_size=buf_size, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(feed._queue.qsize(), buf_size)
         self.assertEqual(b'foo\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(feed._queue.qsize(), buf_size)
         self.assertEqual(b'bar\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(feed._queue.qsize(), buf_size - 1)
         self.assertEqual(b'baz\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(feed._queue.qsize(), 0)
         self.assertEqual(b'boo\r\n', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
@@ -133,16 +134,16 @@ class JsonFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.JsonFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'foo': True}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual('foo', result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'bar': None}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
@@ -159,7 +160,7 @@ class ViewFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
@@ -172,7 +173,7 @@ class ViewFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.ViewFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual(None, result)
         self.assertFalse(feed.is_active())
 
@@ -189,9 +190,9 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertTrue(feed.is_active())
 
         for idx in ('foo', 'bar', 'baz'):
-            row = self.run_loop(feed.next())
+            row = yield from feed.next()
             self.assertEqual({'id': idx, 'key': None, 'value': False}, row)
-        row = self.run_loop(feed.next())
+        row = yield from feed.next()
         self.assertEqual(None, row)
         self.assertFalse(feed.is_active())
 
@@ -210,7 +211,7 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertIsNone(feed.offset)
         self.assertIsNone(feed.update_seq)
 
-        self.run_loop(feed.next())
+        yield from feed.next()
 
         self.assertEqual(3, feed.total_rows)
         self.assertEqual(0, feed.offset)
@@ -231,7 +232,7 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertIsNone(feed.offset)
         self.assertIsNone(feed.update_seq)
 
-        self.run_loop(feed.next())
+        yield from feed.next()
 
         self.assertIsNone(feed.total_rows)
         self.assertIsNone(feed.offset)
@@ -247,10 +248,10 @@ class EventSourceFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'data': {'db_name': 'db', 'type': 'updated'}}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
 
@@ -262,10 +263,10 @@ class EventSourceFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'event': 'heartbeat', 'data': None}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
 
@@ -277,10 +278,10 @@ class EventSourceFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'data': ['foo', 'bar']}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
 
@@ -292,10 +293,10 @@ class EventSourceFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'id': '', 'data': None}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
 
@@ -307,10 +308,10 @@ class EventSourceFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'data': None}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
 
@@ -322,10 +323,10 @@ class EventSourceFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'retry': 10, 'data': None}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
 
@@ -337,10 +338,10 @@ class EventSourceFeedTestCase(utils.TestCase):
         feed = aiocouchdb.feeds.EventSourceFeed(resp, loop=self.loop)
         self.assertTrue(feed.is_active())
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertEqual({'data': 'foo'}, result)
 
-        result = self.run_loop(feed.next())
+        result = yield from feed.next()
         self.assertIsNone(result)
         self.assertFalse(feed.is_active())
 
@@ -366,7 +367,7 @@ class ChangesFeedTestCase(utils.TestCase):
             b'\n],\n"last_seq":91}\n'
         ])
         feed = aiocouchdb.feeds.ChangesFeed(resp, loop=self.loop)
-        self.check_feed_output(feed, self.output)
+        yield from self.check_feed_output(feed, self.output)
 
     def test_read_changes_longpoll(self):
         resp = self.mock_response(data=[
@@ -378,7 +379,7 @@ class ChangesFeedTestCase(utils.TestCase):
             b'\n],\n"last_seq":91}\n'
         ])
         feed = aiocouchdb.feeds.LongPollChangesFeed(resp, loop=self.loop)
-        self.check_feed_output(feed, self.output)
+        yield from self.check_feed_output(feed, self.output)
 
     def test_read_changes_continuous(self):
         resp = self.mock_response(data=[
@@ -389,7 +390,7 @@ class ChangesFeedTestCase(utils.TestCase):
             b'{"last_seq":91}\n',
         ])
         feed = aiocouchdb.feeds.ContinuousChangesFeed(resp, loop=self.loop)
-        self.check_feed_output(feed, self.output)
+        yield from self.check_feed_output(feed, self.output)
 
     def test_read_changes_eventsource(self):
         resp = self.mock_response(data=[
@@ -402,16 +403,17 @@ class ChangesFeedTestCase(utils.TestCase):
             b'"deleted":true}\nid: 91\n\n',
         ])
         feed = aiocouchdb.feeds.EventSourceChangesFeed(resp, loop=self.loop)
-        self.check_feed_output(feed, self.output)
+        yield from self.check_feed_output(feed, self.output)
 
+    @asyncio.coroutine
     def check_feed_output(self, feed, output):
         self.assertTrue(feed.is_active())
         self.assertIsNone(feed.last_seq)
         for expected in output:
-            event = self.run_loop(feed.next())
+            event = yield from feed.next()
             self.assertEqual(expected, event)
             self.assertEqual(expected['seq'], feed.last_seq)
-        event = self.run_loop(feed.next())
+        event = yield from feed.next()
         self.assertIsNone(event)
         self.assertFalse(feed.is_active())
         self.assertIsNotNone(feed.last_seq)

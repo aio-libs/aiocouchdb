@@ -13,44 +13,45 @@ import unittest.mock as mock
 
 import aiocouchdb.authn
 import aiocouchdb.client
-import aiocouchdb.tests.utils as utils
+
+from . import utils
 
 
 class ResourceTestCase(utils.TestCase):
 
     def test_head_request(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.head())
+        yield from res.head()
         self.assert_request_called_with('HEAD')
 
     def test_get_request(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.get())
+        yield from res.get()
         self.assert_request_called_with('GET')
 
     def test_post_request(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.post())
+        yield from res.post()
         self.assert_request_called_with('POST')
 
     def test_put_request(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.put())
+        yield from res.put()
         self.assert_request_called_with('PUT')
 
     def test_delete_request(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.delete())
+        yield from res.delete()
         self.assert_request_called_with('DELETE')
 
     def test_copy_request(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.copy())
+        yield from res.copy()
         self.assert_request_called_with('COPY')
 
     def test_options_request(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.options())
+        yield from res.options()
         self.assert_request_called_with('OPTIONS')
 
     def test_to_str(self):
@@ -71,45 +72,45 @@ class ResourceTestCase(utils.TestCase):
 
     def test_request_with_path(self):
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.request('get', 'foo/bar'))
+        yield from res.request('get', 'foo/bar')
         self.assert_request_called_with('get', 'foo/bar')
 
     def test_dont_sign_request_none_auth(self):
         res = aiocouchdb.client.Resource(self.url)
         res.apply_auth = mock.Mock()
-        self.run_loop(res.request('get'))
+        yield from res.request('get')
         self.assertFalse(res.apply_auth.called)
 
     def test_dont_update_none_auth(self):
         res = aiocouchdb.client.Resource(self.url)
         res.update_auth = mock.Mock()
-        self.run_loop(res.request('get'))
+        yield from res.request('get')
         self.assertFalse(res.update_auth.called)
 
     def test_sign_request(self):
         res = aiocouchdb.client.Resource(self.url)
         auth = mock.Mock(spec=aiocouchdb.authn.AuthProvider)
-        self.run_loop(res.request('get', auth=auth))
+        yield from res.request('get', auth=auth)
         self.assertTrue(auth.sign.called)
 
     def test_update_auth(self):
         res = aiocouchdb.client.Resource(self.url)
         auth = mock.Mock(spec=aiocouchdb.authn.AuthProvider)
-        self.run_loop(res.request('get', auth=auth))
+        yield from res.request('get', auth=auth)
         self.assertTrue(auth.update.called)
 
     def test_override_request_class(self):
         class Thing(object):
             pass
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.request('get', request_class=Thing))
+        yield from res.request('get', request_class=Thing)
         self.assert_request_called_with('get', request_class=Thing)
 
     def test_override_response_class(self):
         class Thing(object):
             pass
         res = aiocouchdb.client.Resource(self.url)
-        self.run_loop(res.request('get', response_class=Thing))
+        yield from res.request('get', response_class=Thing)
         self.assert_request_called_with('get', response_class=Thing)
 
 
@@ -145,17 +146,17 @@ class HttpResponseTestCase(utils.TestCase):
     def test_read_body(self):
         resp = self.mock_response(data=b'{"couchdb": "Welcome!"}')
 
-        result = self.run_loop(resp.read())
+        result = yield from resp.read()
         self.assertEqual(b'{"couchdb": "Welcome!"}', result)
 
     def test_decode_json_body(self):
         resp = self.mock_json_response(data=b'{"couchdb": "Welcome!"}')
 
-        result = self.run_loop(resp.json())
+        result = yield from resp.json()
         self.assertEqual({'couchdb': 'Welcome!'}, result)
 
     def test_decode_json_from_empty_body(self):
         resp = self.mock_json_response()
 
-        result = self.run_loop(resp.json())
+        result = yield from resp.json()
         self.assertEqual(None, result)

@@ -9,8 +9,8 @@
 
 import aiocouchdb.authdb
 
-from . import utils
 from aiocouchdb.client import urljoin
+from . import utils
 
 
 class AuthDatabaseTestCase(utils.TestCase):
@@ -44,7 +44,7 @@ class UserDocumentTestCase(utils.TestCase):
         self.assertEqual(self.doc.name, 'username')
 
     def test_register(self):
-        self.run_loop(self.doc.register('s3cr1t'))
+        yield from self.doc.register('s3cr1t')
         self.assert_request_called_with(
             'PUT', '_users', self.doc.id,
             data={
@@ -56,7 +56,7 @@ class UserDocumentTestCase(utils.TestCase):
             })
 
     def test_register_with_additional_data(self):
-        self.run_loop(self.doc.register('s3cr1t', email='user@example.com'))
+        yield from self.doc.register('s3cr1t', email='user@example.com')
         self.assert_request_called_with(
             'PUT', '_users', self.doc.id,
             data={
@@ -71,7 +71,7 @@ class UserDocumentTestCase(utils.TestCase):
     def test_change_password(self):
         self.mock_json_response(data=b'{"existed": "field"}')
 
-        self.run_loop(self.doc.update_password('s3cr1t'))
+        yield from self.doc.update_password('s3cr1t')
         self.assert_request_called_with(
             'PUT', '_users', self.doc.id,
             data={

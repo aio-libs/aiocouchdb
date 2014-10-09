@@ -11,7 +11,8 @@ import aiohttp
 
 import aiocouchdb.client
 import aiocouchdb.errors
-import aiocouchdb.tests.utils as utils
+
+from . import utils
 
 
 class HttpErrorsTestCase(utils.TestCase):
@@ -23,16 +24,15 @@ class HttpErrorsTestCase(utils.TestCase):
 
     def test_should_not_raise_error_on_success_response(self):
         self.resp.status = 200
-        self.run_loop(aiocouchdb.errors.maybe_raise_error(self.resp))
+        yield from aiocouchdb.errors.maybe_raise_error(self.resp)
 
     def test_raise_aiohttp_exception(self):
-        self.assertRaises(aiohttp.errors.HttpException,
-                          self.loop.run_until_complete,
-                          aiocouchdb.errors.maybe_raise_error(self.resp))
+        with self.assertRaises(aiohttp.errors.HttpException):
+            yield from aiocouchdb.errors.maybe_raise_error(self.resp)
 
     def test_decode_common_error_response(self):
         try:
-            self.run_loop(aiocouchdb.errors.maybe_raise_error(self.resp))
+            yield from aiocouchdb.errors.maybe_raise_error(self.resp)
         except aiocouchdb.errors.HttpErrorException as exc:
             self.assertEqual('test', exc.error)
             self.assertEqual('passed', exc.reason)
@@ -42,7 +42,7 @@ class HttpErrorsTestCase(utils.TestCase):
     def test_exception_holds_response_headers(self):
         self.resp.headers['X-Foo'] = 'bar'
         try:
-            self.run_loop(aiocouchdb.errors.maybe_raise_error(self.resp))
+            yield from aiocouchdb.errors.maybe_raise_error(self.resp)
         except aiocouchdb.errors.HttpErrorException as exc:
             self.assertEqual('bar', exc.headers.get('X-Foo'))
         else:
@@ -50,7 +50,7 @@ class HttpErrorsTestCase(utils.TestCase):
 
     def test_exc_to_str(self):
         try:
-            self.run_loop(aiocouchdb.errors.maybe_raise_error(self.resp))
+            yield from aiocouchdb.errors.maybe_raise_error(self.resp)
         except aiocouchdb.errors.HttpErrorException as exc:
             self.assertEqual('(test) passed', str(exc))
         else:

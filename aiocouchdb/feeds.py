@@ -57,6 +57,11 @@ class Feed(object):
                 raise self._exc from None
             return None
         chunk = yield from self._queue.get()
+        if chunk is None:
+            # in case of race condition, raising an error should have more
+            # priority then returning stop signal
+            if self._exc is not None:
+                raise self._exc from None
         return chunk
 
     def is_active(self):
@@ -76,6 +81,8 @@ class Feed(object):
         """
         self._active = False
         self._resp.close(force=force)
+        self._queue.put_nowait(None)  # put stop signal into queue to break
+                                      # waiting loop on queue.get()
 
 
 class JsonFeed(Feed):

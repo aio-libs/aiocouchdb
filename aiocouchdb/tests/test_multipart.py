@@ -12,7 +12,8 @@ import io
 import unittest.mock as mock
 import aiocouchdb.client
 import aiocouchdb.multipart
-import aiocouchdb.tests.utils as utils
+
+from . import utils
 
 
 class Response(object):
@@ -51,19 +52,19 @@ class MultipartResponseWrapperTestCase(utils.TestCase):
     def test_next(self):
         self.wrapper.stream.next.return_value = self.future(b'')
         self.wrapper.stream.at_eof.return_value = False
-        self.run_loop(self.wrapper.next())
+        yield from self.wrapper.next()
         self.assertTrue(self.wrapper.stream.next.called)
 
     def test_release(self):
         self.wrapper.resp.release.return_value = self.future(None)
-        self.run_loop(self.wrapper.release())
+        yield from self.wrapper.release()
         self.assertTrue(self.wrapper.resp.release.called)
 
     def test_release_when_stream_at_eof(self):
         self.wrapper.resp.release.return_value = self.future(None)
         self.wrapper.stream.next.return_value = self.future(b'')
         self.wrapper.stream.at_eof.return_value = True
-        self.run_loop(self.wrapper.next())
+        yield from self.wrapper.next()
         self.assertTrue(self.wrapper.stream.next.called)
         self.assertTrue(self.wrapper.resp.release.called)
 
@@ -77,23 +78,23 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
     def test_next(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello, world!\r\n--:'))
-        result = self.run_loop(obj.next())
+        result = yield from obj.next()
         self.assertEqual(b'Hello, world!\r\n', result)
         self.assertTrue(obj.at_eof())
 
     def test_next_next(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello, world!\r\n--:'))
-        result = self.run_loop(obj.next())
+        result = yield from obj.next()
         self.assertEqual(b'Hello, world!\r\n', result)
         self.assertTrue(obj.at_eof())
-        result = self.run_loop(obj.next())
+        result = yield from obj.next()
         self.assertIsNone(result)
 
     def test_read(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello, world!\r\n--:'))
-        result = self.run_loop(obj.read())
+        result = yield from obj.read()
         self.assertEqual(b'Hello, world!\r\n', result)
         self.assertTrue(obj.at_eof())
 
@@ -101,38 +102,39 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'--:'))
         obj._at_eof = True
-        result = self.run_loop(obj.read_chunk())
+        result = yield from obj.read_chunk()
         self.assertEqual(b'', result)
 
     def test_read_chunk_requires_content_length(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello, world!\r\n--:'))
-        self.assertRaises(AssertionError, self.run_loop, obj.read_chunk())
+        with self.assertRaises(AssertionError):
+            yield from obj.read_chunk()
 
     def test_read_does_reads_boundary(self):
         stream = Stream(b'Hello, world!\r\n--:')
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, stream)
-        result = self.run_loop(obj.read())
+        result = yield from obj.read()
         self.assertEqual(b'Hello, world!\r\n', result)
-        self.assertEqual(b'', self.run_loop(stream.read()))
+        self.assertEqual(b'', (yield from stream.read()))
         self.assertEqual([b'--:'], obj._unread)
 
     def test_multiread(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--'))
-        result = self.run_loop(obj.read())
+        result = yield from obj.read()
         self.assertEqual(b'Hello,\r\n', result)
-        result = self.run_loop(obj.read())
+        result = yield from obj.read()
         self.assertEqual(b'', result)
         self.assertTrue(obj.at_eof())
 
     def test_read_multiline(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello\n,\r\nworld!\r\n--:--'))
-        result = self.run_loop(obj.read())
+        result = yield from obj.read()
         self.assertEqual(b'Hello\n,\r\nworld!\r\n', result)
-        result = self.run_loop(obj.read())
+        result = yield from obj.read()
         self.assertEqual(b'', result)
         self.assertTrue(obj.at_eof())
 
@@ -140,7 +142,7 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-LENGTH': 100500},
             Stream(b'.' * 100500 + b'\r\n--:--'))
-        result = self.run_loop(obj.read())
+        result = yield from obj.read()
         self.assertEqual(b'.' * 100500, result)
         self.assertTrue(obj.at_eof())
 
@@ -150,39 +152,40 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             Stream(b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
                    b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
                    b'\r\n--:--'))
-        result = self.run_loop(obj.read(decode=True))
+        result = yield from obj.read(decode=True)
         self.assertEqual(b'Time to Relax!', result)
 
     def test_read_with_content_encoding_deflate(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-ENCODING': 'deflate'},
             Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
-        result = self.run_loop(obj.read(decode=True))
+        result = yield from obj.read(decode=True)
         self.assertEqual(b'Time to Relax!', result)
 
     def test_read_with_content_encoding_unknown(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-ENCODING': 'snappy'},
             Stream(b'\x0e4Time to Relax!\r\n--:--'))
-        self.assertRaises(AttributeError, self.run_loop, obj.read(decode=True))
+        with self.assertRaises(AttributeError):
+            yield from obj.read(decode=True)
 
     def test_read_text(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream(b'Hello, world!\r\n--:--'))
-        result = self.run_loop(obj.text())
+        result = yield from obj.text()
         self.assertEqual('Hello, world!\r\n', result)
 
     def test_read_text_encoding(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
-        result = self.run_loop(obj.text(encoding='cp1251'))
+        result = yield from obj.text(encoding='cp1251')
         self.assertEqual('Привет, Мир!\r\n', result)
 
     def test_read_text_guess_encoding(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-TYPE': 'text/plain;charset=cp1251'},
             Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
-        result = self.run_loop(obj.text())
+        result = yield from obj.text()
         self.assertEqual('Привет, Мир!\r\n', result)
 
     def test_read_text_compressed(self):
@@ -190,35 +193,35 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             self.boundary, {'CONTENT-ENCODING': 'deflate',
                             'CONTENT-TYPE': 'text/plain'},
             Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
-        result = self.run_loop(obj.text())
+        result = yield from obj.text()
         self.assertEqual('Time to Relax!', result)
 
     def test_read_text_while_closed(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-TYPE': 'text/plain'}, Stream(b''))
         obj._at_eof = True
-        result = self.run_loop(obj.text())
+        result = yield from obj.text()
         self.assertEqual('', result)
 
     def test_read_json(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-TYPE': 'application/json'},
             Stream(b'{"test": "passed"}\r\n--:--'))
-        result = self.run_loop(obj.json())
+        result = yield from obj.json()
         self.assertEqual({'test': 'passed'}, result)
 
     def test_read_json_encoding(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-TYPE': 'application/json'},
             Stream('{"тест": "пассед"}\r\n--:--'.encode('cp1251')))
-        result = self.run_loop(obj.json(encoding='cp1251'))
+        result = yield from obj.json(encoding='cp1251')
         self.assertEqual({'тест': 'пассед'}, result)
 
     def test_read_json_guess_encoding(self):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-TYPE': 'application/json; charset=cp1251'},
             Stream('{"тест": "пассед"}\r\n--:--'.encode('cp1251')))
-        result = self.run_loop(obj.json())
+        result = yield from obj.json()
         self.assertEqual({'тест': 'пассед'}, result)
 
     def test_read_json_compressed(self):
@@ -226,7 +229,7 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
             self.boundary, {'CONTENT-ENCODING': 'deflate',
                             'CONTENT-TYPE': 'application/json'},
             Stream(b'\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00\r\n--:--'))
-        result = self.run_loop(obj.json())
+        result = yield from obj.json()
         self.assertEqual({'test': 'passed'}, result)
 
     def test_read_json_while_closed(self):
@@ -234,14 +237,14 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-TYPE': 'application/json'}, stream)
         obj._at_eof = True
-        result = self.run_loop(obj.json())
+        result = yield from obj.json()
         self.assertEqual(None, result)
 
     def test_release(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, stream)
-        self.run_loop(obj.release())
+        yield from obj.release()
         self.assertTrue(obj.at_eof())
         self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
         self.assertEqual([b'--:\r\n'], obj._unread)
@@ -250,7 +253,7 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {'CONTENT-LENGTH': 100500},
             Stream(b'.' * 100500 + b'\r\n--:--'))
-        result = self.run_loop(obj.release())
+        result = yield from obj.release()
         self.assertIsNone(result)
         self.assertTrue(obj.at_eof())
 
@@ -258,8 +261,8 @@ class MultipartBodyPartReaderTestCase(utils.TestCase):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
         obj = aiocouchdb.multipart.MultipartBodyPartReader(
             self.boundary, {}, stream)
-        self.run_loop(obj.release())
-        self.run_loop(obj.release())
+        yield from obj.release()
+        yield from obj.release()
         self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
         self.assertEqual([b'--:\r\n'], obj._unread)
 
@@ -332,14 +335,15 @@ class MultipartBodyReaderTestCase(utils.TestCase):
         stream = aiocouchdb.multipart.MultipartBodyReader(
             {'CONTENT-TYPE': 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
-        res = self.run_loop(stream.next())
+        res = yield from stream.next()
         self.assertIsInstance(res, stream.part_reader_cls)
 
     def test_invalid_boundary(self):
         stream = aiocouchdb.multipart.MultipartBodyReader(
             {'CONTENT-TYPE': 'multipart/related;boundary=:'},
             Stream(b'---:\r\n\r\necho\r\n---:--'))
-        self.assertRaises(ValueError, self.run_loop, stream.next())
+        with self.assertRaises(ValueError):
+            yield from stream.next()
 
     def test_release(self):
         stream = aiocouchdb.multipart.MultipartBodyReader(
@@ -355,25 +359,25 @@ class MultipartBodyReaderTestCase(utils.TestCase):
                    b'passed\r\n'
                    b'----:----\r\n'
                    b'--:--'))
-        self.run_loop(stream.release())
+        yield from stream.release()
         self.assertTrue(stream.at_eof())
 
     def test_release_release(self):
         stream = aiocouchdb.multipart.MultipartBodyReader(
             {'CONTENT-TYPE': 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
-        self.run_loop(stream.release())
+        yield from stream.release()
         self.assertTrue(stream.at_eof())
-        self.run_loop(stream.release())
+        yield from stream.release()
         self.assertTrue(stream.at_eof())
 
     def test_release_next(self):
         stream = aiocouchdb.multipart.MultipartBodyReader(
             {'CONTENT-TYPE': 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
-        self.run_loop(stream.release())
+        yield from stream.release()
         self.assertTrue(stream.at_eof())
-        res = self.run_loop(stream.next())
+        res = yield from stream.next()
         self.assertIsNone(res)
 
     def test_second_next_releases_previous_object(self):
@@ -386,10 +390,10 @@ class MultipartBodyReaderTestCase(utils.TestCase):
                    b'\r\n'
                    b'passed\r\n'
                    b'--:--'))
-        first = self.run_loop(stream.next())
+        first = yield from stream.next()
         self.assertIsInstance(first,
                               aiocouchdb.multipart.MultipartBodyPartReader)
-        second = self.run_loop(stream.next())
+        second = yield from stream.next()
         self.assertTrue(first.at_eof())
         self.assertFalse(second.at_eof())
 
@@ -403,9 +407,9 @@ class MultipartBodyReaderTestCase(utils.TestCase):
                    b'\r\n'
                    b'passed\r\n'
                    b'--:--'))
-        first = self.run_loop(stream.next())
-        second = self.run_loop(stream.next())
-        third = self.run_loop(stream.next())
+        first = yield from stream.next()
+        second = yield from stream.next()
+        third = yield from stream.next()
         self.assertTrue(first.at_eof())
         self.assertTrue(second.at_eof())
         self.assertTrue(second.at_eof())

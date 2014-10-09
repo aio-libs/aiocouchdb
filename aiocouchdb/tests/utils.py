@@ -8,6 +8,7 @@
 #
 
 import asyncio
+import functools
 import unittest
 import unittest.mock as mock
 from collections import deque
@@ -16,7 +17,24 @@ import aiocouchdb.client
 from aiocouchdb.client import urljoin
 
 
-class TestCase(unittest.TestCase):
+def run_in_loop(f):
+    @functools.wraps(f)
+    def wrapper(testcase, *args, **kwargs):
+        coro = asyncio.coroutine(f)
+        return testcase.loop.run_until_complete(coro(testcase, *args, **kwargs))
+    return wrapper
+
+
+class MetaAioTestCase(type):
+
+    def __new__(cls, name, bases, attrs):
+        for key, obj in attrs.items():
+            if key.startswith('test_'):
+                attrs[key] = run_in_loop(obj)
+        return super().__new__(cls, name, bases, attrs)
+
+
+class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
     url = 'http://localhost:5984'
 
@@ -36,9 +54,6 @@ class TestCase(unittest.TestCase):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(obj)
         return fut
-
-    def run_loop(self, coro):
-        return self.loop.run_until_complete(coro)
 
     def mock_response(self, status=200, headers=None, data=b'', err=None):
         def side_effect(*args, **kwargs):
