@@ -10,12 +10,17 @@
 import asyncio
 import contextlib
 import functools
+import os
 import unittest
 import unittest.mock as mock
 from collections import deque
 
+import aiohttp
 import aiocouchdb.client
 from aiocouchdb.client import urljoin
+
+
+TARGET = os.environ.get('AIOCOUCHDB_TARGET', 'mock')
 
 
 def run_in_loop(f):
@@ -41,12 +46,15 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
     url = 'http://localhost:5984'
     timeout = 5
+    target = TARGET
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.patch = mock.patch('aiohttp.request')
+        self.patch = mock.patch(
+            'aiohttp.request',
+            wraps=aiohttp.request if self.target != 'mock' else None)
         self.request = self.patch.start()
         self.set_response(self.prepare_response())
 
@@ -98,7 +106,8 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         self.set_response(self.prepare_response())
 
     def set_response(self, resp):
-        self.request.return_value = self.future(resp)
+        if self.target == 'mock':
+            self.request.return_value = self.future(resp)
 
     def assert_request_called_with(self, method, *path, **kwargs):
         self.assertTrue(self.request.called and self.request.call_count >= 1)
