@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 import http.cookies
 
 import aiocouchdb.authn
@@ -98,34 +99,81 @@ class ServerTestCase(utils.TestCase):
             self.assert_request_called_with('HEAD', 'db')
         self.assertIsInstance(db, self.server.database_class)
 
-    def test_db_updates(self):
-        with self.response(data=b'{}'):
-            result = yield from self.server.db_updates()
+    def trigget_db_update(self, db):
+        @asyncio.coroutine
+        def task():
+            yield from asyncio.sleep(0.1)
+            yield from db[utils.uuid()].update({})
+        asyncio.Task(task())
+
+    @utils.using_database()
+    def test_db_updates(self, db):
+        self.trigget_db_update(db)
+
+        with self.response(data=('{"db_name": "%s"}' % db.name).encode()):
+            event = yield from self.server.db_updates()
             self.assert_request_called_with('GET', '_db_updates')
-        self.assertIsInstance(result, dict)
+        self.assertIsInstance(event, dict)
+        self.assertEqual(event['db_name'], db.name, event)
 
-    def test_db_updates_feed_continuous(self):
-        result = yield from self.server.db_updates(feed='continuous')
-        self.assert_request_called_with('GET', '_db_updates',
-                                        params={'feed': 'continuous'})
-        self.assertIsInstance(result, aiocouchdb.feeds.JsonFeed)
+    @utils.using_database()
+    def test_db_updates_feed_continuous(self, db):
+        self.trigget_db_update(db)
 
-    def test_db_updates_feed_eventsource(self):
-        result = yield from self.server.db_updates(feed='eventsource')
-        self.assert_request_called_with('GET', '_db_updates',
-                                        params={'feed': 'eventsource'})
-        self.assertIsInstance(result, aiocouchdb.feeds.EventSourceFeed)
+        with self.response(data=('{"db_name": "%s"}' % db.name).encode()):
+            feed = yield from self.server.db_updates(feed='continuous',
+                                                     timeout=1000,
+                                                     heartbeat=False)
+            self.assert_request_called_with('GET', '_db_updates',
+                                            params={'feed': 'continuous',
+                                                    'timeout': 1000,
+                                                    'heartbeat': False})
+
+        self.assertIsInstance(feed, aiocouchdb.feeds.JsonFeed)
+        while True:
+            event = yield from feed.next()
+            if event is None:
+                break
+            self.assertEqual(event['db_name'], db.name, event)
+
+    @utils.using_database()
+    def test_db_updates_feed_eventsource(self, db):
+        self.trigget_db_update(db)
+
+        with self.response(data=('data: {"db_name": "%s"}' % db.name).encode()):
+            feed = yield from self.server.db_updates(feed='eventsource',
+                                                     timeout=1000,
+                                                     heartbeat=False)
+            self.assert_request_called_with('GET', '_db_updates',
+                                            params={'feed': 'eventsource',
+                                                    'timeout': 1000,
+                                                    'heartbeat': False})
+
+        self.assertIsInstance(feed, aiocouchdb.feeds.EventSourceFeed)
+        while True:
+            event = yield from feed.next()
+            if event is None:
+                break
+            self.assertEqual(event['data']['db_name'], db.name, event)
 
     def test_log(self):
         result = yield from self.server.log()
-        self.assertIsInstance(result, str)
         self.assert_request_called_with('GET', '_log')
+        self.assertIsInstance(result, str)
 
-    def test_replicate(self):
-        yield from self.server.replicate('source', 'target')
-        self.assert_request_called_with(
-            'POST', '_replicate', data={'source': 'source', 'target': 'target'})
+    @utils.using_database('source')
+    @utils.using_database('target')
+    def test_replicate(self, source, target):
+        yield from utils.populate_database(source, 10)
 
+        with self.response(data=b'{"history": [{"docs_written": 10}]}'):
+            info = yield from self.server.replicate(source.name, target.name)
+            self.assert_request_called_with(
+                'POST', '_replicate', data={'source': source.name,
+                                            'target': target.name})
+        self.assertEqual(info['history'][0]['docs_written'], 10)
+
+    @utils.run_for('mock')
     def test_replicate_kwargs(self):
         all_kwargs = {
             'authobj': {'oauth': {}},
@@ -156,6 +204,7 @@ class ServerTestCase(utils.TestCase):
             data = {'source': 'source', 'target': 'target', key: value}
             self.assert_request_called_with('POST', '_replicate', data=data)
 
+    @utils.run_for('mock')
     def test_restart(self):
         yield from self.server.restart()
         self.assert_request_called_with('POST', '_restart')
@@ -184,19 +233,19 @@ class ServerTestCase(utils.TestCase):
             yield from self.server.stats('httpd')
 
     def test_uuids(self):
-        with self.response(data=b'{"uuids": ["foo"]}'):
+        with self.response(data=b'{"uuids": ["..."]}'):
             result = yield from self.server.uuids()
             self.assert_request_called_with('GET', '_uuids')
         self.assertIsInstance(result, list)
-        self.assertEqual(['foo'], result)
+        self.assertEqual(len(result), 1)
 
     def test_uuids_count(self):
-        with self.response(data=b'{"uuids": ["foo", "bar"]}'):
+        with self.response(data=b'{"uuids": ["...", "..."]}'):
             result = yield from self.server.uuids(count=2)
             self.assert_request_called_with('GET', '_uuids',
                                             params={'count': 2})
         self.assertIsInstance(result, list)
-        self.assertEqual(['foo', 'bar'], result)
+        self.assertEqual(len(result), 2)
 
 
 class ConfigTestCase(utils.TestCase):
@@ -219,20 +268,19 @@ class ConfigTestCase(utils.TestCase):
 
     def test_config_set_option(self):
         with self.response(data=b'"relax!"'):
-            result = yield from self.server.config.update('test',
-                                                          'aiocouchdb',
-                                                          'passed')
-            self.assert_request_called_with('PUT', '_config',
-                                            'test', 'aiocouchdb',
-                                            data='passed')
+            result = yield from self.server.config.update(
+                'aiocouchdb', 'test', 'passed')
+            self.assert_request_called_with(
+                'PUT', '_config', 'aiocouchdb', 'test', data='passed')
         self.assertIsInstance(result, str)
 
+    @utils.modify_server('aiocouchdb', 'test', 'passed')
     def test_config_del_option(self):
         with self.response(data=b'"passed"'):
-            result = yield from self.server.config.delete('test', 'aiocouchdb')
-            self.assert_request_called_with('DELETE', '_config',
-                                            'test', 'aiocouchdb')
-            self.assertIsInstance(result, str)
+            result = yield from self.server.config.delete('aiocouchdb', 'test')
+            self.assert_request_called_with('DELETE',
+                                            '_config', 'aiocouchdb', 'test')
+        self.assertIsInstance(result, str)
 
     def test_config_option_exists(self):
         with self.response(status=200):
@@ -254,16 +302,15 @@ class SessionTestCase(utils.TestCase):
         super().setUp()
         self.server = aiocouchdb.server.Server(self.url)
 
-    def test_open_session(self):
-        cookies = http.cookies.SimpleCookie({'AuthSession': 'secret'})
-        with self.response(data=b'{"ok": true}') as resp:
-            resp.cookies = cookies
-            auth = yield from self.server.session.open('foo', 'bar')
+    @utils.with_fixed_admin_party('root', 'relax')
+    def test_open_session(self, root):
+        with self.response(data=b'{"ok": true}'):
+            auth = yield from self.server.session.open('root', 'relax')
             self.assert_request_called_with('POST', '_session',
-                                            data={'name': 'foo',
-                                                  'password': 'bar'})
+                                            data={'name': 'root',
+                                                  'password': 'relax'})
         self.assertIsInstance(auth, aiocouchdb.authn.CookieAuthProvider)
-        self.assertIs(auth._cookies, resp.cookies)
+        self.assertIn('AuthSession', auth._cookies)
 
     def test_session_info(self):
         with self.response(data=b'{}'):
