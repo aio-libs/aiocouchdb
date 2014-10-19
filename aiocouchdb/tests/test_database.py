@@ -76,7 +76,7 @@ class DatabaseTestCase(utils.TestCase):
 
     @utils.with_fixed_admin_party('root', 'relax')
     def test_exists_forbidden(self, root):
-        yield from self.db.security.update_members(auth=root, users=['foo'])
+        yield from self.db.security.update_members(auth=root, names=['foo'])
         with self.response(status=403):
             result = yield from self.db.exists()
             resp = yield from self.db.resource.head()
@@ -350,11 +350,11 @@ class DatabaseTestCase(utils.TestCase):
     def test_security_get(self):
         data = {
             'admins': {
-                'users': [],
+                'names': [],
                 'roles': []
             },
             'members': {
-                'users': [],
+                'names': [],
                 'roles': []
             }
         }
@@ -366,45 +366,45 @@ class DatabaseTestCase(utils.TestCase):
     def test_security_update(self):
         data = {
             'admins': {
-                'users': ['foo'],
+                'names': ['foo'],
                 'roles': []
             },
             'members': {
-                'users': [],
+                'names': [],
                 'roles': ['bar', 'baz']
             }
         }
 
-        yield from self.db.security.update(admins={'users': ['foo']},
+        yield from self.db.security.update(admins={'names': ['foo']},
                                            members={'roles': ['bar', 'baz']})
         self.assert_request_called_with('PUT', self.db.name, '_security',
                                         data=data)
 
     def test_security_update_merge(self):
         yield from self.db.security.update(
-            admins={"users": ["foo"], "roles": []},
-            members={"users": [], "roles": ["bar", "baz"]})
+            admins={"names": ["foo"], "roles": []},
+            members={"names": [], "roles": ["bar", "baz"]})
 
         with self.response(data=b'''{
             "admins": {
-                "users": ["foo"],
+                "names": ["foo"],
                 "roles": []
             },
             "members": {
-                "users": [],
+                "names": [],
                 "roles": ["bar", "baz"]
             }
         }'''):
             yield from self.db.security.update(admins={'roles': ['zoo']},
-                                               members={'users': ['boo']},
+                                               members={'names': ['boo']},
                                                merge=True)
             data = {
                 'admins': {
-                    'users': ['foo'],
+                    'names': ['foo'],
                     'roles': ['zoo']
                 },
                 'members': {
-                    'users': ['boo'],
+                    'names': ['boo'],
                     'roles': ['bar', 'baz']
                 }
             }
@@ -413,28 +413,28 @@ class DatabaseTestCase(utils.TestCase):
 
     def test_security_update_merge_duplicate(self):
         yield from self.db.security.update(
-            admins={"users": ["foo"], "roles": []},
-            members={"users": [], "roles": ["bar", "baz"]})
+            admins={"names": ["foo"], "roles": []},
+            members={"names": [], "roles": ["bar", "baz"]})
 
         with self.response(data=b'''{
             "admins": {
-                "users": ["foo"],
+                "names": ["foo"],
                 "roles": []
             },
             "members": {
-                "users": [],
+                "names": [],
                 "roles": ["bar", "baz"]
             }
         }'''):
-            yield from self.db.security.update(admins={'users': ['foo', 'bar']},
+            yield from self.db.security.update(admins={'names': ['foo', 'bar']},
                                                merge=True)
             data = {
                 'admins': {
-                    'users': ['foo', 'bar'],
+                    'names': ['foo', 'bar'],
                     'roles': []
                 },
                 'members': {
-                    'users': [],
+                    'names': [],
                     'roles': ['bar', 'baz']
                 }
             }
@@ -446,11 +446,11 @@ class DatabaseTestCase(utils.TestCase):
             yield from self.db.security.update_admins()
             data = {
                 'admins': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 },
                 'members': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 }
             }
@@ -459,15 +459,15 @@ class DatabaseTestCase(utils.TestCase):
 
     def test_security_update_some_admins(self):
         with self.response(data=b'{}'):
-            yield from self.db.security.update_admins(users=['foo'],
+            yield from self.db.security.update_admins(names=['foo'],
                                                       roles=['bar', 'baz'])
             data = {
                 'admins': {
-                    'users': ['foo'],
+                    'names': ['foo'],
                     'roles': ['bar', 'baz']
                 },
                 'members': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 }
             }
@@ -479,11 +479,11 @@ class DatabaseTestCase(utils.TestCase):
             yield from self.db.security.update_members()
             data = {
                 'admins': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 },
                 'members': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 }
             }
@@ -492,15 +492,15 @@ class DatabaseTestCase(utils.TestCase):
 
     def test_security_update_some_members(self):
         with self.response(data=b'{}'):
-            yield from self.db.security.update_members(users=['foo'],
+            yield from self.db.security.update_members(names=['foo'],
                                                        roles=['bar', 'baz'])
             data = {
                 'admins': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 },
                 'members': {
-                    'users': ['foo'],
+                    'names': ['foo'],
                     'roles': ['bar', 'baz']
                 }
             }

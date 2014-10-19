@@ -576,11 +576,11 @@ class Security(object):
         if not secobj:
             secobj = {
                 'admins': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 },
                 'members': {
-                    'users': [],
+                    'names': [],
                     'roles': []
                 }
             }
@@ -617,12 +617,12 @@ class Security(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
-    def update_admins(self, *, auth=None, users=None, roles=None, merge=False):
+    def update_admins(self, *, auth=None, names=None, roles=None, merge=False):
         """Helper for :meth:`~aiocouchdb.database.Security.update` method to
         update only database administrators leaving members as is.
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param list users: List of user names
+        :param list names: List of user names
         :param list roles: List of role names
         :param bool merge: Merges user/role lists with existed ones when
                            is ``True``, otherwise replaces them with the given
@@ -630,17 +630,17 @@ class Security(object):
         :rtype: dict
         """
         admins = {
-            'users': [] if users is None else users,
+            'names': [] if names is None else names,
             'roles': [] if roles is None else roles
         }
         return self.update(auth=auth, admins=admins, merge=merge)
 
-    def update_members(self, *, auth=None, users=None, roles=None, merge=False):
+    def update_members(self, *, auth=None, names=None, roles=None, merge=False):
         """Helper for :meth:`~aiocouchdb.database.Security.update` method to
         update only database members leaving administrators as is.
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param list users: List of user names
+        :param list names: List of user names
         :param list roles: List of role names
         :param bool merge: Merges user/role lists with existed ones when
                            is ``True``, otherwise replaces them with the given
@@ -648,7 +648,7 @@ class Security(object):
         :rtype: dict
         """
         members = {
-            'users': [] if users is None else users,
+            'names': [] if names is None else names,
             'roles': [] if roles is None else roles
         }
         return self.update(auth=auth, members=members, merge=merge)
