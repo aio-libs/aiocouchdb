@@ -347,6 +347,94 @@ class DatabaseTestCase(utils.TestCase):
         self.assert_request_called_with('PUT', self.db.name, '_revs_limit',
                                         data=42)
 
+    def test_temp_view(self):
+        mapfun = 'function(doc){ emit(doc._id); }'
+        result = yield from self.db.temp_view(mapfun)
+        self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                        data={'map': mapfun})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_temp_view_reduce(self):
+        mapfun = 'function(doc){ emit(doc._id); }'
+        redfun = '_count'
+        result = yield from self.db.temp_view(mapfun, redfun)
+        self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                        data={'map': mapfun,
+                                              'reduce': redfun})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    def test_temp_view_language(self):
+        mapfun = 'function(doc){ emit(doc._id); }'
+        result = yield from self.db.temp_view(mapfun, language='javascript')
+        self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                        data={'map': mapfun,
+                                              'language': 'javascript'})
+        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+
+    @utils.run_for('mock')
+    def test_temp_view_params(self):
+        all_params = {
+            'att_encoding_info': False,
+            'attachments': False,
+            'conflicts': True,
+            'descending': True,
+            'endkey': 'foo',
+            'endkey_docid': 'foo_id',
+            'group': False,
+            'group_level': 10,
+            'include_docs': True,
+            'inclusive_end': False,
+            'keys': ['foo', 'bar'],
+            'limit': 10,
+            'reduce': True,
+            'skip': 20,
+            'stale': 'ok',
+            'startkey': 'bar',
+            'startkey_docid': 'bar_id',
+            'update_seq': True
+        }
+
+        for key, value in all_params.items():
+            yield from self.db.temp_view('fun(_)-> ok end', **{key: value})
+            if key in ('endkey', 'startkey'):
+                value = json.dumps(value)
+            if key == 'keys':
+                self.assert_request_called_with(
+                    'POST', self.db.name, '_temp_view',
+                    data={'map': 'fun(_)-> ok end',
+                          key: value})
+            else:
+                self.assert_request_called_with(
+                    'POST', self.db.name, '_temp_view',
+                    data={'map': 'fun(_)-> ok end'},
+                    params={key: value})
+
+    def test_view_cleanup(self):
+        yield from self.db.view_cleanup()
+        self.assert_request_called_with('POST', self.db.name, '_view_cleanup')
+
+
+class SecurityTestCase(utils.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.db = self.server[utils.dbname(self.id().split('.')[-1])]
+        self.loop.run_until_complete(self.setup_database())
+
+    def tearDown(self):
+        self.loop.run_until_complete(self.teardown_database())
+        super().tearDown()
+
+    @asyncio.coroutine
+    def setup_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.create()
+
+    @asyncio.coroutine
+    def teardown_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.delete()
+
     def test_security_get(self):
         data = {
             'admins': {
@@ -506,69 +594,3 @@ class DatabaseTestCase(utils.TestCase):
             }
             self.assert_request_called_with('PUT', self.db.name, '_security',
                                             data=data)
-
-    def test_temp_view(self):
-        mapfun = 'function(doc){ emit(doc._id); }'
-        result = yield from self.db.temp_view(mapfun)
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun})
-        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
-
-    def test_temp_view_reduce(self):
-        mapfun = 'function(doc){ emit(doc._id); }'
-        redfun = '_count'
-        result = yield from self.db.temp_view(mapfun, redfun)
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun,
-                                              'reduce': redfun})
-        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
-
-    def test_temp_view_language(self):
-        mapfun = 'function(doc){ emit(doc._id); }'
-        result = yield from self.db.temp_view(mapfun, language='javascript')
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun,
-                                              'language': 'javascript'})
-        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
-
-    @utils.run_for('mock')
-    def test_temp_view_params(self):
-        all_params = {
-            'att_encoding_info': False,
-            'attachments': False,
-            'conflicts': True,
-            'descending': True,
-            'endkey': 'foo',
-            'endkey_docid': 'foo_id',
-            'group': False,
-            'group_level': 10,
-            'include_docs': True,
-            'inclusive_end': False,
-            'keys': ['foo', 'bar'],
-            'limit': 10,
-            'reduce': True,
-            'skip': 20,
-            'stale': 'ok',
-            'startkey': 'bar',
-            'startkey_docid': 'bar_id',
-            'update_seq': True
-        }
-
-        for key, value in all_params.items():
-            yield from self.db.temp_view('fun(_)-> ok end', **{key: value})
-            if key in ('endkey', 'startkey'):
-                value = json.dumps(value)
-            if key == 'keys':
-                self.assert_request_called_with(
-                    'POST', self.db.name, '_temp_view',
-                    data={'map': 'fun(_)-> ok end',
-                          key: value})
-            else:
-                self.assert_request_called_with(
-                    'POST', self.db.name, '_temp_view',
-                    data={'map': 'fun(_)-> ok end'},
-                    params={key: value})
-
-    def test_view_cleanup(self):
-        yield from self.db.view_cleanup()
-        self.assert_request_called_with('POST', self.db.name, '_view_cleanup')
