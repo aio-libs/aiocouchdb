@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 import json
 
 import aiocouchdb.client
@@ -22,11 +23,42 @@ class DocumentTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.url_doc = urljoin(self.url, *self.request_path())
-        self.doc = aiocouchdb.document.Document(self.url_doc)
+        self.db = self.server[self.new_dbname()]
+        docid = utils.uuid()
+        self.url_doc = urljoin(self.db.resource.url, docid)
+        self.doc = aiocouchdb.document.Document(self.url_doc, docid=docid)
+        self.loop.run_until_complete(self.setup())
+
+    def tearDown(self):
+        self.loop.run_until_complete(self.teardown_database())
+        super().tearDown()
+
+    @asyncio.coroutine
+    def setup(self):
+        yield from self.setup_database()
+        yield from self.setup_document()
+
+    @asyncio.coroutine
+    def setup_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.create()
+
+    @asyncio.coroutine
+    def setup_document(self):
+        with self.response(data=b'{"rev": "1-ABC"}'):
+            resp = yield from self.doc.update({})
+        self.rev = resp['rev']
+
+    @asyncio.coroutine
+    def teardown_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.delete()
+
+    def new_dbname(self):
+        return utils.dbname(self.id().split('.')[-1])
 
     def request_path(self, *parts):
-        return ['db', 'docid'] + list(parts)
+        return [self.db.name, self.doc.id] + list(parts)
 
     def test_init_with_url(self):
         self.assertIsInstance(self.doc.resource, aiocouchdb.client.Resource)
@@ -53,21 +85,26 @@ class DocumentTestCase(utils.TestCase):
         self.assertTrue(result)
 
     def test_exists_rev(self):
-        result = yield from self.doc.exists('1-ABC')
+        result = yield from self.doc.exists(self.rev)
         self.assert_request_called_with('HEAD', *self.request_path(),
-                                        params={'rev': '1-ABC'})
+                                        params={'rev': self.rev})
         self.assertTrue(result)
 
+    @utils.run_for('mock')
     def test_exists_forbidden(self):
+        # CouchDB doesn't supports per-document access control unless for
+        # authentication and replicator databases.
+        # We'll test this in real in another suites
         with self.response(status=403):
             result = yield from self.doc.exists()
             self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_exists_not_found(self):
+        docid = utils.uuid()
         with self.response(status=404):
-            result = yield from self.doc.exists()
-            self.assert_request_called_with('HEAD', *self.request_path())
+            result = yield from self.db[docid].exists()
+            self.assert_request_called_with('HEAD', self.db.name, docid)
         self.assertFalse(result)
 
     def test_modified(self):
@@ -78,10 +115,10 @@ class DocumentTestCase(utils.TestCase):
 
     def test_not_modified(self):
         with self.response(status=304):
-            result = yield from self.doc.modified('1-ABC')
+            result = yield from self.doc.modified(self.rev)
             self.assert_request_called_with(
                 'HEAD', *self.request_path(),
-                headers={'IF-NONE-MATCH': '"1-ABC"'})
+                headers={'IF-NONE-MATCH': '"%s"' % self.rev})
         self.assertFalse(result)
 
     def test_attachment(self):
@@ -110,31 +147,31 @@ class DocumentTestCase(utils.TestCase):
         self.assertIsInstance(att, self.doc.attachment_class)
 
     def test_rev(self):
-        with self.response(headers={'ETAG': '"1-ABC"'}):
+        with self.response(headers={'ETAG': '"%s"' % self.rev}):
             result = yield from self.doc.rev()
             self.assert_request_called_with('HEAD', *self.request_path())
-        self.assertEqual('1-ABC', result)
+        self.assertEqual(self.rev, result)
 
     def test_get(self):
         yield from self.doc.get()
         self.assert_request_called_with('GET', *self.request_path())
 
     def test_get_rev(self):
-        yield from self.doc.get('1-ABC')
+        yield from self.doc.get(self.rev)
         self.assert_request_called_with('GET', *self.request_path(),
-                                        params={'rev': '1-ABC'})
+                                        params={'rev': self.rev})
 
     def test_get_params(self):
         all_params = {
             'att_encoding_info': True,
             'attachments': True,
-            'atts_since': ['1-ABC'],
+            'atts_since': [self.rev],
             'conflicts': False,
             'deleted_conflicts': True,
             'local_seq': True,
             'meta': False,
-            'open_revs': ['1-ABC', '2-CDE'],
-            'rev': '1-ABC',
+            'open_revs': [self.rev, '2-CDE'],
+            'rev': self.rev,
             'revs': True,
             'revs_info': True
         }
@@ -227,8 +264,11 @@ class DocumentTestCase(utils.TestCase):
             aiocouchdb.document.DocAttachmentsMultipartReader)
 
     def test_get_wth_atts_json_hacks(self):
+        jsondoc = json.dumps({'_id': self.doc.id, '_rev': self.rev},
+                             sort_keys=True).replace(' ', '').encode()
+
         with self.response(
-            data=b'{"_id": "foo"}',
+            data=jsondoc,
             headers={'CONTENT-TYPE': 'application/json'}
         ):
             result = yield from self.doc.get_with_atts()
@@ -244,18 +284,18 @@ class DocumentTestCase(utils.TestCase):
         head, *body, tail = resp.content._buffer.splitlines()
         self.assertTrue(tail.startswith(head))
         self.assertEqual(
-            b'Content-Type: application/json\r\n\r\n{"_id": "foo"}',
+            b'Content-Type: application/json\r\n\r\n' + jsondoc,
             b'\r\n'.join(body))
 
     def test_get_with_atts_params(self):
         all_params = {
             'att_encoding_info': True,
-            'atts_since': ['1-ABC'],
+            'atts_since': [self.rev],
             'conflicts': False,
             'deleted_conflicts': True,
             'local_seq': True,
             'meta': False,
-            'rev': '1-ABC',
+            'rev': self.rev,
             'revs': True,
             'revs_info': True
         }
@@ -275,9 +315,12 @@ class DocumentTestCase(utils.TestCase):
                     params={key: value, 'attachments': True})
 
     def test_update(self):
-        yield from self.doc.update({})
-        self.assert_request_called_with('PUT', *self.request_path(), data={})
+        yield from self.doc.update({}, rev=self.rev)
+        self.assert_request_called_with('PUT', *self.request_path(),
+                                        data={},
+                                        params={'rev': self.rev})
 
+    @utils.run_for('mock')
     def test_update_params(self):
         all_params = {
             'batch': "ok",
@@ -299,31 +342,42 @@ class DocumentTestCase(utils.TestCase):
             pass
 
         doc = Foo()
-        yield from self.doc.update(doc)
-        self.assert_request_called_with('PUT', *self.request_path(), data={})
+        yield from self.doc.update(doc, rev=self.rev)
+        self.assert_request_called_with('PUT', *self.request_path(),
+                                        data={},
+                                        params={'rev': self.rev})
 
     def test_update_reject_docid_collision(self):
         with self.assertRaises(ValueError):
             yield from self.doc.update({'_id': 'foo'})
 
     def test_delete(self):
-        yield from self.doc.delete('1-ABC')
+        yield from self.doc.delete(self.rev)
         self.assert_request_called_with('DELETE', *self.request_path(),
-                                        params={'rev': '1-ABC'})
+                                        params={'rev': self.rev})
 
     def test_delete_preserve_content(self):
-        with self.response(data=b'{"_id": "foo", "bar": "baz"}'):
-            yield from self.doc.delete('1-ABC', preserve_content=True)
+        with self.response(data=b'{"rev": "2-CDE"}'):
+            resp = yield from self.doc.update({'foo': 'bar'}, rev=self.rev)
+
+        rev = resp['rev']
+        data = json.dumps({'_id': self.doc.id,
+                           '_rev': rev,
+                           'foo': 'bar'}).encode()
+        with self.response(data=data):
+            yield from self.doc.delete(rev, preserve_content=True)
             self.assert_request_called_with('PUT', *self.request_path(),
-                                            data={'_id': 'foo',
+                                            data={'_id': self.doc.id,
+                                                  '_rev': rev,
                                                   '_deleted': True,
-                                                  'bar': 'baz'},
-                                            params={'rev': '1-ABC'})
+                                                  'foo': 'bar'},
+                                            params={'rev': rev})
 
     def test_copy(self):
-        yield from self.doc.copy('newid')
+        newid = utils.uuid()
+        yield from self.doc.copy(newid)
         self.assert_request_called_with('COPY', *self.request_path(),
-                                        headers={'DESTINATION': 'newid'})
+                                        headers={'DESTINATION': newid})
 
     def test_copy_rev(self):
         yield from self.doc.copy('idx', '1-A')
