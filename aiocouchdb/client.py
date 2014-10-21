@@ -17,6 +17,51 @@ import urllib.parse
 from .errors import maybe_raise_error
 
 
+# FIXME: workaround of decompressing empty payload.
+# https://github.com/KeepSafe/aiohttp/pull/154
+class HttpPayloadParser(aiohttp.HttpPayloadParser):
+
+    def __call__(self, out, buf):
+        # payload params
+        length = self.message.headers.get('CONTENT-LENGTH', self.length)
+        if 'SEC-WEBSOCKET-KEY1' in self.message.headers:
+            length = 8
+
+        # payload decompression wrapper
+        if self.compression and self.message.compression:
+            if self.response_with_body:  # the fix
+                out = aiohttp.DeflateBuffer(out, self.message.compression)
+
+        # payload parser
+        if not self.response_with_body:
+            # don't parse payload if it's not expected to be received
+            pass
+
+        elif 'chunked' in self.message.headers.get('TRANSFER-ENCODING', ''):
+            yield from self.parse_chunked_payload(out, buf)
+
+        elif length is not None:
+            try:
+                length = int(length)
+            except ValueError:
+                raise aiohttp.errors.InvalidHeader('CONTENT-LENGTH') from None
+
+            if length < 0:
+                raise aiohttp.errors.InvalidHeader('CONTENT-LENGTH')
+            elif length > 0:
+                yield from self.parse_length_payload(out, buf, length)
+        else:
+            if self.readall and getattr(self.message, 'code', 0) != 204:
+                yield from self.parse_eof_payload(out, buf)
+            elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
+                aiohttp.log.internal_log.warning(  # pragma: no cover
+                    'Content-Length or Transfer-Encoding header is required')
+
+        out.feed_eof()
+
+aiohttp.HttpPayloadParser = HttpPayloadParser
+
+
 class HttpRequest(aiohttp.client.ClientRequest):
     """:class:`aiohttp.client.ClientRequest` class with CouchDB specifics."""
 
