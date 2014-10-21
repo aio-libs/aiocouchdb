@@ -89,12 +89,11 @@ class AttachmentTestCase(utils.TestCase):
 
     def test_init_with_name(self):
         res = aiocouchdb.client.Resource(self.url_att)
-        db = aiocouchdb.database.Database(res, dbname='foo')
-        self.assertEqual(db.name, 'foo')
+        att = aiocouchdb.attachment.Attachment(res, name='foo.txt')
+        self.assertEqual(att.name, 'foo.txt')
 
     def test_init_with_name_from_doc(self):
-        doc = aiocouchdb.document.Document(self.url)
-        att = yield from doc.att('bar.txt')
+        att = yield from self.doc.att('bar.txt')
         self.assertEqual(att.name, 'bar.txt')
 
     def test_exists(self):
