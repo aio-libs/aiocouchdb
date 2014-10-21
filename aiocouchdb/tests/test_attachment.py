@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 import base64
 import hashlib
 import io
@@ -23,14 +24,62 @@ class AttachmentTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.url_att = urljoin(self.url, *self.request_path())
-        self.att = aiocouchdb.attachment.Attachment(self.url_att)
+        self.db = self.server[self.new_dbname()]
+        self.doc = self.db[utils.uuid()]
+        self.attbin = aiocouchdb.attachment.Attachment(
+            urljoin(self.doc.resource.url, 'binary'),
+            name='binary')
+        self.atttxt = aiocouchdb.attachment.Attachment(
+            urljoin(self.doc.resource.url, 'text'),
+            name='text')
+        self.url_att = self.attbin.resource.url
+        self.loop.run_until_complete(self.setup())
 
-    def request_path(self, *parts):
-        return ['db', 'docid', 'att'] + list(parts)
+    def tearDown(self):
+        self.loop.run_until_complete(self.teardown_database())
+        super().tearDown()
+
+    @asyncio.coroutine
+    def setup(self):
+        yield from self.setup_database()
+        yield from self.setup_document()
+
+    @asyncio.coroutine
+    def setup_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.create()
+
+    @asyncio.coroutine
+    def setup_document(self):
+        with self.response(data=b'{"rev": "1-ABC"}'):
+            resp = yield from self.doc.update({
+                '_attachments': {
+                    'binary': {
+                        'data': base64.b64encode(b'Time to relax!').decode(),
+                        'content_type': 'application/octet-stream'
+                    },
+                    'text': {
+                        'data': base64.b64encode(b'Time to relax!').decode(),
+                        'content_type': 'text/plain'
+                    }
+                }
+            })
+        self.rev = resp['rev']
+
+    @asyncio.coroutine
+    def teardown_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.delete()
+
+    def new_dbname(self):
+        return utils.dbname(self.id().split('.')[-1])
+
+    def request_path(self, att=None, *parts):
+        attname = att.name if att is not None else self.attbin.name
+        return [self.db.name, self.doc.id, attname] + list(parts)
 
     def test_init_with_url(self):
-        self.assertIsInstance(self.att.resource, aiocouchdb.client.Resource)
+        self.assertIsInstance(self.attbin.resource, aiocouchdb.client.Resource)
 
     def test_init_with_resource(self):
         res = aiocouchdb.client.Resource(self.url_att)
@@ -49,42 +98,45 @@ class AttachmentTestCase(utils.TestCase):
         self.assertEqual(att.name, 'bar.txt')
 
     def test_exists(self):
-        result = yield from self.att.exists()
+        result = yield from self.attbin.exists()
         self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
 
     def test_exists_rev(self):
-        result = yield from self.att.exists('1-ABC')
+        result = yield from self.attbin.exists(self.rev)
         self.assert_request_called_with('HEAD', *self.request_path(),
-                                        params={'rev': '1-ABC'})
+                                        params={'rev': self.rev})
         self.assertTrue(result)
 
+    @utils.run_for('mock')
     def test_exists_forbidden(self):
         with self.response(status=403):
-            result = yield from self.att.exists()
+            result = yield from self.attbin.exists()
             self.assert_request_called_with('HEAD', *self.request_path())
         self.assertFalse(result)
 
     def test_exists_not_found(self):
         with self.response(status=404):
-            result = yield from self.att.exists()
-            self.assert_request_called_with('HEAD', *self.request_path())
+            attname = utils.uuid()
+            result = yield from self.doc[attname].exists()
+            self.assert_request_called_with(
+                'HEAD', self.db.name, self.doc.id, attname)
         self.assertFalse(result)
 
     def test_modified(self):
-        digest = hashlib.md5(b'foo').digest()
-        reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
-        result = yield from self.att.modified(digest)
+        digest = hashlib.md5(utils.uuid().encode()).digest()
+        reqdigest = '"{}"'.format(base64.b64encode(digest).decode())
+        result = yield from self.attbin.modified(digest)
         self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertTrue(result)
 
     def test_not_modified(self):
-        digest = hashlib.md5(b'foo').digest()
-        reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
+        digest = hashlib.md5(b'Time to relax!').digest()
+        reqdigest = '"Ehemn5lWOgCMUJ/c1x0bcg=="'
 
         with self.response(status=304):
-            result = yield from self.att.modified(digest)
+            result = yield from self.attbin.modified(digest)
             self.assert_request_called_with(
                 'HEAD', *self.request_path(),
                 headers={'IF-NONE-MATCH': reqdigest})
@@ -93,106 +145,107 @@ class AttachmentTestCase(utils.TestCase):
     def test_modified_with_base64_digest(self):
         digest = base64.b64encode(hashlib.md5(b'foo').digest()).decode()
         reqdigest = '"rL0Y20zC+Fzt72VPzMSk2A=="'
-        result = yield from self.att.modified(digest)
+        result = yield from self.attbin.modified(digest)
         self.assert_request_called_with('HEAD', *self.request_path(),
                                         headers={'IF-NONE-MATCH': reqdigest})
         self.assertTrue(result)
 
     def test_modified_invalid_digest(self):
         with self.assertRaises(TypeError):
-            yield from self.att.modified({})
+            yield from self.attbin.modified({})
 
         with self.assertRaises(ValueError):
-            yield from self.att.modified(b'foo')
+            yield from self.attbin.modified(b'foo')
 
         with self.assertRaises(ValueError):
-            yield from self.att.modified('bar')
+            yield from self.attbin.modified('bar')
 
     def test_accepts_range(self):
         with self.response(headers={'ACCEPT_RANGE': 'bytes'}):
-            result = yield from self.att.accepts_range()
+            result = yield from self.attbin.accepts_range()
             self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
 
     def test_accepts_range_not(self):
-        result = yield from self.att.accepts_range()
-        self.assert_request_called_with('HEAD', *self.request_path())
+        result = yield from self.atttxt.accepts_range()
+        self.assert_request_called_with('HEAD', *self.request_path(self.atttxt))
         self.assertFalse(result)
 
     def test_accepts_range_with_rev(self):
-        result = yield from self.att.accepts_range(rev='1-ABC')
-        self.assert_request_called_with('HEAD', *self.request_path(),
-                                        params={'rev': '1-ABC'})
+        result = yield from self.atttxt.accepts_range(rev=self.rev)
+        self.assert_request_called_with('HEAD', *self.request_path(self.atttxt),
+                                        params={'rev': self.rev})
         self.assertFalse(result)
 
     def test_get(self):
-        result = yield from self.att.get()
+        result = yield from self.attbin.get()
         self.assert_request_called_with('GET', *self.request_path())
         self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
 
     def test_get_rev(self):
-        result = yield from self.att.get('1-ABC')
+        result = yield from self.attbin.get(self.rev)
         self.assert_request_called_with('GET', *self.request_path(),
-                                        params={'rev': '1-ABC'})
+                                        params={'rev': self.rev})
         self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
 
     def test_get_range(self):
-        yield from self.att.get(range=slice(24, 42))
+        yield from self.attbin.get(range=slice(12, 24))
         self.assert_request_called_with('GET', *self.request_path(),
-                                        headers={'RANGE': 'bytes=24-42'})
+                                        headers={'RANGE': 'bytes=12-24'})
 
     def test_get_range_from_start(self):
-        yield from self.att.get(range=slice(42))
+        yield from self.attbin.get(range=slice(42))
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=0-42'})
 
     def test_get_range_iterable(self):
-        yield from self.att.get(range=[11, 22])
+        yield from self.attbin.get(range=[11, 22])
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=11-22'})
 
     def test_get_range_int(self):
-        yield from self.att.get(range=42)
+        yield from self.attbin.get(range=42)
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=0-42'})
 
     def test_update(self):
-        yield from self.att.update(io.BytesIO(b''))
-        self.assert_request_called_with(
-            'PUT', *self.request_path(),
-            data=Ellipsis,
-            headers={'CONTENT-TYPE': 'application/octet-stream'})
-
-    def test_update_ctype(self):
-        yield from self.att.update(io.BytesIO(b''), content_type='foo/bar')
-        self.assert_request_called_with(
-            'PUT', *self.request_path(),
-            data=Ellipsis,
-            headers={'CONTENT-TYPE': 'foo/bar'})
-
-    def test_update_with_encoding(self):
-        yield from self.att.update(io.BytesIO(b''), content_encoding='gzip')
-        self.assert_request_called_with(
-            'PUT', *self.request_path(),
-            data=Ellipsis,
-            headers={'CONTENT-TYPE': 'application/octet-stream',
-                     'CONTENT-ENCODING': 'gzip'})
-
-    def test_update_rev(self):
-        yield from self.att.update(io.BytesIO(b''), rev='1-ABC')
+        yield from self.attbin.update(io.BytesIO(b''), rev=self.rev)
         self.assert_request_called_with(
             'PUT', *self.request_path(),
             data=Ellipsis,
             headers={'CONTENT-TYPE': 'application/octet-stream'},
-            params={'rev': '1-ABC'})
+            params={'rev': self.rev})
+
+    def test_update_ctype(self):
+        yield from self.attbin.update(io.BytesIO(b''),
+                                      content_type='foo/bar',
+                                      rev=self.rev)
+        self.assert_request_called_with(
+            'PUT', *self.request_path(),
+            data=Ellipsis,
+            headers={'CONTENT-TYPE': 'foo/bar'},
+            params={'rev': self.rev})
+
+    def test_update_with_encoding(self):
+        yield from self.attbin.update(io.BytesIO(b''),
+                                      content_encoding='gzip',
+                                      rev=self.rev)
+        self.assert_request_called_with(
+            'PUT', *self.request_path(),
+            data=Ellipsis,
+            headers={'CONTENT-TYPE': 'application/octet-stream',
+                     'CONTENT-ENCODING': 'gzip'},
+            params={'rev': self.rev})
 
     def test_delete(self):
-        yield from self.att.delete('1-ABC')
+        yield from self.attbin.delete(self.rev)
         self.assert_request_called_with('DELETE', *self.request_path(),
-                                        params={'rev': '1-ABC'})
+                                        params={'rev': self.rev})
 
 
 class AttachmentReaderTestCase(utils.TestCase):
+
+    target = 'mock'
 
     def setUp(self):
         super().setUp()
