@@ -88,7 +88,7 @@ class Attachment(object):
             params['rev'] = rev
         resp = yield from self.resource.head(auth=auth, params=params)
         yield from resp.read()
-        return resp.headers.get('ACCEPT_RANGE') == 'bytes'
+        return resp.headers.get('ACCEPT-RANGES') == 'bytes'
 
     @asyncio.coroutine
     def get(self, rev=None, *, auth=None, range=None):

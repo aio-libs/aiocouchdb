@@ -161,7 +161,7 @@ class AttachmentTestCase(utils.TestCase):
             yield from self.attbin.modified('bar')
 
     def test_accepts_range(self):
-        with self.response(headers={'ACCEPT_RANGE': 'bytes'}):
+        with self.response(headers={'ACCEPT-RANGES': 'bytes'}):
             result = yield from self.attbin.accepts_range()
             self.assert_request_called_with('HEAD', *self.request_path())
         self.assertTrue(result)
