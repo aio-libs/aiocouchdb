@@ -23,6 +23,7 @@ from .errors import (
     MethodNotAllowed,
     ResourceConflict,
     PreconditionFailed,
+    RequestedRangeNotSatisfiable,
     ServerError
 )
 from .attachment import Attachment

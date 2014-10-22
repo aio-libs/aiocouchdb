@@ -25,6 +25,7 @@ Exception hierarchy
                   +-- aiocouchdb.errors.MethodNotAllowed
                   +-- aiocouchdb.errors.ResourceConflict
                   +-- aiocouchdb.errors.PreconditionFailed
+                  +-- aiocouchdb.errors.RequestedRangeNotSatisfiable
                   +-- aiocouchdb.errors.ServerError
 """
 
@@ -105,6 +106,13 @@ class PreconditionFailed(HttpErrorException):
 
     code = 412
     message = 'Precondition Failed'
+
+
+class RequestedRangeNotSatisfiable(HttpErrorException):
+    """The client has asked for a portion of the file, but the server
+    cannot supply that portion."""
+    code = 416
+    message = 'Requested Range Not Satisfiable'
 
 
 class ServerError(HttpErrorException):

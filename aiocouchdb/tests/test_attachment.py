@@ -207,6 +207,14 @@ class AttachmentTestCase(utils.TestCase):
         self.assert_request_called_with('GET', *self.request_path(),
                                         headers={'RANGE': 'bytes=0-42'})
 
+    def test_get_bad_range(self):
+        with self.response(status=416):
+            with self.assertRaises(aiocouchdb.RequestedRangeNotSatisfiable):
+                yield from self.attbin.get(range=slice(1024, 8192))
+
+        self.assert_request_called_with('GET', *self.request_path(),
+                                        headers={'RANGE': 'bytes=1024-8192'})
+
     def test_update(self):
         yield from self.attbin.update(io.BytesIO(b''), rev=self.rev)
         self.assert_request_called_with(
