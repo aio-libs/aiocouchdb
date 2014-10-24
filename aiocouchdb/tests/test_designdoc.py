@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 import json
 
 import aiocouchdb.client
@@ -23,11 +24,49 @@ class DesignDocTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.url_ddoc = urljoin(self.url, *self.request_path())
-        self.ddoc = aiocouchdb.designdoc.DesignDocument(self.url_ddoc)
+        self.db = self.server[self.new_dbname()]
+        ddocid = '_design/' + utils.uuid()
+        self.url_ddoc = urljoin(self.url, self.db.name, *ddocid.split('/'))
+        self.ddoc = aiocouchdb.designdoc.DesignDocument(self.url_ddoc,
+                                                        docid=ddocid)
+        self.loop.run_until_complete(self.setup())
+
+    def tearDown(self):
+        self.loop.run_until_complete(self.teardown_database())
+        super().tearDown()
+
+    @asyncio.coroutine
+    def setup(self):
+        yield from self.setup_database()
+        yield from self.setup_document()
+
+    @asyncio.coroutine
+    def setup_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.create()
+
+    @asyncio.coroutine
+    def setup_document(self):
+        with self.response(data=b'{"rev": "1-ABC"}'):
+            resp = yield from self.ddoc.doc.update({
+                'views': {
+                    'viewname': {
+                        'map': 'function(doc){ emit(doc._id, null) }'
+                    }
+                }
+            })
+        self.rev = resp['rev']
+
+    @asyncio.coroutine
+    def teardown_database(self):
+        with self.response(data=b'{"ok": true}'):
+            yield from self.db.delete()
+
+    def new_dbname(self):
+        return utils.dbname(self.id().split('.')[-1])
 
     def request_path(self, *parts):
-        return ['db', 'design', 'ddoc'] + list(parts)
+        return [self.db.name] + self.ddoc.id.split('/') + list(parts)
 
     def test_init_with_url(self):
         self.assertIsInstance(self.ddoc.resource, aiocouchdb.client.Resource)
@@ -44,7 +83,8 @@ class DesignDocTestCase(utils.TestCase):
         self.assertEqual(ddoc.id, 'foo')
 
     def test_init_with_id_from_database(self):
-        db = aiocouchdb.database.Database(self.url)
+        db = aiocouchdb.database.Database(urljoin(self.url, 'dbname'),
+                                          dbname='dbname')
         ddoc = yield from db.ddoc('foo')
         self.assertEqual(ddoc.id, '_design/foo')
 
@@ -101,6 +141,7 @@ class DesignDocTestCase(utils.TestCase):
             data={'keys': ('foo', 'bar')})
         self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
 
+    @utils.run_for('mock')
     def test_view_params(self):
         all_params = {
             'att_encoding_info': False,
@@ -149,6 +190,7 @@ class DesignDocTestCase(utils.TestCase):
             'GET', *self.request_path('_list', 'listname', 'ddoc', 'view'))
         self.assertIsInstance(result, aiocouchdb.client.HttpResponse)
 
+    @utils.run_for('mock')
     def test_list_params(self):
         all_params = {
             'att_encoding_info': False,
