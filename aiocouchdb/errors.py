@@ -47,7 +47,7 @@ class HttpErrorException(aiohttp.errors.HttpErrorException):
         self.headers = headers
 
     def __str__(self):
-        return str(self.reason)
+        return self.reason or self.message
 
 
 class BadRequest(HttpErrorException):
