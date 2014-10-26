@@ -19,6 +19,9 @@ install:
 check:
 	${NOSE} --with-doctest aiocouchdb
 
+check-couchdb:
+	AIOCOUCHDB_TARGET="couchdb" ${NOSE} --with-doctest aiocouchdb
+
 cover:
 	${NOSE} --with-coverage --cover-html --cover-erase --cover-package=aiocouchdb
 
