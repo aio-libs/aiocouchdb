@@ -304,11 +304,13 @@ class SessionTestCase(utils.TestCase):
 
     @utils.with_fixed_admin_party('root', 'relax')
     def test_open_session(self, root):
-        with self.response(data=b'{"ok": true}'):
+        with self.response(data=b'{"ok": true}',
+                           cookies={'AuthSession': 's3cr1t'}):
             auth = yield from self.server.session.open('root', 'relax')
             self.assert_request_called_with('POST', '_session',
                                             data={'name': 'root',
                                                   'password': 'relax'})
+            print(auth._cookies)
         self.assertIsInstance(auth, aiocouchdb.authn.CookieAuthProvider)
         self.assertIn('AuthSession', auth._cookies)
 

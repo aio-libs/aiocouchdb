@@ -82,7 +82,12 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         fut.set_result(obj)
         return fut
 
-    def prepare_response(self, *, status=200, headers=None, data=b'', err=None):
+    def prepare_response(self, *,
+                         cookies=None,
+                         data=b'',
+                         err=None,
+                         headers=None,
+                         status=200):
         def side_effect(*args, **kwargs):
             fut = asyncio.Future(loop=self.loop)
             if queue:
@@ -96,12 +101,14 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
             return fut
         headers = headers or {}
         headers.setdefault('CONTENT-TYPE', 'application/json')
+        cookies = cookies or {}
 
         queue = deque(data if isinstance(data, list) else [data])
 
         resp = aiocouchdb.client.HttpResponse('', '')
         resp.status = status
         resp.headers = headers
+        resp.cookies = cookies
         resp.content = unittest.mock.Mock()
         resp.content._buffer = bytearray()
         resp.content.at_eof.return_value = False
@@ -111,11 +118,18 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         return resp
 
     @contextlib.contextmanager
-    def response(self, *, status=200, headers=None, data=b'', err=None):
-        resp = self.prepare_response(status=status,
-                                     headers=headers,
+    def response(self, *,
+                 cookies=None,
+                 data=b'',
+                 err=None,
+                 headers=None,
+                 status=200):
+        resp = self.prepare_response(cookies=cookies,
                                      data=data,
-                                     err=err)
+                                     err=err,
+                                     headers=headers,
+                                     status=status)
+
         self.set_response(resp)
         yield resp
         self.set_response(self.prepare_response())
