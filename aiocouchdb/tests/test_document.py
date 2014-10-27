@@ -7,55 +7,17 @@
 # you should have received as part of this distribution.
 #
 
-import asyncio
 import json
 
 import aiocouchdb.client
 import aiocouchdb.database
 import aiocouchdb.document
 
-from aiocouchdb.client import urljoin
 from .test_multipart import Stream
 from . import utils
 
 
-class DocumentTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.db = self.server[self.new_dbname()]
-        docid = utils.uuid()
-        self.url_doc = urljoin(self.db.resource.url, docid)
-        self.doc = aiocouchdb.document.Document(self.url_doc, docid=docid)
-        self.loop.run_until_complete(self.setup())
-
-    def tearDown(self):
-        self.loop.run_until_complete(self.teardown_database())
-        super().tearDown()
-
-    @asyncio.coroutine
-    def setup(self):
-        yield from self.setup_database()
-        yield from self.setup_document()
-
-    @asyncio.coroutine
-    def setup_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.create()
-
-    @asyncio.coroutine
-    def setup_document(self):
-        with self.response(data=b'{"rev": "1-ABC"}'):
-            resp = yield from self.doc.update({})
-        self.rev = resp['rev']
-
-    @asyncio.coroutine
-    def teardown_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.delete()
-
-    def new_dbname(self):
-        return utils.dbname(self.id().split('.')[-1])
+class DocumentTestCase(utils.TestCase, utils.DocumentEnv):
 
     def request_path(self, *parts):
         return [self.db.name, self.doc.id] + list(parts)

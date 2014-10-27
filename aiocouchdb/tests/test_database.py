@@ -7,7 +7,6 @@
 # you should have received as part of this distribution.
 #
 
-import asyncio
 import json
 import types
 
@@ -17,38 +16,10 @@ import aiocouchdb.errors
 import aiocouchdb.feeds
 import aiocouchdb.server
 
-from aiocouchdb.client import urljoin
 from . import utils
 
 
-class DatabaseTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        dbname = self.new_dbname()
-        self.url_db = urljoin(self.url, dbname)
-        self.db = aiocouchdb.database.Database(self.url_db, dbname=dbname)
-        self.loop.run_until_complete(self.setup_database())
-
-    def tearDown(self):
-        self.loop.run_until_complete(self.teardown_database())
-        super().tearDown()
-
-    def new_dbname(self):
-        return utils.dbname(self.id().split('.')[-1])
-
-    @asyncio.coroutine
-    def setup_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.create()
-
-    @asyncio.coroutine
-    def teardown_database(self):
-        with self.response(data=b'{"ok": true}'):
-            try:
-                yield from self.db.delete()
-            except aiocouchdb.errors.ResourceNotFound:
-                pass
+class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
 
     def test_init_with_url(self):
         self.assertIsInstance(self.db.resource, aiocouchdb.client.Resource)
@@ -414,26 +385,7 @@ class DatabaseTestCase(utils.TestCase):
         self.assert_request_called_with('POST', self.db.name, '_view_cleanup')
 
 
-class SecurityTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.db = self.server[utils.dbname(self.id().split('.')[-1])]
-        self.loop.run_until_complete(self.setup_database())
-
-    def tearDown(self):
-        self.loop.run_until_complete(self.teardown_database())
-        super().tearDown()
-
-    @asyncio.coroutine
-    def setup_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.create()
-
-    @asyncio.coroutine
-    def teardown_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.delete()
+class SecurityTestCase(utils.TestCase, utils.DatabaseEnv):
 
     def test_security_get(self):
         data = {

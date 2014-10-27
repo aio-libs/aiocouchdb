@@ -8,6 +8,7 @@
 #
 
 import asyncio
+import base64
 import contextlib
 import datetime
 import functools
@@ -70,10 +71,10 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         self.set_response(self.prepare_response())
         self._req_per_task = defaultdict(list)
 
-        self.server = aiocouchdb.server.Server(self.url)
-        self.cookie = None
+        self.loop.run_until_complete(self.prepare_env())
 
     def tearDown(self):
+        self.loop.run_until_complete(self.cleanup_env())
         self.patch.stop()
         self.loop.close()
 
@@ -81,6 +82,20 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(obj)
         return fut
+
+    @asyncio.coroutine
+    def prepare_env(self):
+        self.server = aiocouchdb.server.Server(self.url)
+        self.cookie = None
+        sup = super()
+        if hasattr(sup, 'prepare_env'):
+            yield from sup.prepare_env()
+
+    @asyncio.coroutine
+    def cleanup_env(self):
+        sup = super()
+        if hasattr(sup, 'cleanup_env'):
+            yield from sup.cleanup_env()
 
     def prepare_response(self, *,
                          cookies=None,
@@ -155,6 +170,110 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
             self.assertIn(key, call_kwargs)
             if value is not Ellipsis:
                 self.assertEqual(value, call_kwargs[key])
+
+
+class DatabaseEnv(object):
+
+    @asyncio.coroutine
+    def prepare_env(self):
+        dbname = self.new_dbname()
+        self.url_db = urljoin(self.url, dbname)
+        self.db = aiocouchdb.database.Database(self.url_db, dbname=dbname)
+        yield from self.prepare_database(self.db)
+
+    @asyncio.coroutine
+    def prepare_database(self, db):
+        with self.response(data=b'{"ok": true}'):
+            yield from db.create()
+
+    @asyncio.coroutine
+    def cleanup_env(self):
+        yield from self.cleanup_database(self.db)
+
+    @asyncio.coroutine
+    def cleanup_database(self, db):
+        with self.response(data=b'{"ok": true}'):
+            try:
+                yield from db.delete()
+            except aiocouchdb.errors.ResourceNotFound:
+                pass
+
+    def new_dbname(self):
+        return dbname(self.id().split('.')[-1])
+
+
+class DocumentEnv(DatabaseEnv):
+
+    @asyncio.coroutine
+    def prepare_env(self):
+        yield from super().prepare_env()
+
+        docid = uuid()
+        self.url_doc = urljoin(self.db.resource.url, docid)
+        self.doc = aiocouchdb.document.Document(self.url_doc, docid=docid)
+        yield from self.prepare_document(self.doc)
+
+    @asyncio.coroutine
+    def prepare_document(self, db):
+        with self.response(data=b'{"rev": "1-ABC"}'):
+            resp = yield from self.doc.update({})
+        self.rev = resp['rev']
+
+
+class DesignDocumentEnv(DatabaseEnv):
+
+    @asyncio.coroutine
+    def prepare_env(self):
+        yield from super().prepare_env()
+
+        docid = '_design/' + uuid()
+        self.url_ddoc = urljoin(self.db.resource.url, *docid.split('/'))
+        self.ddoc = aiocouchdb.designdoc.DesignDocument(self.url_ddoc,
+                                                        docid=docid)
+        yield from self.prepare_document(self.ddoc)
+
+    @asyncio.coroutine
+    def prepare_document(self, ddoc):
+        with self.response(data=b'{"rev": "1-ABC"}'):
+            resp = yield from ddoc.doc.update({
+                'views': {
+                    'viewname': {
+                        'map': 'function(doc){ emit(doc._id, null) }'
+                    }
+                }
+            })
+        self.rev = resp['rev']
+
+
+class AttachmentEnv(DocumentEnv):
+
+    @asyncio.coroutine
+    def prepare_env(self):
+        yield from super().prepare_env()
+        self.attbin = aiocouchdb.attachment.Attachment(
+            urljoin(self.doc.resource.url, 'binary'),
+            name='binary')
+        self.atttxt = aiocouchdb.attachment.Attachment(
+            urljoin(self.doc.resource.url, 'text'),
+            name='text')
+        self.url_att = self.attbin.resource.url
+
+    @asyncio.coroutine
+    def prepare_document(self, doc):
+        with self.response(data=b'{"rev": "1-ABC"}'):
+            resp = yield from doc.update({
+                '_attachments': {
+                    'binary': {
+                        'data': base64.b64encode(b'Time to relax!').decode(),
+                        'content_type': 'application/octet-stream'
+                    },
+                    'text': {
+                        'data': base64.b64encode(b'Time to relax!').decode(),
+                        'content_type': 'text/plain'
+                    }
+                }
+            })
+        self.rev = resp['rev']
 
 
 def modify_server(section, option, value):

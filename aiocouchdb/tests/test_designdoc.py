@@ -7,7 +7,6 @@
 # you should have received as part of this distribution.
 #
 
-import asyncio
 import json
 
 import aiocouchdb.client
@@ -20,50 +19,7 @@ from aiocouchdb.client import urljoin
 from . import utils
 
 
-class DesignDocTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.db = self.server[self.new_dbname()]
-        ddocid = '_design/' + utils.uuid()
-        self.url_ddoc = urljoin(self.url, self.db.name, *ddocid.split('/'))
-        self.ddoc = aiocouchdb.designdoc.DesignDocument(self.url_ddoc,
-                                                        docid=ddocid)
-        self.loop.run_until_complete(self.setup())
-
-    def tearDown(self):
-        self.loop.run_until_complete(self.teardown_database())
-        super().tearDown()
-
-    @asyncio.coroutine
-    def setup(self):
-        yield from self.setup_database()
-        yield from self.setup_document()
-
-    @asyncio.coroutine
-    def setup_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.create()
-
-    @asyncio.coroutine
-    def setup_document(self):
-        with self.response(data=b'{"rev": "1-ABC"}'):
-            resp = yield from self.ddoc.doc.update({
-                'views': {
-                    'viewname': {
-                        'map': 'function(doc){ emit(doc._id, null) }'
-                    }
-                }
-            })
-        self.rev = resp['rev']
-
-    @asyncio.coroutine
-    def teardown_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.delete()
-
-    def new_dbname(self):
-        return utils.dbname(self.id().split('.')[-1])
+class DesignDocTestCase(utils.TestCase, utils.DesignDocumentEnv):
 
     def request_path(self, *parts):
         return [self.db.name] + self.ddoc.id.split('/') + list(parts)

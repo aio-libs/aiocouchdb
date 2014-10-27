@@ -7,7 +7,6 @@
 # you should have received as part of this distribution.
 #
 
-import asyncio
 import base64
 import hashlib
 import io
@@ -16,63 +15,10 @@ import aiocouchdb.client
 import aiocouchdb.attachment
 import aiocouchdb.document
 
-from aiocouchdb.client import urljoin
 from . import utils
 
 
-class AttachmentTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.db = self.server[self.new_dbname()]
-        self.doc = self.db[utils.uuid()]
-        self.attbin = aiocouchdb.attachment.Attachment(
-            urljoin(self.doc.resource.url, 'binary'),
-            name='binary')
-        self.atttxt = aiocouchdb.attachment.Attachment(
-            urljoin(self.doc.resource.url, 'text'),
-            name='text')
-        self.url_att = self.attbin.resource.url
-        self.loop.run_until_complete(self.setup())
-
-    def tearDown(self):
-        self.loop.run_until_complete(self.teardown_database())
-        super().tearDown()
-
-    @asyncio.coroutine
-    def setup(self):
-        yield from self.setup_database()
-        yield from self.setup_document()
-
-    @asyncio.coroutine
-    def setup_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.create()
-
-    @asyncio.coroutine
-    def setup_document(self):
-        with self.response(data=b'{"rev": "1-ABC"}'):
-            resp = yield from self.doc.update({
-                '_attachments': {
-                    'binary': {
-                        'data': base64.b64encode(b'Time to relax!').decode(),
-                        'content_type': 'application/octet-stream'
-                    },
-                    'text': {
-                        'data': base64.b64encode(b'Time to relax!').decode(),
-                        'content_type': 'text/plain'
-                    }
-                }
-            })
-        self.rev = resp['rev']
-
-    @asyncio.coroutine
-    def teardown_database(self):
-        with self.response(data=b'{"ok": true}'):
-            yield from self.db.delete()
-
-    def new_dbname(self):
-        return utils.dbname(self.id().split('.')[-1])
+class AttachmentTestCase(utils.TestCase, utils.AttachmentEnv):
 
     def request_path(self, att=None, *parts):
         attname = att.name if att is not None else self.attbin.name
