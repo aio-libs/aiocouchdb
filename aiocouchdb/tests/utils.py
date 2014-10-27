@@ -21,6 +21,7 @@ from collections import deque, defaultdict
 
 import aiohttp
 import aiocouchdb.client
+import aiocouchdb.errors
 import aiocouchdb.server
 from aiocouchdb.client import urljoin
 
@@ -288,7 +289,10 @@ def modify_server(section, option, value):
     @asyncio.coroutine
     def revert_config_changes(server, cookie, oldval):
         if not oldval:
-            yield from server.config.delete(section, option, auth=cookie)
+            try:
+                yield from server.config.delete(section, option, auth=cookie)
+            except aiocouchdb.errors.ResourceNotFound:
+                pass
         else:
             if not (yield from server.config.exists(section, option)):
                 return
@@ -320,7 +324,10 @@ def with_fixed_admin_party(username, password):
     @asyncio.coroutine
     def revert_config_changes(server, cookie, oldval):
         if not oldval:
-            yield from server.config.delete('admins', username, auth=cookie)
+            try:
+                yield from server.config.delete('admins', username, auth=cookie)
+            except aiocouchdb.errors.ResourceNotFound:
+                pass
         else:
             yield from server.config.update('admins', username, oldval,
                                             auth=cookie)
@@ -349,7 +356,10 @@ def using_database(dbarg='db'):
 
     @asyncio.coroutine
     def drop_database(db, cookie):
-        yield from db.delete(auth=cookie)
+        try:
+            yield from db.delete(auth=cookie)
+        except aiocouchdb.errors.ResourceNotFound:
+            pass
 
     def decorator(f):
         @functools.wraps(f)

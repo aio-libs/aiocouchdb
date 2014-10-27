@@ -266,6 +266,7 @@ class ConfigTestCase(utils.TestCase):
         yield from self.server.config.get('couchdb', 'uuid')
         self.assert_request_called_with('GET', '_config', 'couchdb', 'uuid')
 
+    @utils.modify_server('aiocouchdb', 'test', 'relax')
     def test_config_set_option(self):
         with self.response(data=b'"relax!"'):
             result = yield from self.server.config.update(
