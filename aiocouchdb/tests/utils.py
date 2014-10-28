@@ -50,7 +50,7 @@ class MetaAioTestCase(type):
 
 class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
-    url = 'http://localhost:5984'
+    url = os.environ.get('AIOCOUCHDB_URL', 'http://localhost:5984')
     timeout = 5
     target = TARGET
 
