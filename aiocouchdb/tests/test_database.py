@@ -7,7 +7,9 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 import json
+import random
 import types
 
 import aiocouchdb.client
@@ -160,6 +162,25 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
         self.assertIsInstance(result, aiocouchdb.feeds.ChangesFeed)
         self.assert_request_called_with('GET', self.db.name, '_changes')
 
+    @utils.skip_for('mock')
+    def test_changes_reading(self):
+        ids = [utils.uuid() for _ in range(3)]
+
+        for idx in ids:
+            yield from self.db[idx].update({})
+
+        feed = yield from self.db.changes()
+
+        while True:
+            self.assertTrue(feed.is_active())
+            event = yield from feed.next()
+            if event is None:
+                break
+            self.assertIsInstance(event, dict)
+            self.assertIn(event['id'], ids)
+
+        self.assertFalse(feed.is_active())
+
     def test_changes_longpoll(self):
         result = yield from self.db.changes(feed='longpoll')
         self.assertIsInstance(result, aiocouchdb.feeds.LongPollChangesFeed)
@@ -172,11 +193,56 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
         self.assert_request_called_with('GET', self.db.name, '_changes',
                                         params={'feed': 'continuous'})
 
+    @utils.skip_for('mock')
+    def test_changes_continuous_reading(self):
+        ids = [utils.uuid() for _ in range(3)]
+
+        @asyncio.coroutine
+        def task():
+            for idx in ids:
+                yield from self.db[idx].update({})
+        asyncio.Task(task())
+
+        feed = yield from self.db.changes(feed='continuous', timeout=1000)
+
+        while True:
+            self.assertTrue(feed.is_active())
+            event = yield from feed.next()
+            if event is None:
+                break
+            self.assertIsInstance(event, dict)
+            self.assertIn(event['id'], ids)
+
+        self.assertFalse(feed.is_active())
+
     def test_changes_eventsource(self):
         result = yield from self.db.changes(feed='eventsource')
         self.assertIsInstance(result, aiocouchdb.feeds.EventSourceChangesFeed)
         self.assert_request_called_with('GET', self.db.name, '_changes',
                                         params={'feed': 'eventsource'})
+
+    @utils.skip_for('mock')
+    def test_changes_eventsource(self):
+        ids = [utils.uuid() for _ in range(3)]
+
+        @asyncio.coroutine
+        def task():
+            for idx in ids:
+                yield from self.db[idx].update({})
+        asyncio.Task(task())
+
+        feed = yield from self.db.changes(feed='eventsource',
+                                          timeout=1000)
+
+        while True:
+            self.assertTrue(feed.is_active())
+            event = yield from feed.next()
+            if event is None:
+                break
+            self.assertIsInstance(event, dict)
+            self.assertIn(event['id'], ids)
+
+        # self.assertFalse(feed.is_active()) ???
 
     def test_changes_doc_ids(self):
         yield from self.db.changes('foo', 'bar')
@@ -187,6 +253,51 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
     def test_changes_assert_filter_doc_ids(self):
         with self.assertRaises(AssertionError):
             yield from self.db.changes('foo', 'bar', filter='somefilter')
+
+    @utils.skip_for('mock')
+    def test_changes_filter_docid(self):
+        ids = [utils.uuid() for _ in range(100)]
+        filtered_ids = [random.choice(ids) for _ in range(10)]
+
+        yield from self.db.bulk_docs({'_id': idx} for idx in ids)
+
+        feed = yield from self.db.changes(*filtered_ids)
+
+        while True:
+            event = yield from feed.next()
+            if event is None:
+                break
+            self.assertIn(event['id'], filtered_ids)
+
+        event = yield from feed.next()
+        self.assertIsNone(event)
+        self.assertFalse(feed.is_active())
+
+    @utils.skip_for('mock')
+    def test_changes_filter_view(self):
+        docs = yield from utils.populate_database(self.db, 10)
+        expected = [doc['_id'] for doc in docs.values() if doc['num'] > 5]
+        ddoc = self.db['_design/' + utils.uuid()]
+
+        yield from ddoc.doc.update({
+            'views': {
+                'test': {
+                    'map': 'function(doc){ if(doc.num > 5) emit(doc._id) }'
+                }
+            }
+        })
+
+        feed = yield from self.db.changes(view='/'.join([ddoc.name, 'test']))
+
+        while True:
+            event = yield from feed.next()
+            if event is None:
+                break
+            self.assertIn(event['id'], expected)
+
+        event = yield from feed.next()
+        self.assertIsNone(event)
+        self.assertFalse(feed.is_active())
 
     @utils.run_for('mock')
     def test_changes_params(self):

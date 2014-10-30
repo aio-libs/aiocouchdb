@@ -404,7 +404,13 @@ def populate_database(db, docs_count):
     if not (yield from db.exists()):
         yield from db.create()
 
-    return (yield from db.bulk_docs(generate_docs(docs_count)))
+    docs = list(generate_docs(docs_count))
+    updates = yield from db.bulk_docs(docs)
+    mapping = {doc['_id']: doc for doc in docs}
+    for update in updates:
+        mapping[update['id']]['_rev'] = update['rev']
+    return mapping
+
 
 
 def uuid():
