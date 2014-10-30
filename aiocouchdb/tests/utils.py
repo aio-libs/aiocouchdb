@@ -412,7 +412,6 @@ def populate_database(db, docs_count):
     return mapping
 
 
-
 def uuid():
     return _uuid.uuid4().hex
 

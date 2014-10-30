@@ -164,7 +164,8 @@ class ServerTestCase(utils.TestCase):
     @utils.using_database('source')
     @utils.using_database('target')
     def test_replicate(self, source, target):
-        yield from utils.populate_database(source, 10)
+        with self.response(data=b'[]'):
+            yield from utils.populate_database(source, 10)
 
         with self.response(data=b'{"history": [{"docs_written": 10}]}'):
             info = yield from self.server.replicate(source.name, target.name)
