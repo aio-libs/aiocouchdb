@@ -27,7 +27,7 @@ Database
 .. autoclass:: aiocouchdb.database.Database
   :members:
 
-.. autoclass:: aiocouchdb.database.AuthDatabase
+.. autoclass:: aiocouchdb.authdb.AuthDatabase
   :members:
 
 Security
@@ -42,7 +42,7 @@ Document
 .. autoclass:: aiocouchdb.document.Document
   :members:
 
-.. autoclass:: aiocouchdb.document.UserDocument
+.. autoclass:: aiocouchdb.authdb.UserDocument
   :members:
 
 .. autoclass:: aiocouchdb.document.DocAttachmentsMultipartReader
