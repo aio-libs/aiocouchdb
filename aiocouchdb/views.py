@@ -48,12 +48,15 @@ class View(object):
 
     @staticmethod
     def prepare_params(params):
-        params = dict((key, value)
-                      for key, value in params.items()
-                      if value is not None)
+        json_params = {'key', 'keys', 'startkey', 'endkey'}
+        params = dict(
+            (key, value)
+            for key, value in params.items()
+            if (key in json_params and value is not Ellipsis)
+            or (key not in json_params and value is not None))
 
         # CouchDB requires these params have valid JSON value
-        for param in ('key', 'keys', 'startkey', 'endkey'):
+        for param in json_params:
             if param in params:
                 params[param] = json.dumps(params[param])
         return params
@@ -61,7 +64,7 @@ class View(object):
     @staticmethod
     def handle_keys_param(params, data):
         keys = params.pop('keys', ())
-        if not keys:
+        if keys is None or keys is Ellipsis:
             return params, data
         assert not isinstance(keys, (bytes, str))
 

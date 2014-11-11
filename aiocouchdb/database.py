@@ -180,14 +180,14 @@ class Database(object):
                  attachments=None,
                  conflicts=None,
                  descending=None,
-                 endkey=None,
+                 endkey=...,
                  endkey_docid=None,
                  include_docs=None,
                  inclusive_end=None,
                  limit=None,
                  skip=None,
                  stale=None,
-                 startkey=None,
+                 startkey=...,
                  startkey_docid=None,
                  update_seq=None):
         """Iterates over :ref:`all documents view <api/db/all_docs>`.
@@ -465,18 +465,18 @@ class Database(object):
                   attachments=None,
                   conflicts=None,
                   descending=None,
-                  endkey=None,
+                  endkey=...,
                   endkey_docid=None,
                   group=None,
                   group_level=None,
                   include_docs=None,
                   inclusive_end=None,
-                  keys=None,
+                  keys=...,
                   limit=None,
                   reduce=None,
                   skip=None,
                   stale=None,
-                  startkey=None,
+                  startkey=...,
                   startkey_docid=None,
                   update_seq=None):
         """Executes :ref:`temporary view <api/db/temp_view>` and returns
@@ -495,7 +495,7 @@ class Database(object):
                                  **Warning**: use with caution!
         :param bool conflicts: Includes conflicts information into documents
         :param bool descending: Return rows in descending by key order
-        :param str endkey: Stop fetching rows when the specified key is reached
+        :param endkey: Stop fetching rows when the specified key is reached
         :param str endkey_docid: Stop fetching rows when the specified
                                  document ID is reached
         :param bool group: Reduces the view result grouping by unique keys
@@ -514,7 +514,7 @@ class Database(object):
         :param str stale: Allow to fetch the rows from a stale view, without
                           triggering index update. Supported values: ``ok``
                           and ``update_after``
-        :param str startkey: Return rows starting with the specified key
+        :param startkey: Return rows starting with the specified key
         :param str startkey_docid: Return rows starting with the specified
                                    document ID
         :param bool update_seq: Include an ``update_seq`` value into view

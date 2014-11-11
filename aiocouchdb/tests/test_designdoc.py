@@ -97,6 +97,18 @@ class DesignDocTestCase(utils.TestCase, utils.DesignDocumentEnv):
             data={'keys': ('foo', 'bar')})
         self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
 
+    def test_view_startkey_none(self):
+        yield from self.ddoc.view('viewname', startkey=None)
+        self.assert_request_called_with(
+            'GET', *self.request_path('_view', 'viewname'),
+            params={'startkey': 'null'})
+
+    def test_view_endkey_none(self):
+        yield from self.ddoc.view('viewname', endkey=None)
+        self.assert_request_called_with(
+            'GET', *self.request_path('_view', 'viewname'),
+            params={'endkey': 'null'})
+
     @utils.run_for('mock')
     def test_view_params(self):
         all_params = {

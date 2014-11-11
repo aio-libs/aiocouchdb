@@ -453,6 +453,22 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
                                               'language': 'javascript'})
         self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
 
+    def test_temp_view_startkey_none(self):
+        mapfun = 'function(doc){ emit(doc._id); }'
+
+        yield from self.db.temp_view(mapfun, startkey=None)
+        self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                        data={'map': mapfun},
+                                        params={'startkey': 'null'})
+
+    def test_temp_view_endkey_none(self):
+        mapfun = 'function(doc){ emit(doc._id); }'
+
+        yield from self.db.temp_view(mapfun, endkey=None)
+        self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                        data={'map': mapfun},
+                                        params={'endkey': 'null'})
+
     @utils.run_for('mock')
     def test_temp_view_params(self):
         all_params = {
