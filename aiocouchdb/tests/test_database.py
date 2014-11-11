@@ -308,9 +308,11 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
             'descending': True,
             'feed': 'continuous',
             'filter': 'some/filter',
+            'headers': {'X-Foo': 'bar'},
             'heartbeat': 1000,
             'include_docs': True,
             'limit': 20,
+            'params': {'test': 'passed'},
             'since': 'now',
             'style': 'all_docs',
             'timeout': 3000,
@@ -319,11 +321,18 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
 
         for key, value in all_params.items():
             yield from self.db.changes(**{key: value})
-            params = {key: value}
-            if key == 'view':
-                params['filter'] = '_view'
+            headers = {}
+            if key == 'params':
+                params = value
+            elif key == 'headers':
+                headers = value
+                params = {}
+            else:
+                params = {key: value}
+                if key == 'view':
+                    params['filter'] = '_view'
             self.assert_request_called_with('GET', self.db.name, '_changes',
-                                            params=params)
+                                            headers=headers, params=params)
 
     def test_compact(self):
         yield from self.db.compact()

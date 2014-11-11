@@ -276,9 +276,11 @@ class Database(object):
                 descending=None,
                 feed=None,
                 filter=None,
+                headers=None,
                 heartbeat=None,
                 include_docs=None,
                 limit=None,
+                params=None,
                 since=None,
                 style=None,
                 timeout=None,
@@ -302,6 +304,7 @@ class Database(object):
         :param bool descending: Return changes in descending order
         :param str feed: :ref:`Changes feed type <changes>`
         :param str filter: Filter function name
+        :param dict headers: Custom request headers
         :param int heartbeat: Period in milliseconds after which an empty
                               line will be sent from server as the result
                               to keep connection alive
@@ -311,6 +314,7 @@ class Database(object):
                           value
         :param since: Starts listening changes feed since given
                       `update sequence` value
+        :param dict params: Custom request query parameters
         :param str style: Changes feed output style: ``all_docs``, ``main_only``
         :param int timeout: Period in milliseconds to await for new changes
                             before close the feed. Works for continuous feeds
@@ -319,10 +323,13 @@ class Database(object):
 
         :rtype: :class:`aiocouchdb.feeds.ChangesFeed`
         """
-        params = dict((key, value)
+        print(locals())
+        params = dict(params or {})
+        params.update((key, value)
                       for key, value in locals().items()
-                      if key not in {'self', 'doc_ids', 'auth'} and
-                         value is not None)
+                      if key not in {'self', 'doc_ids', 'auth', 'headers',
+                                     'params'}
+                      and value is not None)
 
         if doc_ids:
             data = {'doc_ids': doc_ids}
@@ -342,7 +349,7 @@ class Database(object):
                 assert params['filter'] == '_view'
 
         resp = yield from request('_changes', auth=auth, data=data,
-                                  params=params)
+                                  headers=headers, params=params)
         yield from resp.maybe_raise_error()
 
         if feed == 'continuous':
