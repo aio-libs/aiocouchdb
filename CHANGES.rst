@@ -1,5 +1,22 @@
-0.6.0 (dev)
------------
+0.6.0 (2014-11-12)
+------------------
+
+- Adopt test suite to run against real CouchDB instance
+- Database, documents and attachments now provides access to their name/id
+- Remove redundant longnamed constructors
+- Construct Database/Document/Attachment instances through __getitem__ protocol
+- Add Document.rev method to get current document`s revision
+- Add helpers to work with authentication database (_users)
+- Add optional limitation of feeds buffer
+- All remove(...) methods are renamed to delete(...) ones
+- Add support for config option existence check
+- Correctly set members for database security
+- Fix requests with Accept-Ranges header against attachments
+- Fix views requests when startkey/endkey should be null
+- Allow to pass custom query parameters and request headers onto changes feed
+  request
+- Handle correctly HTTP 416 error response
+- Minor code fixes and cleanup
 
 0.5.0 (2014-09-26)
 ------------------
