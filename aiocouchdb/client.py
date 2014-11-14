@@ -30,7 +30,8 @@ class HttpPayloadParser(aiohttp.HttpPayloadParser):
         # payload decompression wrapper
         if self.compression and self.message.compression:
             if self.response_with_body:  # the fix
-                out = aiohttp.DeflateBuffer(out, self.message.compression)
+                out = aiohttp.protocol.DeflateBuffer(out,
+                                                     self.message.compression)
 
         # payload parser
         if not self.response_with_body:
