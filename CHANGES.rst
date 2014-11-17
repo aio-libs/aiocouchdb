@@ -1,3 +1,10 @@
+0.6.1 (2014-11-17)
+------------------
+
+- Ensure aiohttp releases are supported since 0.9.2
+- Fix handling requests with deflate compression
+- Remove accidental print
+
 0.6.0 (2014-11-12)
 ------------------
 
