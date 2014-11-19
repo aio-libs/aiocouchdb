@@ -288,3 +288,26 @@ def urljoin(base, *path):
     if not path:
         return base
     return '/'.join([base] + [urllib.parse.quote(s, '') for s in path])
+
+
+def extract_credentials(url):
+    """Extract authentication (user name and password) credentials from the
+    given URL.
+    >>> extract_credentials('http://localhost:5984/_config/')
+    ('http://localhost:5984/_config/', None)
+    >>> extract_credentials('http://joe:secret@localhost:5984/_config/')
+    ('http://localhost:5984/_config/', ('joe', 'secret'))
+    >>> extract_credentials('http://joe%40example.com:secret@localhost:5984/_config/')
+    ('http://localhost:5984/_config/', ('joe@example.com', 'secret'))
+    """
+    parts = urllib.parse.urlsplit(url)
+    netloc = parts[1]
+    if '@' in netloc:
+        creds, netloc = netloc.split('@')
+        credentials = tuple(urllib.parse.unquote(i)
+                            for i in creds.split(':'))
+        parts = list(parts)
+        parts[1] = netloc
+    else:
+        credentials = None
+    return urllib.parse.urlunsplit(parts), credentials
