@@ -27,7 +27,7 @@ import aiocouchdb.designdoc
 import aiocouchdb.document
 import aiocouchdb.errors
 import aiocouchdb.server
-from aiocouchdb.client import urljoin
+from aiocouchdb.client import urljoin, extract_credentials
 
 
 TARGET = os.environ.get('AIOCOUCHDB_TARGET', 'mock')
@@ -185,8 +185,12 @@ class ServerTestCase(TestCase):
 
     @asyncio.coroutine
     def setup_env(self):
+        self.url, creds = extract_credentials(self.url)
         self.server = self.server_class(self.url)
-        self.cookie = None  # TODO: auth support
+        if creds is not None:
+            self.cookie = yield from self.server.session.open(*creds)
+        else:
+            self.cookie = None
         sup = super()
         if hasattr(sup, 'setup_env'):
             yield from sup.setup_env()
