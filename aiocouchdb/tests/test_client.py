@@ -19,7 +19,7 @@ from . import utils
 
 class ResourceTestCase(utils.TestCase):
 
-    target = 'mock'
+    _test_target = 'mock'
 
     def test_head_request(self):
         res = aiocouchdb.client.Resource(self.url)
@@ -118,7 +118,7 @@ class ResourceTestCase(utils.TestCase):
 
 class HttpRequestTestCase(utils.TestCase):
 
-    target = 'mock'
+    _test_target = 'mock'
 
     def test_encode_json_body(self):
         req = aiocouchdb.client.HttpRequest('post', self.url,
@@ -147,7 +147,7 @@ class HttpRequestTestCase(utils.TestCase):
 
 class HttpResponseTestCase(utils.TestCase):
 
-    target = 'mock'
+    _test_target = 'mock'
 
     def test_read_body(self):
         with self.response(data=b'{"couchdb": "Welcome!"}') as resp:

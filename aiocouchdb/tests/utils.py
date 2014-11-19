@@ -20,7 +20,11 @@ import uuid as _uuid
 from collections import deque, defaultdict
 
 import aiohttp
+import aiocouchdb.attachment
 import aiocouchdb.client
+import aiocouchdb.database
+import aiocouchdb.designdoc
+import aiocouchdb.document
 import aiocouchdb.errors
 import aiocouchdb.server
 from aiocouchdb.client import urljoin
@@ -50,53 +54,54 @@ class MetaAioTestCase(type):
 
 class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
-    url = os.environ.get('AIOCOUCHDB_URL', 'http://localhost:5984')
+    _test_target = TARGET
     timeout = 5
-    target = TARGET
+    url = 'http://localhost:5984'
 
     def setUp(self):
-        def tracer(f):
-            @functools.wraps(f)
-            def wrapper(*args, **kwargs):
-                current_task = asyncio.Task.current_task(loop=self.loop)
-                self._req_per_task[current_task].append((args, kwargs))
-                return f(*args, **kwargs)
-            return wrapper
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.patch = mock.patch(
-            'aiohttp.request',
-            wraps=tracer(aiohttp.request) if self.target != 'mock' else None)
-        self.request = self.patch.start()
-        self.set_response(self.prepare_response())
+        wraps = None
+        if self._test_target != 'mock':
+            wraps = self._request_tracer(aiohttp.request)
+        self._patch = mock.patch('aiohttp.request', wraps=wraps)
+        self.request = self._patch.start()
+
+        self._set_response(self.prepare_response())
         self._req_per_task = defaultdict(list)
 
-        self.loop.run_until_complete(self.prepare_env())
+        self.loop.run_until_complete(self.setup_env())
 
     def tearDown(self):
-        self.loop.run_until_complete(self.cleanup_env())
-        self.patch.stop()
+        self.loop.run_until_complete(self.teardown_env())
+        self._patch.stop()
         self.loop.close()
+
+    @asyncio.coroutine
+    def setup_env(self):
+        sup = super()
+        if hasattr(sup, 'setup_env'):
+            yield from sup.setup_env()
+
+    @asyncio.coroutine
+    def teardown_env(self):
+        sup = super()
+        if hasattr(sup, 'teardown_env'):
+            yield from sup.teardown_env()
 
     def future(self, obj):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(obj)
         return fut
 
-    @asyncio.coroutine
-    def prepare_env(self):
-        self.server = aiocouchdb.server.Server(self.url)
-        self.cookie = None
-        sup = super()
-        if hasattr(sup, 'prepare_env'):
-            yield from sup.prepare_env()
-
-    @asyncio.coroutine
-    def cleanup_env(self):
-        sup = super()
-        if hasattr(sup, 'cleanup_env'):
-            yield from sup.cleanup_env()
+    def _request_tracer(self, f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            current_task = asyncio.Task.current_task(loop=self.loop)
+            self._req_per_task[current_task].append((args, kwargs))
+            return f(*args, **kwargs)
+        return wrapper
 
     def prepare_response(self, *,
                          cookies=None,
@@ -146,12 +151,12 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
                                      headers=headers,
                                      status=status)
 
-        self.set_response(resp)
+        self._set_response(resp)
         yield resp
-        self.set_response(self.prepare_response())
+        self._set_response(self.prepare_response())
 
-    def set_response(self, resp):
-        if self.target == 'mock':
+    def _set_response(self, resp):
+        if self._test_target == 'mock':
             self.request.return_value = self.future(resp)
 
     def assert_request_called_with(self, method, *path, **kwargs):
@@ -173,68 +178,93 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
                 self.assertEqual(value, call_kwargs[key])
 
 
-class DatabaseEnv(object):
+class ServerTestCase(TestCase):
+
+    server_class = aiocouchdb.server.Server
+    url = os.environ.get('AIOCOUCHDB_URL', 'http://localhost:5984')
 
     @asyncio.coroutine
-    def prepare_env(self):
+    def setup_env(self):
+        self.server = self.server_class(self.url)
+        self.cookie = None  # TODO: auth support
+        sup = super()
+        if hasattr(sup, 'setup_env'):
+            yield from sup.setup_env()
+
+    @asyncio.coroutine
+    def teardown_env(self):
+        sup = super()
+        if hasattr(sup, 'teardown_env'):
+            yield from sup.teardown_env()
+
+
+class DatabaseTestCase(ServerTestCase):
+
+    database_class = aiocouchdb.database.Database
+
+    def new_dbname(self):
+        return dbname(self.id().split('.')[-1])
+
+    @asyncio.coroutine
+    def setup_env(self):
+        yield from super().setup_env()
         dbname = self.new_dbname()
         self.url_db = urljoin(self.url, dbname)
-        self.db = aiocouchdb.database.Database(self.url_db, dbname=dbname)
-        yield from self.prepare_database(self.db)
+        self.db = self.database_class(self.url_db, dbname=dbname)
+        yield from self.setup_database(self.db)
 
     @asyncio.coroutine
-    def prepare_database(self, db):
+    def setup_database(self, db):
         with self.response(data=b'{"ok": true}'):
             yield from db.create()
 
     @asyncio.coroutine
-    def cleanup_env(self):
-        yield from self.cleanup_database(self.db)
+    def teardown_env(self):
+        yield from self.teardown_database(self.db)
+        yield from super().teardown_env()
 
     @asyncio.coroutine
-    def cleanup_database(self, db):
+    def teardown_database(self, db):
         with self.response(data=b'{"ok": true}'):
             try:
                 yield from db.delete()
             except aiocouchdb.errors.ResourceNotFound:
                 pass
 
-    def new_dbname(self):
-        return dbname(self.id().split('.')[-1])
 
+class DocumentTestCase(DatabaseTestCase):
 
-class DocumentEnv(DatabaseEnv):
+    document_class = aiocouchdb.document.Document
 
     @asyncio.coroutine
-    def prepare_env(self):
-        yield from super().prepare_env()
-
+    def setup_env(self):
+        yield from super().setup_env()
         docid = uuid()
         self.url_doc = urljoin(self.db.resource.url, docid)
-        self.doc = aiocouchdb.document.Document(self.url_doc, docid=docid)
-        yield from self.prepare_document(self.doc)
+        self.doc = self.document_class(self.url_doc, docid=docid)
+        yield from self.setup_document(self.doc)
 
     @asyncio.coroutine
-    def prepare_document(self, db):
+    def setup_document(self, doc):
         with self.response(data=b'{"rev": "1-ABC"}'):
-            resp = yield from self.doc.update({})
+            resp = yield from doc.update({})
         self.rev = resp['rev']
 
 
-class DesignDocumentEnv(DatabaseEnv):
+class DesignDocumentTestCase(DatabaseTestCase):
+
+    designdoc_class = aiocouchdb.designdoc.DesignDocument
 
     @asyncio.coroutine
-    def prepare_env(self):
-        yield from super().prepare_env()
-
+    def setup_env(self):
+        yield from super().setup_env()
         docid = '_design/' + uuid()
         self.url_ddoc = urljoin(self.db.resource.url, *docid.split('/'))
-        self.ddoc = aiocouchdb.designdoc.DesignDocument(self.url_ddoc,
-                                                        docid=docid)
-        yield from self.prepare_document(self.ddoc)
+        self.ddoc = self.designdoc_class(self.url_ddoc, docid=docid)
+        yield from self.setup_document(self.ddoc)
 
     @asyncio.coroutine
-    def prepare_document(self, ddoc):
+    def setup_document(self, ddoc):
         with self.response(data=b'{"rev": "1-ABC"}'):
             resp = yield from ddoc.doc.update({
                 'views': {
@@ -246,21 +276,23 @@ class DesignDocumentEnv(DatabaseEnv):
         self.rev = resp['rev']
 
 
-class AttachmentEnv(DocumentEnv):
+class AttachmentTestCase(DocumentTestCase):
+
+    attachment_class = aiocouchdb.attachment.Attachment
 
     @asyncio.coroutine
-    def prepare_env(self):
-        yield from super().prepare_env()
-        self.attbin = aiocouchdb.attachment.Attachment(
+    def setup_env(self):
+        yield from super().setup_env()
+        self.attbin = self.attachment_class(
             urljoin(self.doc.resource.url, 'binary'),
             name='binary')
-        self.atttxt = aiocouchdb.attachment.Attachment(
+        self.atttxt = self.attachment_class(
             urljoin(self.doc.resource.url, 'text'),
             name='text')
         self.url_att = self.attbin.resource.url
 
     @asyncio.coroutine
-    def prepare_document(self, doc):
+    def setup_document(self, doc):
         with self.response(data=b'{"rev": "1-ABC"}'):
             resp = yield from doc.update({
                 '_attachments': {

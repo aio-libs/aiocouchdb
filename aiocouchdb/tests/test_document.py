@@ -17,7 +17,7 @@ from .test_multipart import Stream
 from . import utils
 
 
-class DocumentTestCase(utils.TestCase, utils.DocumentEnv):
+class DocumentTestCase(utils.DocumentTestCase):
 
     def request_path(self, *parts):
         return [self.db.name, self.doc.id] + list(parts)

@@ -16,7 +16,7 @@ from aiocouchdb.client import urljoin
 from . import utils
 
 
-class AuthDatabaseTestCase(utils.TestCase):
+class AuthDatabaseTestCase(utils.ServerTestCase):
 
     def setUp(self):
         super().setUp()
@@ -31,7 +31,7 @@ class AuthDatabaseTestCase(utils.TestCase):
         self.assertEqual(doc.id, self.db.document_class.doc_prefix + 'test')
 
 
-class UserDocumentTestCase(utils.TestCase):
+class UserDocumentTestCase(utils.ServerTestCase):
 
     def setUp(self):
         super().setUp()

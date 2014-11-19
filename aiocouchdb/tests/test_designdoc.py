@@ -19,7 +19,7 @@ from aiocouchdb.client import urljoin
 from . import utils
 
 
-class DesignDocTestCase(utils.TestCase, utils.DesignDocumentEnv):
+class DesignDocTestCase(utils.DesignDocumentTestCase):
 
     def request_path(self, *parts):
         return [self.db.name] + self.ddoc.id.split('/') + list(parts)

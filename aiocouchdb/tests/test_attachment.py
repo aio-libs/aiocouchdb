@@ -18,7 +18,7 @@ import aiocouchdb.document
 from . import utils
 
 
-class AttachmentTestCase(utils.TestCase, utils.AttachmentEnv):
+class AttachmentTestCase(utils.AttachmentTestCase):
 
     def request_path(self, att=None, *parts):
         attname = att.name if att is not None else self.attbin.name
@@ -198,7 +198,7 @@ class AttachmentTestCase(utils.TestCase, utils.AttachmentEnv):
 
 class AttachmentReaderTestCase(utils.TestCase):
 
-    target = 'mock'
+    _test_target = 'mock'
 
     def setUp(self):
         super().setUp()

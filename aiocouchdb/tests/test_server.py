@@ -8,7 +8,6 @@
 #
 
 import asyncio
-import http.cookies
 
 import aiocouchdb.authn
 import aiocouchdb.client
@@ -18,11 +17,7 @@ import aiocouchdb.server
 from . import utils
 
 
-class ServerTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.server = aiocouchdb.server.Server(self.url)
+class ServerTestCase(utils.ServerTestCase):
 
     def test_init_with_url(self):
         self.assertIsInstance(self.server.resource, aiocouchdb.client.Resource)
@@ -249,11 +244,7 @@ class ServerTestCase(utils.TestCase):
         self.assertEqual(len(result), 2)
 
 
-class ConfigTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.server = aiocouchdb.server.Server(self.url)
+class ConfigTestCase(utils.ServerTestCase):
 
     def test_config(self):
         yield from self.server.config.get()
@@ -298,11 +289,7 @@ class ConfigTestCase(utils.TestCase):
             self.assertFalse(result)
 
 
-class SessionTestCase(utils.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.server = aiocouchdb.server.Server(self.url)
+class SessionTestCase(utils.ServerTestCase):
 
     @utils.with_fixed_admin_party('root', 'relax')
     def test_open_session(self, root):

@@ -21,7 +21,7 @@ import aiocouchdb.server
 from . import utils
 
 
-class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
+class DatabaseTestCase(utils.DatabaseTestCase):
 
     def test_init_with_url(self):
         self.assertIsInstance(self.db.resource, aiocouchdb.client.Resource)
@@ -52,7 +52,7 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
         yield from self.db.security.update_members(auth=root, names=['foo'])
         with self.response(status=403):
             result = yield from self.db.exists()
-            resp = yield from self.db.resource.head()
+            yield from self.db.resource.head()
             self.assert_request_called_with('HEAD', self.db.name)
         self.assertFalse(result)
 
@@ -130,7 +130,7 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
                                         data=Ellipsis)
         data = self.request.call_args[1]['data']
         self.assertIsInstance(data, types.GeneratorType)
-        if self.target == 'mock':
+        if self._test_target == 'mock':
             # while aiohttp.request is mocked, the payload generator
             # doesn't get used so we can check the real payload data.
             self.assertEqual(b'{"docs": [{"_id": "foo"},{"_id": "bar"}]}',
@@ -143,7 +143,7 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
                                         data=Ellipsis)
         data = self.request.call_args[1]['data']
         self.assertIsInstance(data, types.GeneratorType)
-        if self.target == 'mock':
+        if self._test_target == 'mock':
             # while aiohttp.request is mocked, the payload generator
             # doesn't get used so we can check the real payload data.
             self.assertEqual(b'{"all_or_nothing": true, "docs": '
@@ -520,7 +520,7 @@ class DatabaseTestCase(utils.TestCase, utils.DatabaseEnv):
         self.assert_request_called_with('POST', self.db.name, '_view_cleanup')
 
 
-class SecurityTestCase(utils.TestCase, utils.DatabaseEnv):
+class SecurityTestCase(utils.DatabaseTestCase):
 
     def test_security_get(self):
         data = {
