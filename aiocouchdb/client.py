@@ -9,6 +9,7 @@
 
 import asyncio
 import aiohttp
+import aiohttp.log
 import io
 import json
 import types
@@ -54,7 +55,7 @@ class HttpPayloadParser(aiohttp.HttpPayloadParser):
             if self.readall and getattr(self.message, 'code', 0) != 204:
                 yield from self.parse_eof_payload(out, buf)
             elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
-                aiohttp.log.internal_log.warning(  # pragma: no cover
+                aiohttp.log.internal_logger.warning(  # pragma: no cover
                     'Content-Length or Transfer-Encoding header is required')
 
         out.feed_eof()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -11,7 +11,7 @@ import asyncio
 import json
 import uuid
 
-from aiohttp.multidict import CaseInsensitiveMultiDict
+from aiohttp.multidict import CIMultiDict
 from collections.abc import Mapping
 from .attachment import Attachment
 from .client import Resource, HttpStreamResponse
@@ -279,7 +279,7 @@ class Document(object):
             boundary = str(uuid.uuid4())
             headers = dict(resp.headers.items())
             headers['CONTENT-TYPE'] = 'multipart/related;boundary=%s' % boundary
-            resp.headers = CaseInsensitiveMultiDict(**headers)
+            resp.headers = CIMultiDict(**headers)
             resp.content._buffer.extend(
                 b'--' + boundary.encode('latin1') + b'\r\n'
                 b'Content-Type: application/json\r\n'

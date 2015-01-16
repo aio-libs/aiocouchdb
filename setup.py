@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -18,7 +18,7 @@ mod = imp.load_module(
     'version', *imp.find_module('version', [join(setup_dir, 'aiocouchdb')]))
 
 install_requires = [
-    'aiohttp>=0.9.2'
+    'aiohttp>=0.14.0'
 ]
 
 if sys.version_info >= (3, 4):

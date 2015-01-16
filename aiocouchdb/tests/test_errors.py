@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -28,7 +28,7 @@ class HttpErrorsTestCase(utils.TestCase):
         yield from aiocouchdb.errors.maybe_raise_error(self.resp)
 
     def test_raise_aiohttp_exception(self):
-        with self.assertRaises(aiohttp.errors.HttpException):
+        with self.assertRaises(aiohttp.errors.HttpProcessingError):
             yield from aiocouchdb.errors.maybe_raise_error(self.resp)
 
     def test_decode_common_error_response(self):

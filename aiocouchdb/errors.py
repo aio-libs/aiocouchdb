@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -15,18 +15,17 @@ Exception hierarchy
 
   BaseException
   +-- Exception
-      +-- aiohttp.errors.HttpException
-          +-- aiohttp.errors.HttpErrorException
-              +-- aiocouchdb.errors.HttpErrorException
-                  +-- aiocouchdb.errors.BadRequest
-                  +-- aiocouchdb.errors.Unauthorized
-                  +-- aiocouchdb.errors.Forbidden
-                  +-- aiocouchdb.errors.ResourceNotFound
-                  +-- aiocouchdb.errors.MethodNotAllowed
-                  +-- aiocouchdb.errors.ResourceConflict
-                  +-- aiocouchdb.errors.PreconditionFailed
-                  +-- aiocouchdb.errors.RequestedRangeNotSatisfiable
-                  +-- aiocouchdb.errors.ServerError
+      +-- aiohttp.errors.HttpProcessingError
+          +-- aiocouchdb.errors.HttpErrorException
+              +-- aiocouchdb.errors.BadRequest
+              +-- aiocouchdb.errors.Unauthorized
+              +-- aiocouchdb.errors.Forbidden
+              +-- aiocouchdb.errors.ResourceNotFound
+              +-- aiocouchdb.errors.MethodNotAllowed
+              +-- aiocouchdb.errors.ResourceConflict
+              +-- aiocouchdb.errors.PreconditionFailed
+              +-- aiocouchdb.errors.RequestedRangeNotSatisfiable
+              +-- aiocouchdb.errors.ServerError
 """
 
 
@@ -34,7 +33,7 @@ import asyncio
 import aiohttp.errors
 
 
-class HttpErrorException(aiohttp.errors.HttpErrorException):
+class HttpErrorException(aiohttp.errors.HttpProcessingError):
     """Extension of :exc:`aiohttp.errors.HttpErrorException` for CouchDB related
     errors."""
 
