@@ -9,13 +9,18 @@
 
 import abc
 import base64
+import hashlib
+import hmac
 import http.cookies
 from collections import namedtuple
 
 from .hdrs import (
     AUTHORIZATION,
     COOKIE,
-    SET_COOKIE
+    SET_COOKIE,
+    X_AUTH_COUCHDB_ROLES,
+    X_AUTH_COUCHDB_TOKEN,
+    X_AUTH_COUCHDB_USERNAME
 )
 
 
@@ -26,6 +31,10 @@ BasicAuthCredentials = namedtuple('BasicAuthCredentials', [
 #: OAuth credentials
 OAuthCredentials = namedtuple('OAuthCredentials', [
     'consumer_key', 'consumer_secret', 'resource_key', 'resource_secret'])
+
+#: ProxyAuth credentials
+ProxyAuthCredentials = namedtuple('ProxyAuthCredentials', [
+    'username', 'roles', 'secret'])
 
 
 class AuthProvider(object, metaclass=abc.ABCMeta):
@@ -240,6 +249,76 @@ class OAuthProvider(AuthProvider):
             signature_type=self._oauth1.SIGNATURE_TYPE_AUTH_HEADER)
         _, oauth_headers, _ = client.sign(url)
         headers[AUTHORIZATION] = oauth_headers['Authorization']
+
+    def update(self, response):
+        pass  # pragma: no cover
+
+
+class ProxyAuthProvider(AuthProvider):
+    """Provides CouchDB proxy authentication methods."""
+
+    _credentials = None
+
+    #: Controls the name of header used to specify CouchDB username
+    x_auth_username = X_AUTH_COUCHDB_USERNAME
+    #: Controls the name of header used to specify list of CouchDB user roles
+    x_auth_roles = X_AUTH_COUCHDB_ROLES
+    #: Controls the name of header used to provide authentication token
+    x_auth_token = X_AUTH_COUCHDB_TOKEN
+
+    def __init__(self, username=None, roles=None, secret=None, *,
+                 x_auth_username=None, x_auth_roles=None, x_auth_token=None):
+        if x_auth_username is not None:
+            self.x_auth_username = x_auth_username
+        if x_auth_roles is not None:
+            self.x_auth_roles = x_auth_roles
+        if x_auth_token is not None:
+            self.x_auth_token = x_auth_token
+
+        if username or roles or secret:
+            self.set_credentials(username, roles, secret)
+
+    def reset(self):
+        """Resets provider instance to default state."""
+        self._credentials = None
+
+    def credentials(self):
+        """Returns three-element tuple of defined username, roles and secret."""
+        return self._credentials
+
+    def set_credentials(self, username, roles=None, secret=None):
+        """Sets ProxyAuth credentials.
+
+        :param str username: CouchDB username
+        :param list roles: List of username roles
+        :param str secret: ProxyAuth secret. Should match the one which defined
+                           on target CouchDB server.
+        """
+        if not username:
+            raise ValueError('Proxy Auth username should have non-empty value')
+        self._credentials = ProxyAuthCredentials(username, roles, secret)
+
+    def sign(self, url, headers):
+        """Adds ProxyAuth credentials to ``headers``.
+
+        :param str url: Request URL
+        :param dict headers: Request headers
+        """
+        creds = self._credentials
+
+        if creds is None or not creds.username:
+            raise ValueError('Proxy Auth username is missing')
+        else:
+            headers[self.x_auth_username] = creds.username
+
+        if creds.roles is not None:
+            headers[self.x_auth_roles] = ','.join(creds.roles)
+
+        if creds.secret is not None:
+            headers[self.x_auth_token] = hmac.new(
+                creds.secret.encode('utf-8'),
+                creds.username.encode('utf-8'),
+                hashlib.sha1).hexdigest()
 
     def update(self, response):
         pass  # pragma: no cover

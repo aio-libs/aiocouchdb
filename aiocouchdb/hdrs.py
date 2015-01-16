@@ -13,3 +13,9 @@ from aiohttp.multidict import upstr
 #: http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.5.html
 ACCEPT_RANGES = upstr('ACCEPT-RANGES')
 
+#: Defines CouchDB Proxy Auth usernmae
+X_AUTH_COUCHDB_USERNAME = upstr('X-Auth-CouchDB-UserName')
+#: Defines CouchDB Proxy Auth list of roles separated by a comma
+X_AUTH_COUCHDB_ROLES = upstr('X-Auth-CouchDB-Roles')
+#: Defines CouchDB Proxy Auth token
+X_AUTH_COUCHDB_TOKEN = upstr('X-Auth-CouchDB-Token')
