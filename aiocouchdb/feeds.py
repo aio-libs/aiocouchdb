@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -9,7 +9,9 @@
 
 import asyncio
 import json
+
 from aiohttp.helpers import parse_mimetype
+from .hdrs import CONTENT_TYPE
 
 
 class Feed(object):
@@ -26,7 +28,7 @@ class Feed(object):
                                     loop=loop)
         self._resp = resp
 
-        ctype = resp.headers.get('CONTENT-TYPE', '').lower()
+        ctype = resp.headers.get(CONTENT_TYPE, '').lower()
         *_, params = parse_mimetype(ctype)
         self._encoding = params.get('charset', 'utf-8')
 

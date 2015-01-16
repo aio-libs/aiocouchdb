@@ -102,6 +102,13 @@ Errors
 .. automodule:: aiocouchdb.errors
   :members:
 
+Headers
+=======
+
+.. automodule:: aiocouchdb.hdrs
+  :members:
+
+
 Changes
 =======
 

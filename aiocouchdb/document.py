@@ -10,11 +10,18 @@
 import asyncio
 import json
 import uuid
+from collections.abc import Mapping
 
 from aiohttp.multidict import CIMultiDict
-from collections.abc import Mapping
 from .attachment import Attachment
 from .client import Resource, HttpStreamResponse
+from .hdrs import (
+    ACCEPT,
+    CONTENT_TYPE,
+    DESTINATION,
+    ETAG,
+    IF_NONE_MATCH
+)
 from .multipart import MultipartBodyReader
 
 
@@ -94,7 +101,7 @@ class Document(object):
         """
         qrev = '"%s"' % rev
         resp = yield from self.resource.head(auth=auth,
-                                             headers={'IF-NONE-MATCH': qrev})
+                                             headers={IF_NONE_MATCH: qrev})
         yield from resp.maybe_raise_error()
         return resp.status != 304
 
@@ -110,7 +117,7 @@ class Document(object):
         """
         resp = yield from self.resource.head(auth=auth)
         yield from resp.maybe_raise_error()
-        return resp.headers['ETAG'].strip('"')
+        return resp.headers[ETAG].strip('"')
 
     @asyncio.coroutine
     def get(self, rev=None, *,
@@ -209,7 +216,7 @@ class Document(object):
         params['open_revs'] = json.dumps(open_revs) if open_revs else 'all'
 
         resp = yield from self.resource.get(auth=auth,
-                                            headers={'ACCEPT': 'multipart/*'},
+                                            headers={ACCEPT: 'multipart/*'},
                                             params=params,
                                             response_class=HttpStreamResponse)
         yield from resp.maybe_raise_error()
@@ -264,13 +271,13 @@ class Document(object):
 
         resp = yield from self.resource.get(
             auth=auth,
-            headers={'ACCEPT': 'multipart/*, application/json'},
+            headers={ACCEPT: 'multipart/*, application/json'},
             params=params,
             response_class=HttpStreamResponse)
 
         yield from resp.maybe_raise_error()
 
-        if resp.headers['CONTENT-TYPE'].startswith('application/json'):
+        if resp.headers[CONTENT_TYPE].startswith('application/json'):
             # WARNING! Here be Hacks!
             # If document has no attachments, CouchDB returns it as JSON
             # so we have to fake multipart response in the name of consistency.
@@ -278,7 +285,7 @@ class Document(object):
             data = yield from resp.read()
             boundary = str(uuid.uuid4())
             headers = dict(resp.headers.items())
-            headers['CONTENT-TYPE'] = 'multipart/related;boundary=%s' % boundary
+            headers[CONTENT_TYPE] = 'multipart/related;boundary=%s' % boundary
             resp.headers = CIMultiDict(**headers)
             resp.content._buffer.extend(
                 b'--' + boundary.encode('latin1') + b'\r\n'
@@ -376,7 +383,7 @@ class Document(object):
         dest = newid
         if rev is not None:
             dest += '?rev=' + rev
-        headers = {'DESTINATION': dest}
+        headers = {DESTINATION: dest}
         resp = yield from self.resource.copy(auth=auth, headers=headers)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -11,6 +11,13 @@ import abc
 import base64
 import http.cookies
 from collections import namedtuple
+
+from .hdrs import (
+    AUTHORIZATION,
+    COOKIE,
+    SET_COOKIE
+)
+
 
 #: BasicAuth credentials
 BasicAuthCredentials = namedtuple('BasicAuthCredentials', [
@@ -121,7 +128,7 @@ class BasicAuthProvider(AuthProvider):
             token = base64.b64encode(
                 ('%s:%s' % self._credentials).encode('utf8'))
             self._auth_header = 'Basic %s' % (token.strip().decode('utf8'))
-        headers['AUTHORIZATION'] = self._auth_header
+        headers[AUTHORIZATION] = self._auth_header
 
     def update(self, response):
         pass  # pragma: no cover
@@ -155,9 +162,9 @@ class CookieAuthProvider(AuthProvider):
             return
 
         cookie = http.cookies.SimpleCookie()
-        if 'COOKIE' in headers:
-            cookie.load(headers.get('COOKIE', ''))
-            del headers['COOKIE']
+        if COOKIE in headers:
+            cookie.load(headers.get(COOKIE, ''))
+            del headers[COOKIE]
 
         for name, value in self._cookies.items():
             if isinstance(value, http.cookies.Morsel):
@@ -166,7 +173,7 @@ class CookieAuthProvider(AuthProvider):
             else:
                 cookie[name] = value
 
-        headers['COOKIE'] = cookie.output(header='', sep=';').strip()
+        headers[COOKIE] = cookie.output(header='', sep=';').strip()
 
     def update(self, response):
         """Updates cookies from the response.
@@ -232,7 +239,7 @@ class OAuthProvider(AuthProvider):
             resource_owner_secret=self._credentials.resource_secret,
             signature_type=self._oauth1.SIGNATURE_TYPE_AUTH_HEADER)
         _, oauth_headers, _ = client.sign(url)
-        headers['AUTHORIZATION'] = oauth_headers['Authorization']
+        headers[AUTHORIZATION] = oauth_headers['Authorization']
 
     def update(self, response):
         pass  # pragma: no cover

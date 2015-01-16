@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -10,8 +10,14 @@
 import asyncio
 import json
 import zlib
+
 from aiohttp.helpers import parse_mimetype
 from aiohttp.protocol import HttpParser
+from .hdrs import (
+    CONTENT_ENCODING,
+    CONTENT_LENGTH,
+    CONTENT_TYPE
+)
 
 
 class MultipartResponseWrapper(object):
@@ -54,7 +60,7 @@ class MultipartBodyPartReader(object):
         self.content = content
         self.headers = headers
         self._at_eof = False
-        length = self.headers.get('CONTENT-LENGTH', None)
+        length = self.headers.get(CONTENT_LENGTH, None)
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
         self._unread = []
@@ -194,7 +200,7 @@ class MultipartBodyPartReader(object):
 
         :rtype: bytes
         """
-        encoding = self.headers.get('CONTENT-ENCODING')
+        encoding = self.headers.get(CONTENT_ENCODING)
         if not encoding:
             return data
         return getattr(self, 'decode_%s' % encoding)(data)
@@ -311,7 +317,7 @@ class MultipartBodyReader(object):
 
         :param dict headers: Response headers
         """
-        ctype = headers.get('CONTENT-TYPE', '')
+        ctype = headers.get(CONTENT_TYPE, '')
         mtype, stype, *_ = parse_mimetype(ctype)
         for key in ((mtype, stype), (mtype, None), None):
             handler = self.dispatch_map.get(key)
@@ -355,12 +361,12 @@ def read_headers(content):
 
 
 def get_boundary(headers):
-    mtype, *_, params = parse_mimetype(headers['CONTENT-TYPE'])
+    mtype, *_, params = parse_mimetype(headers[CONTENT_TYPE])
     assert mtype == 'multipart'
     return ('--%s' % params['boundary']).encode()
 
 
 def get_charset(headers, default=None):
-    ctype = headers.get('CONTENT-TYPE', '')
+    ctype = headers.get(CONTENT_TYPE, '')
     *_, params = parse_mimetype(ctype)
     return params.get('charset', default)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -9,8 +9,16 @@
 
 import asyncio
 import base64
-from .client import Resource, HttpStreamResponse
 from io import RawIOBase
+
+from .client import Resource, HttpStreamResponse
+from .hdrs import (
+    ACCEPT_RANGES,
+    CONTENT_ENCODING,
+    CONTENT_TYPE,
+    IF_NONE_MATCH,
+    RANGE
+)
 
 
 class Attachment(object):
@@ -69,7 +77,7 @@ class Attachment(object):
                             ''.format(type(digest)))
         qdigest = '"%s"' % digest
         resp = yield from self.resource.head(auth=auth,
-                                             headers={'IF-NONE-MATCH': qdigest})
+                                             headers={IF_NONE_MATCH: qdigest})
         yield from resp.maybe_raise_error()
         yield from resp.read()
         return resp.status != 304
@@ -88,7 +96,7 @@ class Attachment(object):
             params['rev'] = rev
         resp = yield from self.resource.head(auth=auth, params=params)
         yield from resp.read()
-        return resp.headers.get('ACCEPT-RANGES') == 'bytes'
+        return resp.headers.get(ACCEPT_RANGES) == 'bytes'
 
     @asyncio.coroutine
     def get(self, rev=None, *, auth=None, range=None):
@@ -117,7 +125,7 @@ class Attachment(object):
                 start, stop = 0, range
             else:
                 start, stop = range
-            headers['RANGE'] = 'bytes={}-{}'.format(start or 0, stop)
+            headers[RANGE] = 'bytes={}-{}'.format(start or 0, stop)
         resp = yield from self.resource.get(auth=auth,
                                             headers=headers,
                                             params=params,
@@ -151,10 +159,10 @@ class Attachment(object):
             params['rev'] = rev
 
         headers = {
-            'CONTENT-TYPE': content_type
+            CONTENT_TYPE: content_type
         }
         if content_encoding is not None:
-            headers['CONTENT-ENCODING'] = content_encoding
+            headers[CONTENT_ENCODING] = content_encoding
 
         resp = yield from self.resource.put(auth=auth,
                                             data=fileobj,

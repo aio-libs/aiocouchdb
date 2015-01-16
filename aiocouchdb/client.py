@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -14,7 +14,16 @@ import io
 import json
 import types
 import urllib.parse
+
 from .errors import maybe_raise_error
+from .hdrs import (
+    ACCEPT,
+    ACCEPT_ENCODING,
+    CONTENT_LENGTH,
+    CONTENT_TYPE,
+    SEC_WEBSOCKET_KEY1,
+    TRANSFER_ENCODING
+)
 
 
 # FIXME: workaround of decompressing empty payload.
@@ -23,8 +32,8 @@ class HttpPayloadParser(aiohttp.HttpPayloadParser):
 
     def __call__(self, out, buf):
         # payload params
-        length = self.message.headers.get('CONTENT-LENGTH', self.length)
-        if 'SEC-WEBSOCKET-KEY1' in self.message.headers:
+        length = self.message.headers.get(CONTENT_LENGTH, self.length)
+        if SEC_WEBSOCKET_KEY1 in self.message.headers:
             length = 8
 
         # payload decompression wrapper
@@ -38,17 +47,17 @@ class HttpPayloadParser(aiohttp.HttpPayloadParser):
             # don't parse payload if it's not expected to be received
             pass
 
-        elif 'chunked' in self.message.headers.get('TRANSFER-ENCODING', ''):
+        elif 'chunked' in self.message.headers.get(TRANSFER_ENCODING, ''):
             yield from self.parse_chunked_payload(out, buf)
 
         elif length is not None:
             try:
                 length = int(length)
             except ValueError:
-                raise aiohttp.errors.InvalidHeader('CONTENT-LENGTH') from None
+                raise aiohttp.errors.InvalidHeader(CONTENT_LENGTH) from None
 
             if length < 0:
-                raise aiohttp.errors.InvalidHeader('CONTENT-LENGTH')
+                raise aiohttp.errors.InvalidHeader(CONTENT_LENGTH)
             elif length > 0:
                 yield from self.parse_length_payload(out, buf, length)
         else:
@@ -68,16 +77,16 @@ class HttpRequest(aiohttp.client.ClientRequest):
 
     #: Default HTTP request headers.
     DEFAULT_HEADERS = {
-        'ACCEPT': 'application/json',
-        'ACCEPT-ENCODING': 'gzip, deflate',
-        'CONTENT-TYPE': 'application/json'
+        ACCEPT: 'application/json',
+        ACCEPT_ENCODING: 'gzip, deflate',
+        CONTENT_TYPE: 'application/json'
     }
     CHUNK_SIZE = 8192
 
     def update_body_from_data(self, data):
         """Encodes ``data`` as JSON if `Content-Type`
         is :mimetype:`application/json`."""
-        if self.headers.get('CONTENT-TYPE') == 'application/json':
+        if self.headers.get(CONTENT_TYPE) == 'application/json':
             if not (isinstance(data, (types.GeneratorType, io.IOBase))):
                 data = json.dumps(data)
         return super().update_body_from_data(data)
