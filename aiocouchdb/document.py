@@ -10,7 +10,7 @@
 import asyncio
 import json
 import uuid
-from collections.abc import Mapping
+from collections.abc import MutableMapping
 
 from aiohttp.multidict import CIMultiDict
 from .attachment import Attachment
@@ -302,7 +302,7 @@ class Document(object):
         """`Updates a document`_ on server.
 
         :param dict doc: Document object. Should implement
-                        :class:`~collections.abc.Mapping` interface
+                        :class:`~collections.abc.MutableMapping` interface
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
@@ -322,8 +322,8 @@ class Document(object):
                       if key not in {'self', 'doc', 'auth'} and
                          value is not None)
 
-        if not isinstance(doc, Mapping):
-            raise TypeError('Mapping instance expected, dict - preferred')
+        if not isinstance(doc, MutableMapping):
+            raise TypeError('MutableMapping instance expected, like a dict')
 
         if '_id' in doc and doc['_id'] != self.id:
             raise ValueError('Attempt to store document with different ID: '
