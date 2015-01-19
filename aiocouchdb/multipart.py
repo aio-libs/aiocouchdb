@@ -9,15 +9,29 @@
 
 import asyncio
 import json
+import io
+import mimetypes
+import os
+import uuid
 import zlib
+from urllib.parse import quote
 
 from aiohttp.helpers import parse_mimetype
+from aiohttp.multidict import CIMultiDict
 from aiohttp.protocol import HttpParser
 from .hdrs import (
+    CONTENT_DISPOSITION,
     CONTENT_ENCODING,
     CONTENT_LENGTH,
     CONTENT_TYPE
 )
+
+
+CHAR = set(chr(i) for i in range(0, 128))
+CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
+SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
+              '?', '=', '{', '}', ' ', chr(9)}
+TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
 class MultipartResponseWrapper(object):
@@ -353,3 +367,216 @@ class MultipartReader(object):
                 yield from self._last_part.release()
             self._unread.extend(self._last_part._unread)
             self._last_part = None
+
+
+class BodyPartWriter(object):
+    """Multipart writer for single body part."""
+
+    def __init__(self, obj, headers=None, *, chunk_size=8192):
+        if headers is None:
+            headers = CIMultiDict()
+        elif not isinstance(headers, CIMultiDict):
+            headers = CIMultiDict(headers)
+
+        self.obj = obj
+        self.headers = headers
+        self._chunk_size = chunk_size
+        self._fill_headers_with_defaults()
+
+        self._serialize_map = {
+            bytes: self._serialize_bytes,
+            str: self._serialize_str,
+            io.IOBase: self._serialize_io,
+            MultipartWriter: self._serialize_multipart,
+            ('application', 'json'): self._serialize_json
+        }
+
+    def _fill_headers_with_defaults(self):
+        """Updates part headers by """
+        if CONTENT_LENGTH not in self.headers:
+            content_length = self._guess_content_length(self.obj)
+            if content_length is not None:
+                self.headers[CONTENT_LENGTH] = str(content_length)
+
+        if CONTENT_TYPE not in self.headers:
+            content_type = self._guess_content_type(self.obj)
+            if content_type is not None:
+                self.headers[CONTENT_TYPE] = content_type
+
+        if CONTENT_DISPOSITION not in self.headers:
+            filename = self._guess_filename(self.obj)
+            if filename is not None:
+                self.set_content_disposition('attachment', filename=filename)
+
+    def _guess_content_length(self, obj):
+        if isinstance(obj, bytes):
+            return len(obj)
+        elif isinstance(obj, io.IOBase):
+            try:
+                return os.fstat(obj.fileno()).st_size - obj.tell()
+            except (AttributeError, OSError):
+                if isinstance(obj, io.BytesIO):
+                    return len(obj.getvalue()) - obj.tell()
+                return None
+        else:
+            return None
+
+    def _guess_content_type(self, obj, default='application/octet-stream'):
+        if hasattr(obj, 'name'):
+            name = getattr(obj, 'name')
+            return mimetypes.guess_type(name)[0]
+        elif isinstance(obj, str):
+            return 'text/plain; charset=utf-8'
+        else:
+            return default
+
+    def _guess_filename(self, obj):
+        if isinstance(obj, io.IOBase):
+            name = getattr(obj, 'name', None)
+            if name is not None:
+                return os.path.basename(name)
+
+    def serialize(self):
+        """Yields byte chunks for body part."""
+        if self.headers:
+            yield b'\r\n'.join(
+                b': '.join(map(lambda i: i.encode('latin1'), item))
+                for item in self.headers.items()
+            )
+        yield b'\r\n\r\n'
+
+        obj = self.obj
+        mtype, stype, *_ = parse_mimetype(self.headers.get(CONTENT_TYPE))
+        serializer = self._serialize_map.get((mtype, stype))
+        if serializer is not None:
+            yield from serializer(obj)
+        else:
+            for key in self._serialize_map:
+                if not isinstance(key, tuple) and isinstance(obj, key):
+                    yield from self._serialize_map[key](obj)
+                    break
+            else:
+                yield from self._serialize_default(obj)
+        yield b'\r\n'
+
+    def _serialize_bytes(self, obj):
+        yield obj
+
+    def _serialize_str(self, obj):
+        *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
+        yield obj.encode(params.get('charset', 'us-ascii'))
+
+    def _serialize_io(self, obj):
+        while True:
+            chunk = obj.read(self._chunk_size)
+            if not chunk:
+                break
+            if isinstance(chunk, str):
+                yield from self._serialize_str(chunk)
+            else:
+                yield from self._serialize_bytes(chunk)
+
+    def _serialize_multipart(self, obj):
+        yield from obj.serialize()
+
+    def _serialize_json(self, obj):
+        *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
+        yield json.dumps(obj).encode(params.get('charset', 'utf-8'))
+
+    def _serialize_default(self, obj):
+        raise TypeError('unknown body part type %r' % type(obj))
+
+    def set_content_disposition(self, disptype, **params):
+        """Sets ``Content-Disposition`` header.
+
+        :param str disptype: Disposition type: inline, attachment, form-data.
+                            Should be valid extension token (see RFC 2183)
+        :param dict params: Disposition params
+        """
+        if not disptype or not (TOKEN > set(disptype)):
+            raise ValueError('bad content disposition type {!r}'
+                             ''.format(disptype))
+        value = disptype
+        if params:
+            lparams = []
+            for key, val in params.items():
+                if not key or not (TOKEN > set(key)):
+                    raise ValueError('bad content disposition parameter'
+                                     ' {!r}={!r}'.format(key, val))
+                qval = quote(val, '')
+                if key == 'filename':
+                    lparams.append((key, '"%s"' % qval))
+                    lparams.append(('filename*', "utf-8''" + qval))
+                else:
+                    lparams.append((key, "%s" % qval))
+            sparams = '; '.join('='.join(pair) for pair in lparams)
+            value = '; '.join((value, sparams))
+        self.headers[CONTENT_DISPOSITION] = value
+
+
+class MultipartWriter(object):
+    """Multipart body writer."""
+
+    #: Body part reader class for non multipart/* content types.
+    part_writer_cls = BodyPartWriter
+
+    def __init__(self, subtype='mixed', boundary=None):
+        boundary = boundary if boundary is not None else uuid.uuid4().hex
+        try:
+            boundary.encode('us-ascii')
+        except UnicodeEncodeError:
+            raise ValueError('boundary should contains ASCII only chars')
+        self.headers = CIMultiDict()
+        self.headers[CONTENT_TYPE] = 'multipart/{}; boundary={}'.format(
+            subtype, boundary
+        )
+        self.parts = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def __iter__(self):
+        return iter(self.parts)
+
+    def __len__(self):
+        return len(self.parts)
+
+    @property
+    def boundary(self):
+        *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
+        return params['boundary'].encode('us-ascii')
+
+    def append(self, obj, headers=None):
+        """Adds a new body part to multipart writer."""
+        if isinstance(obj, self.part_writer_cls):
+            if headers:
+                obj.headers.update(headers)
+            self.parts.append(obj)
+        else:
+            if not headers:
+                headers = CIMultiDict()
+            self.parts.append(self.part_writer_cls(obj, headers))
+
+    def append_json(self, obj, headers=None):
+        """Helper to append JSON part."""
+        if not headers:
+            headers = CIMultiDict()
+        headers[CONTENT_TYPE] = 'application/json'
+        return self.append(obj, headers)
+
+    def serialize(self):
+        """Yields multipart byte chunks."""
+        if not self.parts:
+            yield b''
+            return
+
+        for part in self.parts:
+            yield b'--' + self.boundary + b'\r\n'
+            yield from part.serialize()
+        else:
+            yield b'--' + self.boundary + b'--\r\n'
+
+        yield b''

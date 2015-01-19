@@ -9,10 +9,18 @@
 
 import asyncio
 import io
+import os
+import unittest
 import unittest.mock as mock
 import aiocouchdb.client
 import aiocouchdb.multipart
+import aiocouchdb.hdrs
 
+from aiohttp.helpers import parse_mimetype
+from aiocouchdb.hdrs import (
+    CONTENT_DISPOSITION,
+    CONTENT_TYPE
+)
 from . import utils
 
 
@@ -407,3 +415,194 @@ class MultipartReaderTestCase(utils.TestCase):
         self.assertTrue(second.at_eof())
         self.assertTrue(second.at_eof())
         self.assertIsNone(third)
+
+
+class BodyPartWriterTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.part = aiocouchdb.multipart.BodyPartWriter(b'')
+
+    def test_guess_content_length(self):
+        self.assertIsNone(self.part._guess_content_length({}))
+        self.assertIsNone(self.part._guess_content_length(object()))
+        self.assertEqual(3, self.part._guess_content_length(io.BytesIO(b'foo')))
+        self.assertIsNone(self.part._guess_content_length(io.StringIO('foo')))
+        self.assertEqual(3, self.part._guess_content_length(b'bar'))
+        with open(__file__, 'rb') as f:
+            self.assertEqual(os.fstat(f.fileno()).st_size,
+                             self.part._guess_content_length(f))
+
+    def test_guess_content_type(self):
+        default = 'application/octet-stream'
+        self.assertEqual(default, self.part._guess_content_type(b'foo'))
+        self.assertEqual('text/plain; charset=utf-8',
+                         self.part._guess_content_type('foo'))
+        with open(__file__, 'rb') as f:
+            self.assertEqual('text/x-python',
+                             self.part._guess_content_type(f))
+
+    def test_guess_filename(self):
+        class Named:
+            name = 'foo'
+        self.assertIsNone(self.part._guess_filename({}))
+        self.assertIsNone(self.part._guess_filename(object()))
+        self.assertIsNone(self.part._guess_filename(io.BytesIO(b'foo')))
+        self.assertIsNone(self.part._guess_filename(Named()))
+        with open(__file__, 'rb') as f:
+            self.assertEqual(os.path.basename(f.name),
+                             self.part._guess_filename(f))
+
+    def test_autoset_content_disposition(self):
+        self.part.obj = open(__file__, 'rb')
+        self.part._fill_headers_with_defaults()
+        self.assertIn(CONTENT_DISPOSITION, self.part.headers)
+        fname = os.path.basename(self.part.obj.name)
+        self.assertEquals(
+            'attachment; filename="{0}"; filename*=utf-8\'\'{0}'.format(fname),
+            self.part.headers[CONTENT_DISPOSITION])
+
+    def test_set_content_disposition(self):
+        self.part.set_content_disposition('attachment', foo='bar')
+        self.assertEquals(
+            'attachment; foo=bar',
+            self.part.headers[CONTENT_DISPOSITION])
+
+    def test_set_content_disposition_bad_type(self):
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('foo bar')
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('тест')
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('foo\x00bar')
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('')
+
+    def test_set_content_disposition_bad_param(self):
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('inline', **{'foo bar': 'baz'})
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('inline', **{'тест': 'baz'})
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('inline', **{'': 'baz'})
+        with self.assertRaises(ValueError):
+            self.part.set_content_disposition('inline', **{'foo\x00bar': 'baz'})
+
+    def test_serialize_bytes(self):
+        self.assertEqual(b'foo', next(self.part._serialize_bytes(b'foo')))
+
+    def test_serialize_str(self):
+        self.assertEqual(b'foo', next(self.part._serialize_str('foo')))
+
+    def test_serialize_str_custom_encoding(self):
+        self.part.headers[CONTENT_TYPE] = \
+            'text/plain;charset=cp1251'
+        self.assertEqual('привет'.encode('cp1251'),
+                         next(self.part._serialize_str('привет')))
+
+    def test_serialize_io(self):
+        self.assertEqual(b'foo',
+                         next(self.part._serialize_io(io.BytesIO(b'foo'))))
+        self.assertEqual(b'foo',
+                         next(self.part._serialize_io(io.StringIO('foo'))))
+
+    def test_serialize_io_chunk(self):
+        flo = io.BytesIO(b'foobarbaz')
+        self.part._chunk_size = 3
+        self.assertEqual([b'foo', b'bar', b'baz'],
+                         list(self.part._serialize_io(flo)))
+
+    def test_serialize_json(self):
+        self.assertEqual(b'{"\\u043f\\u0440\\u0438\\u0432\\u0435\\u0442":'
+                         b' "\\u043c\\u0438\\u0440"}',
+                         next(self.part._serialize_json({'привет': 'мир'})))
+
+    def test_serialize_multipart(self):
+        multipart = aiocouchdb.multipart.MultipartWriter(boundary=':')
+        multipart.append('foo-bar-baz')
+        multipart.append_json({'test': 'passed'})
+        self.assertEqual(
+            [b'--:\r\n',
+             b'CONTENT-TYPE: text/plain; charset=utf-8',
+             b'\r\n\r\n',
+             b'foo-bar-baz',
+             b'\r\n',
+             b'--:\r\n',
+             b'CONTENT-TYPE: application/json',
+             b'\r\n\r\n',
+             b'{"test": "passed"}',
+             b'\r\n',
+             b'--:--\r\n',
+             b''],
+            list(self.part._serialize_multipart(multipart))
+        )
+
+    def test_serialize_default(self):
+        with self.assertRaises(TypeError):
+            next(self.part._serialize_default(object()))
+
+
+class MultipartWriterTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.writer = aiocouchdb.multipart.MultipartWriter(boundary=':')
+
+    def test_default_subtype(self):
+        mtype, stype, *_ = parse_mimetype(self.writer.headers.get(CONTENT_TYPE))
+        self.assertEqual('multipart', mtype)
+        self.assertEqual('mixed', stype)
+
+    def test_bad_boundary(self):
+        with self.assertRaises(ValueError):
+            aiocouchdb.multipart.MultipartWriter(boundary='тест')
+
+    def test_default_headers(self):
+        self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=:'},
+                         self.writer.headers)
+
+    def test_iter_parts(self):
+        self.writer.append('foo')
+        self.writer.append('bar')
+        self.writer.append('baz')
+        self.assertEqual(3, len(list(self.writer)))
+
+    def test_append(self):
+        self.assertEqual(0, len(self.writer))
+        self.writer.append('hello, world!')
+        self.assertEqual(1, len(self.writer))
+        self.assertIsInstance(self.writer.parts[0], self.writer.part_writer_cls)
+
+    def test_append_with_headers(self):
+        self.writer.append('hello, world!', {'x-foo': 'bar'})
+        self.assertEqual(1, len(self.writer))
+        self.assertIn('x-foo', self.writer.parts[0].headers)
+        self.assertEqual(self.writer.parts[0].headers['x-foo'], 'bar')
+
+    def test_append_json(self):
+        self.writer.append_json({'foo': 'bar'})
+        self.assertEqual(1, len(self.writer))
+        part = self.writer.parts[0]
+        self.assertEqual(part.headers[CONTENT_TYPE], 'application/json')
+
+    def test_append_part(self):
+        part = aiocouchdb.multipart.BodyPartWriter('test',
+                                                   {CONTENT_TYPE: 'text/plain'})
+        self.writer.append(part, {CONTENT_TYPE: 'test/passed'})
+        self.assertEqual(1, len(self.writer))
+        part = self.writer.parts[0]
+        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
+
+    def test_append_json_overrides_content_type(self):
+        self.writer.append_json({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
+        self.assertEqual(1, len(self.writer))
+        part = self.writer.parts[0]
+        self.assertEqual(part.headers[CONTENT_TYPE], 'application/json')
+
+    def test_serialize(self):
+        self.assertEqual([b''], list(self.writer.serialize()))
+
+    def test_with(self):
+        with aiocouchdb.multipart.MultipartWriter(boundary=':') as writer:
+            writer.append('foo')
+            writer.append(b'bar')
+            writer.append_json({'baz': True})
+        self.assertEqual(3, len(writer))
