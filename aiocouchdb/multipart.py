@@ -50,15 +50,15 @@ class MultipartResponseWrapper(object):
         yield from self.resp.release()
 
 
-class MultipartBodyPartReader(object):
+class BodyPartReader(object):
     """Multipart reader for single body part."""
 
-    _chunk_size = 8192
+    chunk_size = 8192
 
     def __init__(self, boundary, headers, content):
-        self.boundary = boundary
-        self.content = content
         self.headers = headers
+        self._boundary = boundary
+        self._content = content
         self._at_eof = False
         length = self.headers.get(CONTENT_LENGTH, None)
         self._length = int(length) if length is not None else None
@@ -90,15 +90,15 @@ class MultipartBodyPartReader(object):
                 data.extend((yield from self.readline()))
         else:
             while not self._at_eof:
-                data.extend((yield from self.read_chunk(self._chunk_size)))
-            assert b'\r\n' == (yield from self.content.readline()), \
+                data.extend((yield from self.read_chunk(self.chunk_size)))
+            assert b'\r\n' == (yield from self._content.readline()), \
                 'reader did not read all the data or it is malformed'
         if decode:
             return self.decode(data)
         return data
 
     @asyncio.coroutine
-    def read_chunk(self, size=_chunk_size):
+    def read_chunk(self, size=chunk_size):
         """Reads body part content chunk of the specified size.
         The body part must has `Content-Length` header with proper value.
 
@@ -111,7 +111,7 @@ class MultipartBodyPartReader(object):
         assert self._length is not None, \
             'Content-Length required for chunked read'
         chunk_size = min(size, self._length - self._read_bytes)
-        chunk = yield from self.content.read(chunk_size)
+        chunk = yield from self._content.read(chunk_size)
         self._read_bytes += chunk_size
         if self._read_bytes == self._length:
             self._at_eof = True
@@ -125,17 +125,17 @@ class MultipartBodyPartReader(object):
         """
         if self._at_eof:
             return b''
-        line = yield from self.content.readline()
-        if line.startswith(self.boundary):
+        line = yield from self._content.readline()
+        if line.startswith(self._boundary):
             # the very last boundary may not come with \r\n,
             # so set single rules for everyone
             sline = line.rstrip(b'\r\n')
-            boundary = self.boundary
-            last_boundary = self.boundary + b'--'
+            boundary = self._boundary
+            last_boundary = self._boundary + b'--'
             # ensure that we read exactly the boundary, not something alike
             if sline == boundary or sline == last_boundary:
                 self._at_eof = True
-                self.unread(line)
+                self._unread.append(line)
                 return b''
         return line
 
@@ -152,8 +152,8 @@ class MultipartBodyPartReader(object):
                 yield from self.readline()
         else:
             while not self._at_eof:
-                yield from self.read_chunk(self._chunk_size)
-            assert b'\r\n' == (yield from self.content.readline())
+                yield from self.read_chunk(self.chunk_size)
+            assert b'\r\n' == (yield from self._content.readline())
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
@@ -165,7 +165,7 @@ class MultipartBodyPartReader(object):
         :rtype: str
         """
         data = yield from self.read(decode=True)
-        encoding = encoding or get_charset(self.headers, default='latin1')
+        encoding = encoding or self.get_charset(default='latin1')
         return data.decode(encoding)
 
     @asyncio.coroutine
@@ -178,7 +178,7 @@ class MultipartBodyPartReader(object):
         data = yield from self.read(decode=True)
         if not data:
             return None
-        encoding = encoding or get_charset(self.headers, default='utf-8')
+        encoding = encoding or self.get_charset(default='utf-8')
         return json.loads(data.decode(encoding))
 
     def at_eof(self):
@@ -213,12 +213,14 @@ class MultipartBodyPartReader(object):
         """Decodes data for ``Content-Encoding: gzip``."""
         return zlib.decompress(data, 16 + zlib.MAX_WBITS)
 
-    def unread(self, data):
-        """Unreads already read data into internal buffer."""
-        self._unread.append(data)
+    def get_charset(self, default=None):
+        """Returns charset parameter from ``Content-Type`` header or default."""
+        ctype = self.headers.get(CONTENT_TYPE, '')
+        *_, params = parse_mimetype(ctype)
+        return params.get('charset', default)
 
 
-class MultipartBodyReader(object):
+class MultipartReader(object):
     """Multipart body reader."""
 
     #: Response wrapper, used when multipart readers constructs from response.
@@ -227,15 +229,12 @@ class MultipartBodyReader(object):
     #: None points to type(self)
     multipart_reader_cls = None
     #: Body part reader class for non multipart/* content types.
-    part_reader_cls = MultipartBodyPartReader
-    #: Mapping of content-type in format ``(basetype, subtype)``
-    #: to the related handler which provides the right reader for it.
-    dispatch_map = {}
+    part_reader_cls = BodyPartReader
 
     def __init__(self, headers, content):
-        self.boundary = get_boundary(headers)
-        self.content = content
         self.headers = headers
+        self._boundary = ('--' + self._get_boundary()).encode()
+        self._content = content
         self._last_part = None
         self._at_eof = False
         self._unread = []
@@ -250,12 +249,6 @@ class MultipartBodyReader(object):
                                                      response.content))
         return obj
 
-    @asyncio.coroutine
-    def _readline(self):
-        if self._unread:
-            return self._unread.pop()
-        return (yield from self.content.readline())
-
     def at_eof(self):
         """Returns ``True`` if the final boundary was reached or
         ``False`` otherwise.
@@ -269,8 +262,8 @@ class MultipartBodyReader(object):
         """Emits the next multipart body part."""
         if self._at_eof:
             return
-        yield from self.maybe_release_last_part()
-        yield from self.read_boundary()
+        yield from self._maybe_release_last_part()
+        yield from self._read_boundary()
         if self._at_eof:  # we just read the last boundary, nothing to do there
             return
         self._last_part = yield from self.fetch_next_part()
@@ -286,87 +279,66 @@ class MultipartBodyReader(object):
             yield from item.release()
 
     @asyncio.coroutine
-    def read_boundary(self):
-        """Reads the next boundary."""
-        chunk = (yield from self._readline()).rstrip()
-        if chunk == self.boundary:
-            pass
-        elif chunk == self.boundary + b'--':
-            self._at_eof = True
-        else:
-            raise ValueError('Invalid boundary %r, expected %r'
-                             % (chunk, self.boundary))
-    @asyncio.coroutine
-    def maybe_release_last_part(self):
-        """Ensures that the last read body part is read completely."""
-        if self._last_part is not None:
-            if not self._last_part.at_eof():
-                yield from self._last_part.release()
-            self._unread.extend(self._last_part._unread)
-            self._last_part = None
-
-    @asyncio.coroutine
     def fetch_next_part(self):
         """Returns the next body part reader."""
-        headers = yield from read_headers(self.content)
-        return self.dispatch(headers)
+        headers = yield from self._read_headers()
+        return self._get_part_reader(headers)
 
-    def dispatch(self, headers):
+    def _get_part_reader(self, headers):
         """Dispatches the response by the `Content-Type` header, returning
         suitable reader instance.
 
         :param dict headers: Response headers
         """
         ctype = headers.get(CONTENT_TYPE, '')
-        mtype, stype, *_ = parse_mimetype(ctype)
-        for key in ((mtype, stype), (mtype, None), None):
-            handler = self.dispatch_map.get(key)
-            if handler is not None:
-                return handler(self, headers)
-        raise AttributeError('no handler available for content type %r', ctype)
+        mtype, *_ = parse_mimetype(ctype)
+        if mtype == 'multipart':
+            if self.multipart_reader_cls is None:
+                return type(self)(headers, self._content)
+            return self.multipart_reader_cls(headers, self._content)
+        else:
+            return self.part_reader_cls(self._boundary, headers, self._content)
 
-    def dispatch_multipart(self, headers):
-        """Returns multipart body reader instance.
+    def _get_boundary(self):
+        mtype, *_, params = parse_mimetype(self.headers[CONTENT_TYPE])
+        assert mtype == 'multipart'
+        return params['boundary']
 
-        :param dict headers: Response headers
-        :rtype: :class:`MultipartBodyReader`
-        """
-        if self.multipart_reader_cls is None:
-            return type(self)(headers, self.content)
-        return self.multipart_reader_cls(headers, self.content)
-    dispatch_map[('multipart', None)] = dispatch_multipart
+    @asyncio.coroutine
+    def _readline(self):
+        if self._unread:
+            return self._unread.pop()
+        return (yield from self._content.readline())
 
-    def dispatch_bodypart(self, headers):
-        """Returns body part reader instance.
+    @asyncio.coroutine
+    def _read_boundary(self):
+        chunk = (yield from self._readline()).rstrip()
+        if chunk == self._boundary:
+            pass
+        elif chunk == self._boundary + b'--':
+            self._at_eof = True
+        else:
+            raise ValueError('Invalid boundary %r, expected %r'
+                             % (chunk, self._boundary))
 
-        :param dict headers: Response headers
-        :rtype: :class:`MultipartBodyPartReader`
-        """
-        return self.part_reader_cls(self.boundary, headers, self.content)
-    dispatch_map[None] = dispatch_bodypart
+    @asyncio.coroutine
+    def _read_headers(self):
+        lines = ['']
+        while True:
+            chunk = yield from self._content.readline()
+            chunk = chunk.decode().strip()
+            lines.append(chunk)
+            if not chunk:
+                break
+        parser = HttpParser()
+        headers, *_ = parser.parse_headers(lines)
+        return headers
 
-
-@asyncio.coroutine
-def read_headers(content):
-    lines = ['']
-    while True:
-        chunk = yield from content.readline()
-        chunk = chunk.decode().strip()
-        lines.append(chunk)
-        if not chunk:
-            break
-    parser = HttpParser()
-    headers, *_ = parser.parse_headers(lines)
-    return headers
-
-
-def get_boundary(headers):
-    mtype, *_, params = parse_mimetype(headers[CONTENT_TYPE])
-    assert mtype == 'multipart'
-    return ('--%s' % params['boundary']).encode()
-
-
-def get_charset(headers, default=None):
-    ctype = headers.get(CONTENT_TYPE, '')
-    *_, params = parse_mimetype(ctype)
-    return params.get('charset', default)
+    @asyncio.coroutine
+    def _maybe_release_last_part(self):
+        """Ensures that the last read body part is read completely."""
+        if self._last_part is not None:
+            if not self._last_part.at_eof():
+                yield from self._last_part.release()
+            self._unread.extend(self._last_part._unread)
+            self._last_part = None
