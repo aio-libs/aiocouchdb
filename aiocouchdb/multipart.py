@@ -12,9 +12,11 @@ import json
 import io
 import mimetypes
 import os
+import re
 import uuid
+import warnings
 import zlib
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multidict import CIMultiDict
@@ -32,6 +34,135 @@ CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
 SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
               '?', '=', '{', '}', ' ', chr(9)}
 TOKEN = CHAR ^ CTL ^ SEPARATORS
+
+
+class BadContentDispositionHeader(RuntimeWarning):
+    pass
+
+
+class BadContentDispositionParam(RuntimeWarning):
+    pass
+
+
+def parse_content_disposition(header):
+    def is_token(string):
+        return string and TOKEN >= set(string)
+
+    def is_quoted(string):
+        return string[0] == string[-1] == '"'
+
+    def is_rfc5987(string):
+        # this isn't very correct
+        return "''" in string
+
+    def is_extended_param(string):
+        return string.endswith('*')
+
+    def is_continuous_param(string):
+        pos = string.find('*') + 1
+        if not pos:
+            return False
+        substring = string[pos:-1] if string.endswith('*') else string[pos:]
+        return substring.isdigit()
+
+    def unescape(text, *, chars=''.join(map(re.escape, CHAR))):
+        return re.sub('\\\\([{}])'.format(chars), '\\1', text)
+
+    if not header:
+        return None, {}
+
+    disptype, *parts = header.split(';')
+    if not is_token(disptype):
+        warnings.warn(BadContentDispositionHeader(header))
+        return None, {}
+
+    params = {}
+    for item in parts:
+        if '=' not in item:
+            warnings.warn(BadContentDispositionHeader(header))
+            return None, {}
+
+        key, value = item.split('=', 1)
+        key = key.lower().strip()
+        value = value.lstrip()
+
+        if key in params:
+            warnings.warn(BadContentDispositionHeader(header))
+            return None, {}
+
+        if not is_token(key):
+            warnings.warn(BadContentDispositionParam(item))
+            continue
+
+        elif is_continuous_param(key):
+            if is_quoted(value):
+                value = unescape(value[1:-1])
+            elif not is_token(value):
+                warnings.warn(BadContentDispositionParam(item))
+                continue
+
+        elif is_extended_param(key):
+            if is_quoted(value):
+                warnings.warn(BadContentDispositionParam(item))
+                continue
+            elif is_rfc5987(value):
+                encoding, _, value = value.split("'", 2)
+                encoding = encoding or 'utf-8'
+            elif "'":
+                warnings.warn(BadContentDispositionParam(item))
+                continue
+            elif not is_token(value):
+                warnings.warn(BadContentDispositionParam(item))
+                continue
+            else:
+                encoding = 'utf-8'
+
+            try:
+                value = unquote(value, encoding, 'strict')
+            except UnicodeDecodeError:  # pragma: nocover
+                warnings.warn(BadContentDispositionParam(item))
+                continue
+
+        else:
+            if is_quoted(value):
+                value = unescape(value[1:-1].lstrip('\\/'))
+            elif not is_token(value):
+                warnings.warn(BadContentDispositionHeader(header))
+                return None, {}
+
+        params[key] = value
+
+    return disptype.lower(), params
+
+
+def content_disposition_filename(params):
+    if not params:
+        return None
+    elif 'filename*' in params:
+        return params['filename*']
+    elif 'filename' in params:
+        return params['filename']
+    else:
+        parts = []
+        fnparams = sorted((key, value)
+                          for key, value in params.items()
+                          if key.startswith('filename*'))
+        for num, (key, value) in enumerate(fnparams):
+            _, tail = key.split('*', 1)
+            if tail.endswith('*'):
+                tail = tail[:-1]
+            if tail == str(num):
+                parts.append(value)
+            else:
+                break
+        if not parts:
+            return None
+        value = ''.join(parts)
+        if "'" in value:
+            encoding, _, value = value.split("'", 2)
+            encoding = encoding or 'utf-8'
+            return unquote(value, encoding, 'strict')
+        return value
 
 
 class MultipartResponseWrapper(object):
