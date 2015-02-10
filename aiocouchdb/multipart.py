@@ -364,6 +364,14 @@ class BodyPartReader(object):
         *_, params = parse_mimetype(ctype)
         return params.get('charset', default)
 
+    @property
+    def filename(self):
+        """Returns filename specified in Content-Disposition header or ``None``
+        if missed or header is malformed."""
+        _, params = parse_content_disposition(
+            self.headers.get(CONTENT_DISPOSITION))
+        return content_disposition_filename(params)
+
 
 class MultipartReader(object):
     """Multipart body reader."""
@@ -643,6 +651,14 @@ class BodyPartWriter(object):
             sparams = '; '.join('='.join(pair) for pair in lparams)
             value = '; '.join((value, sparams))
         self.headers[CONTENT_DISPOSITION] = value
+
+    @property
+    def filename(self):
+        """Returns filename specified in Content-Disposition header or ``None``
+        if missed."""
+        _, params = parse_content_disposition(
+            self.headers.get(CONTENT_DISPOSITION))
+        return content_disposition_filename(params)
 
 
 class MultipartWriter(object):

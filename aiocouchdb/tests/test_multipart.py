@@ -278,6 +278,13 @@ class PartReaderTestCase(utils.TestCase):
         self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
         self.assertEqual([b'--:\r\n'], obj._unread)
 
+    def test_filename(self):
+        part = aiocouchdb.multipart.BodyPartReader(
+            self.boundary,
+            {CONTENT_DISPOSITION: 'attachment; filename=foo.html'},
+            None)
+        self.assertEqual('foo.html', part.filename)
+
 
 class MultipartReaderTestCase(utils.TestCase):
 
@@ -542,7 +549,14 @@ class BodyPartWriterTestCase(unittest.TestCase):
 
     def test_serialize_default(self):
         with self.assertRaises(TypeError):
+            self.part.obj = object()
+            list(self.part.serialize())
+        with self.assertRaises(TypeError):
             next(self.part._serialize_default(object()))
+
+    def test_filename(self):
+        self.part.set_content_disposition('related', filename='foo.html')
+        self.assertEqual('foo.html', self.part.filename)
 
 
 class MultipartWriterTestCase(unittest.TestCase):
