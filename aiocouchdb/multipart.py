@@ -336,27 +336,23 @@ class BodyPartReader(object):
 
     def decode(self, data):
         """Decodes data from specified `Content-Encoding` header value.
-        This method looks for the handler within bounded instance for
-        the related encoding. For instance, to decode ``gzip`` encoding it looks
-        for :meth:`decode_gzip` one. Otherwise, if handler wasn't found
-        :exc:`AttributeError` will get raised.
+        Supports ``gzip`` and ``deflate`` encodings.
 
         :param bytearray data: Data to decode.
 
+        :raises: :exc:`RuntimeError` - if encoding is unknown.
+
         :rtype: bytes
         """
-        encoding = self.headers.get(CONTENT_ENCODING)
-        if not encoding:
-            return data
-        return getattr(self, 'decode_%s' % encoding)(data)
+        encoding = self.headers.get(CONTENT_ENCODING, '').lower()
 
-    def decode_deflate(self, data):
-        """Decodes data for ``Content-Encoding: deflate``."""
-        return zlib.decompress(data, -zlib.MAX_WBITS)
-
-    def decode_gzip(self, data):
-        """Decodes data for ``Content-Encoding: gzip``."""
-        return zlib.decompress(data, 16 + zlib.MAX_WBITS)
+        if encoding == 'deflate':
+            data = zlib.decompress(data, -zlib.MAX_WBITS)
+        elif encoding == 'gzip':
+            data = zlib.decompress(data, 16 + zlib.MAX_WBITS)
+        elif encoding:
+            raise RuntimeError('unknown content encoding: {}'.format(encoding))
+        return data
 
     def get_charset(self, default=None):
         """Returns charset parameter from ``Content-Type`` header or default."""

@@ -178,7 +178,7 @@ class PartReaderTestCase(utils.TestCase):
         obj = aiocouchdb.multipart.BodyPartReader(
             self.boundary, {'CONTENT-ENCODING': 'snappy'},
             Stream(b'\x0e4Time to Relax!\r\n--:--'))
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(RuntimeError):
             yield from obj.read(decode=True)
 
     def test_read_text(self):
