@@ -24,6 +24,7 @@ from aiohttp.helpers import parse_mimetype
 from aiocouchdb.hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
+    CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE
 )
 from . import utils
@@ -188,6 +189,29 @@ class PartReaderTestCase(utils.TestCase):
     def test_read_with_content_encoding_unknown(self):
         obj = aiocouchdb.multipart.BodyPartReader(
             self.boundary, {CONTENT_ENCODING: 'snappy'},
+            Stream(b'\x0e4Time to Relax!\r\n--:--'))
+        with self.assertRaises(RuntimeError):
+            yield from obj.read(decode=True)
+
+    def test_read_with_content_transfer_encoding_base64(self):
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary, {CONTENT_TRANSFER_ENCODING: 'base64'},
+            Stream(b'VGltZSB0byBSZWxheCE=\r\n--:--'))
+        result = yield from obj.read(decode=True)
+        self.assertEqual(b'Time to Relax!', result)
+
+    def test_read_with_content_transfer_encoding_quoted_printable(self):
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary, {CONTENT_TRANSFER_ENCODING: 'quoted-printable'},
+            Stream(b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
+                   b' =D0=BC=D0=B8=D1=80!\r\n--:--'))
+        result = yield from obj.read(decode=True)
+        self.assertEqual(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
+                         b' \xd0\xbc\xd0\xb8\xd1\x80!\r\n', result)
+
+    def test_read_with_content_transfer_encoding_unknown(self):
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary, {CONTENT_TRANSFER_ENCODING: 'unknown'},
             Stream(b'\x0e4Time to Relax!\r\n--:--'))
         with self.assertRaises(RuntimeError):
             yield from obj.read(decode=True)
@@ -611,6 +635,58 @@ class BodyPartWriterTestCase(unittest.TestCase):
     def test_serialize_with_content_encoding_unknown(self):
         part = aiocouchdb.multipart.BodyPartWriter(
             'Time to Relax!', {CONTENT_ENCODING: 'snappy'})
+        with self.assertRaises(RuntimeError):
+            list(part.serialize())
+
+    def test_serialize_with_content_transfer_encoding_base64(self):
+        part = aiocouchdb.multipart.BodyPartWriter(
+            'Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'base64'})
+        stream = part.serialize()
+        self.assertEqual(b'CONTENT-TRANSFER-ENCODING: base64\r\n'
+                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+                         next(stream))
+        self.assertEqual(b'\r\n\r\n', next(stream))
+
+        self.assertEqual(b'VGltZSB0byBSZWxh', next(stream))
+        self.assertEqual(b'eCE=', next(stream))
+        self.assertEqual(b'\r\n', next(stream))
+        self.assertIsNone(next(stream, None))
+
+    def test_serialize_io_with_content_transfer_encoding_base64(self):
+        part = aiocouchdb.multipart.BodyPartWriter(
+            io.BytesIO(b'Time to Relax!'),
+            {CONTENT_TRANSFER_ENCODING: 'base64'})
+        part._chunk_size = 6
+        stream = part.serialize()
+        self.assertEqual(b'CONTENT-TRANSFER-ENCODING: base64\r\n'
+                         b'CONTENT-LENGTH: 14\r\n'
+                         b'CONTENT-TYPE: application/octet-stream',
+                         next(stream))
+        self.assertEqual(b'\r\n\r\n', next(stream))
+
+        self.assertEqual(b'VGltZSB0', next(stream))
+        self.assertEqual(b'byBSZWxh', next(stream))
+        self.assertEqual(b'eCE=', next(stream))
+        self.assertEqual(b'\r\n', next(stream))
+        self.assertIsNone(next(stream, None))
+
+    def test_serialize_with_content_transfer_encoding_quote_printable(self):
+        part = aiocouchdb.multipart.BodyPartWriter(
+            'Привет, мир!', {CONTENT_TRANSFER_ENCODING: 'quoted-printable'})
+        stream = part.serialize()
+        self.assertEqual(b'CONTENT-TRANSFER-ENCODING: quoted-printable\r\n'
+                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+                         next(stream))
+        self.assertEqual(b'\r\n\r\n', next(stream))
+
+        self.assertEqual(b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
+                         b' =D0=BC=D0=B8=D1=80!', next(stream))
+        self.assertEqual(b'\r\n', next(stream))
+        self.assertIsNone(next(stream, None))
+
+    def test_serialize_with_content_transfer_encoding_unknown(self):
+        part = aiocouchdb.multipart.BodyPartWriter(
+            'Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'unknown'})
         with self.assertRaises(RuntimeError):
             list(part.serialize())
 

@@ -8,6 +8,8 @@
 #
 
 import asyncio
+import binascii
+import base64
 import json
 import io
 import mimetypes
@@ -25,6 +27,7 @@ from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
     CONTENT_LENGTH,
+    CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE
 )
 
@@ -335,8 +338,14 @@ class BodyPartReader(object):
         return self._at_eof
 
     def decode(self, data):
-        """Decodes data from specified `Content-Encoding` header value.
-        Supports ``gzip``, ``deflate`` and ``identity`` encodings.
+        """Decodes data according the specified `Content-Encoding`
+        or `Content-Transfer-Encoding` headers value.
+
+        Supports ``gzip``, ``deflate`` and ``identity`` encodings for
+        `Content-Encoding` header.
+
+        Supports ``base64``, ``quoted-printable`` encodings for
+        `Content-Transfer-Encoding` header.
 
         :param bytearray data: Data to decode.
 
@@ -344,6 +353,8 @@ class BodyPartReader(object):
 
         :rtype: bytes
         """
+        if CONTENT_TRANSFER_ENCODING in self.headers:
+            data = self._decode_content_transfer(data)
         if CONTENT_ENCODING in self.headers:
             return self._decode_content(data)
         return data
@@ -359,6 +370,17 @@ class BodyPartReader(object):
             return data
         else:
             raise RuntimeError('unknown content encoding: {}'.format(encoding))
+
+    def _decode_content_transfer(self, data):
+        encoding = self.headers[CONTENT_TRANSFER_ENCODING].lower()
+
+        if encoding == 'base64':
+            return base64.b64decode(data)
+        elif encoding == 'quoted-printable':
+            return binascii.a2b_qp(data)
+        else:
+            raise RuntimeError('unknown content transfer encoding: {}'
+                               ''.format(encoding))
 
     def get_charset(self, default=None):
         """Returns charset parameter from ``Content-Type`` header or default."""
@@ -630,9 +652,10 @@ class BodyPartWriter(object):
 
     def _maybe_encode_stream(self, stream):
         if CONTENT_ENCODING in self.headers:
-            yield from self._apply_content_encoding(stream)
-        else:
-            yield from stream
+            stream = self._apply_content_encoding(stream)
+        if CONTENT_TRANSFER_ENCODING in self.headers:
+            stream = self._apply_content_transfer_encoding(stream)
+        yield from stream
 
     def _apply_content_encoding(self, stream):
         encoding = self.headers[CONTENT_ENCODING].lower()
@@ -649,6 +672,29 @@ class BodyPartWriter(object):
                 yield zcomp.flush()
         else:
             raise RuntimeError('unknown content encoding: {}'
+                               ''.format(encoding))
+
+    def _apply_content_transfer_encoding(self, stream):
+        encoding = self.headers[CONTENT_TRANSFER_ENCODING].lower()
+        if encoding == 'base64':
+            buffer = bytearray()
+            while True:
+                if buffer:
+                    div, mod = divmod(len(buffer), 3)
+                    chunk, buffer = buffer[:div * 3], buffer[div * 3:]
+                    if chunk:
+                        yield base64.b64encode(chunk)
+                chunk = next(stream, None)
+                if not chunk:
+                    if buffer:
+                        yield base64.b64encode(buffer[:])
+                    return
+                buffer.extend(chunk)
+        elif encoding == 'quoted-printable':
+            for chunk in stream:
+                yield binascii.b2a_qp(chunk)
+        else:
+            raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(encoding))
 
     def set_content_disposition(self, disptype, **params):
