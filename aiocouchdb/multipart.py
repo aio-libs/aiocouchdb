@@ -336,7 +336,7 @@ class BodyPartReader(object):
 
     def decode(self, data):
         """Decodes data from specified `Content-Encoding` header value.
-        Supports ``gzip`` and ``deflate`` encodings.
+        Supports ``gzip``, ``deflate`` and ``identity`` encodings.
 
         :param bytearray data: Data to decode.
 
@@ -350,6 +350,8 @@ class BodyPartReader(object):
             data = zlib.decompress(data, -zlib.MAX_WBITS)
         elif encoding == 'gzip':
             data = zlib.decompress(data, 16 + zlib.MAX_WBITS)
+        elif encoding == 'identity':
+            pass
         elif encoding:
             raise RuntimeError('unknown content encoding: {}'.format(encoding))
         return data

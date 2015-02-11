@@ -175,6 +175,16 @@ class PartReaderTestCase(utils.TestCase):
         result = yield from obj.read(decode=True)
         self.assertEqual(b'Time to Relax!', result)
 
+    def test_read_with_content_encoding_identity(self):
+        thing = (b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
+                 b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
+                 b'\r\n')
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary, {CONTENT_ENCODING: 'identity'},
+            Stream(thing + b'--:--'))
+        result = yield from obj.read(decode=True)
+        self.assertEqual(thing, result)
+
     def test_read_with_content_encoding_unknown(self):
         obj = aiocouchdb.multipart.BodyPartReader(
             self.boundary, {CONTENT_ENCODING: 'snappy'},
