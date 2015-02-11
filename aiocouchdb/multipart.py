@@ -586,14 +586,15 @@ class BodyPartWriter(object):
         mtype, stype, *_ = parse_mimetype(self.headers.get(CONTENT_TYPE))
         serializer = self._serialize_map.get((mtype, stype))
         if serializer is not None:
-            yield from serializer(obj)
+            stream = serializer(obj)
         else:
             for key in self._serialize_map:
                 if not isinstance(key, tuple) and isinstance(obj, key):
-                    yield from self._serialize_map[key](obj)
+                    stream = self._serialize_map[key](obj)
                     break
             else:
-                yield from self._serialize_default(obj)
+                stream = self._serialize_default(obj)
+        yield from self._maybe_encode_stream(stream)
         yield b'\r\n'
 
     def _serialize_bytes(self, obj):
@@ -622,6 +623,29 @@ class BodyPartWriter(object):
 
     def _serialize_default(self, obj):
         raise TypeError('unknown body part type %r' % type(obj))
+
+    def _maybe_encode_stream(self, stream):
+        if CONTENT_ENCODING in self.headers:
+            yield from self._apply_content_encoding(stream)
+        else:
+            yield from stream
+
+    def _apply_content_encoding(self, stream):
+        encoding = self.headers[CONTENT_ENCODING].lower()
+        if encoding == 'identity':
+            yield from stream
+        elif encoding in ('deflate', 'gzip'):
+            zlib_mode = (16 + zlib.MAX_WBITS
+                         if encoding == 'gzip' else
+                         -zlib.MAX_WBITS)
+            zcomp = zlib.compressobj(wbits=zlib_mode)
+            for chunk in stream:
+                yield zcomp.compress(chunk)
+            else:
+                yield zcomp.flush()
+        else:
+            raise RuntimeError('unknown content encoding: {}'
+                               ''.format(encoding))
 
     def set_content_disposition(self, disptype, **params):
         """Sets ``Content-Disposition`` header.

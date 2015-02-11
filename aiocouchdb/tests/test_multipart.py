@@ -565,6 +565,55 @@ class BodyPartWriterTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             next(self.part._serialize_default(object()))
 
+    def test_serialize_with_content_encoding_gzip(self):
+        part = aiocouchdb.multipart.BodyPartWriter(
+            'Time to Relax!', {CONTENT_ENCODING: 'gzip'})
+        stream = part.serialize()
+        self.assertEqual(b'CONTENT-ENCODING: gzip\r\n'
+                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+                         next(stream))
+        self.assertEqual(b'\r\n\r\n', next(stream))
+
+        thing = (b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
+                 b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
+                 b'\r\n')
+        self.assertEqual(thing, b''.join(stream))
+        self.assertIsNone(next(stream, None))
+
+    def test_serialize_with_content_encoding_deflate(self):
+        part = aiocouchdb.multipart.BodyPartWriter(
+            'Time to Relax!', {CONTENT_ENCODING: 'deflate'})
+        stream = part.serialize()
+        self.assertEqual(b'CONTENT-ENCODING: deflate\r\n'
+                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+                         next(stream))
+        self.assertEqual(b'\r\n\r\n', next(stream))
+
+        thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n'
+        self.assertEqual(thing, b''.join(stream))
+        self.assertIsNone(next(stream, None))
+
+    def test_serialize_with_content_encoding_identity(self):
+        thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00'
+        part = aiocouchdb.multipart.BodyPartWriter(
+            thing, {CONTENT_ENCODING: 'identity'})
+        stream = part.serialize()
+        self.assertEqual(b'CONTENT-ENCODING: identity\r\n'
+                         b'CONTENT-LENGTH: 16\r\n'
+                         b'CONTENT-TYPE: application/octet-stream',
+                         next(stream))
+        self.assertEqual(b'\r\n\r\n', next(stream))
+
+        self.assertEqual(thing, next(stream))
+        self.assertEqual(b'\r\n', next(stream))
+        self.assertIsNone(next(stream, None))
+
+    def test_serialize_with_content_encoding_unknown(self):
+        part = aiocouchdb.multipart.BodyPartWriter(
+            'Time to Relax!', {CONTENT_ENCODING: 'snappy'})
+        with self.assertRaises(RuntimeError):
+            list(part.serialize())
+
     def test_filename(self):
         self.part.set_content_disposition('related', filename='foo.html')
         self.assertEqual('foo.html', self.part.filename)
