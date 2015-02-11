@@ -23,6 +23,7 @@ from aiocouchdb.multipart import (
 from aiohttp.helpers import parse_mimetype
 from aiocouchdb.hdrs import (
     CONTENT_DISPOSITION,
+    CONTENT_ENCODING,
     CONTENT_TYPE
 )
 from . import utils
@@ -160,7 +161,7 @@ class PartReaderTestCase(utils.TestCase):
 
     def test_read_with_content_encoding_gzip(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-ENCODING': 'gzip'},
+            self.boundary, {CONTENT_ENCODING: 'gzip'},
             Stream(b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
                    b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
                    b'\r\n--:--'))
@@ -169,14 +170,14 @@ class PartReaderTestCase(utils.TestCase):
 
     def test_read_with_content_encoding_deflate(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-ENCODING': 'deflate'},
+            self.boundary, {CONTENT_ENCODING: 'deflate'},
             Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
         result = yield from obj.read(decode=True)
         self.assertEqual(b'Time to Relax!', result)
 
     def test_read_with_content_encoding_unknown(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-ENCODING': 'snappy'},
+            self.boundary, {CONTENT_ENCODING: 'snappy'},
             Stream(b'\x0e4Time to Relax!\r\n--:--'))
         with self.assertRaises(RuntimeError):
             yield from obj.read(decode=True)
@@ -195,51 +196,51 @@ class PartReaderTestCase(utils.TestCase):
 
     def test_read_text_guess_encoding(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-TYPE': 'text/plain;charset=cp1251'},
+            self.boundary, {CONTENT_TYPE: 'text/plain;charset=cp1251'},
             Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
         result = yield from obj.text()
         self.assertEqual('Привет, Мир!\r\n', result)
 
     def test_read_text_compressed(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-ENCODING': 'deflate',
-                            'CONTENT-TYPE': 'text/plain'},
+            self.boundary, {CONTENT_ENCODING: 'deflate',
+                            CONTENT_TYPE: 'text/plain'},
             Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
         result = yield from obj.text()
         self.assertEqual('Time to Relax!', result)
 
     def test_read_text_while_closed(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-TYPE': 'text/plain'}, Stream(b''))
+            self.boundary, {CONTENT_TYPE: 'text/plain'}, Stream(b''))
         obj._at_eof = True
         result = yield from obj.text()
         self.assertEqual('', result)
 
     def test_read_json(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-TYPE': 'application/json'},
+            self.boundary, {CONTENT_TYPE: 'application/json'},
             Stream(b'{"test": "passed"}\r\n--:--'))
         result = yield from obj.json()
         self.assertEqual({'test': 'passed'}, result)
 
     def test_read_json_encoding(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-TYPE': 'application/json'},
+            self.boundary, {CONTENT_TYPE: 'application/json'},
             Stream('{"тест": "пассед"}\r\n--:--'.encode('cp1251')))
         result = yield from obj.json(encoding='cp1251')
         self.assertEqual({'тест': 'пассед'}, result)
 
     def test_read_json_guess_encoding(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-TYPE': 'application/json; charset=cp1251'},
+            self.boundary, {CONTENT_TYPE: 'application/json; charset=cp1251'},
             Stream('{"тест": "пассед"}\r\n--:--'.encode('cp1251')))
         result = yield from obj.json()
         self.assertEqual({'тест': 'пассед'}, result)
 
     def test_read_json_compressed(self):
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-ENCODING': 'deflate',
-                            'CONTENT-TYPE': 'application/json'},
+            self.boundary, {CONTENT_ENCODING: 'deflate',
+                            CONTENT_TYPE: 'application/json'},
             Stream(b'\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00\r\n--:--'))
         result = yield from obj.json()
         self.assertEqual({'test': 'passed'}, result)
@@ -247,7 +248,7 @@ class PartReaderTestCase(utils.TestCase):
     def test_read_json_while_closed(self):
         stream = Stream(b'')
         obj = aiocouchdb.multipart.BodyPartReader(
-            self.boundary, {'CONTENT-TYPE': 'application/json'}, stream)
+            self.boundary, {CONTENT_TYPE: 'application/json'}, stream)
         obj._at_eof = True
         result = yield from obj.json()
         self.assertEqual(None, result)
@@ -289,7 +290,7 @@ class PartReaderTestCase(utils.TestCase):
 class MultipartReaderTestCase(utils.TestCase):
 
     def test_from_response(self):
-        resp = Response({'CONTENT-TYPE': 'multipart/related;boundary=:'},
+        resp = Response({CONTENT_TYPE: 'multipart/related;boundary=:'},
                         Stream(b'--:\r\n\r\nhello\r\n--:--'))
         res = aiocouchdb.multipart.MultipartReader.from_response(resp)
         self.assertIsInstance(res,
@@ -299,21 +300,21 @@ class MultipartReaderTestCase(utils.TestCase):
 
     def test_dispatch(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
-        res = reader._get_part_reader({'CONTENT-TYPE': 'text/plain'})
+        res = reader._get_part_reader({CONTENT_TYPE: 'text/plain'})
         self.assertIsInstance(res, reader.part_reader_cls)
 
     def test_dispatch_bodypart(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
-        res = reader._get_part_reader({'CONTENT-TYPE': 'text/plain'})
+        res = reader._get_part_reader({CONTENT_TYPE: 'text/plain'})
         self.assertIsInstance(res, reader.part_reader_cls)
 
     def test_dispatch_multipart(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'----:--\r\n'
                    b'\r\n'
                    b'test\r\n'
@@ -323,14 +324,14 @@ class MultipartReaderTestCase(utils.TestCase):
                    b'----:----\r\n'
                    b'--:--'))
         res = reader._get_part_reader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=--:--'})
+            {CONTENT_TYPE: 'multipart/related;boundary=--:--'})
         self.assertIsInstance(res, reader.__class__)
 
     def test_dispatch_custom_multipart_reader(self):
         class CustomReader(aiocouchdb.multipart.MultipartReader):
             pass
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'----:--\r\n'
                    b'\r\n'
                    b'test\r\n'
@@ -341,26 +342,26 @@ class MultipartReaderTestCase(utils.TestCase):
                    b'--:--'))
         reader.multipart_reader_cls = CustomReader
         res = reader._get_part_reader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=--:--'})
+            {CONTENT_TYPE: 'multipart/related;boundary=--:--'})
         self.assertIsInstance(res, CustomReader)
 
     def test_emit_next(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         res = yield from reader.next()
         self.assertIsInstance(res, reader.part_reader_cls)
 
     def test_invalid_boundary(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'---:\r\n\r\necho\r\n---:--'))
         with self.assertRaises(ValueError):
             yield from reader.next()
 
     def test_release(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/mixed;boundary=:'},
+            {CONTENT_TYPE: 'multipart/mixed;boundary=:'},
             Stream(b'--:\r\n'
                    b'Content-Type: multipart/related;boundary=--:--\r\n'
                    b'\r\n'
@@ -377,7 +378,7 @@ class MultipartReaderTestCase(utils.TestCase):
 
     def test_release_release(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         yield from reader.release()
         self.assertTrue(reader.at_eof())
@@ -386,7 +387,7 @@ class MultipartReaderTestCase(utils.TestCase):
 
     def test_release_next(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         yield from reader.release()
         self.assertTrue(reader.at_eof())
@@ -395,7 +396,7 @@ class MultipartReaderTestCase(utils.TestCase):
 
     def test_second_next_releases_previous_object(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'--:\r\n'
                    b'\r\n'
                    b'test\r\n'
@@ -411,7 +412,7 @@ class MultipartReaderTestCase(utils.TestCase):
 
     def test_release_without_read_the_last_object(self):
         reader = aiocouchdb.multipart.MultipartReader(
-            {'CONTENT-TYPE': 'multipart/related;boundary=:'},
+            {CONTENT_TYPE: 'multipart/related;boundary=:'},
             Stream(b'--:\r\n'
                    b'\r\n'
                    b'test\r\n'
