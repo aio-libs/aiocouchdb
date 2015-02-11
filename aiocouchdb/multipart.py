@@ -344,17 +344,21 @@ class BodyPartReader(object):
 
         :rtype: bytes
         """
-        encoding = self.headers.get(CONTENT_ENCODING, '').lower()
+        if CONTENT_ENCODING in self.headers:
+            return self._decode_content(data)
+        return data
+
+    def _decode_content(self, data):
+        encoding = self.headers[CONTENT_ENCODING].lower()
 
         if encoding == 'deflate':
-            data = zlib.decompress(data, -zlib.MAX_WBITS)
+            return zlib.decompress(data, -zlib.MAX_WBITS)
         elif encoding == 'gzip':
-            data = zlib.decompress(data, 16 + zlib.MAX_WBITS)
+            return zlib.decompress(data, 16 + zlib.MAX_WBITS)
         elif encoding == 'identity':
-            pass
-        elif encoding:
+            return data
+        else:
             raise RuntimeError('unknown content encoding: {}'.format(encoding))
-        return data
 
     def get_charset(self, default=None):
         """Returns charset parameter from ``Content-Type`` header or default."""
