@@ -813,6 +813,7 @@ class MultipartWriter(object):
             if not headers:
                 headers = CIMultiDict()
             self.parts.append(self.part_writer_cls(obj, headers))
+        return self.parts[-1]
 
     def append_json(self, obj, headers=None):
         """Helper to append JSON part."""
