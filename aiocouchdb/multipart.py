@@ -760,7 +760,7 @@ class MultipartWriter(object):
         except UnicodeEncodeError:
             raise ValueError('boundary should contains ASCII only chars')
         self.headers = CIMultiDict()
-        self.headers[CONTENT_TYPE] = 'multipart/{}; boundary={}'.format(
+        self.headers[CONTENT_TYPE] = 'multipart/{}; boundary="{}"'.format(
             subtype, boundary
         )
         self.parts = []
