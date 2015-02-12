@@ -287,6 +287,40 @@ class PartReaderTestCase(utils.TestCase):
         result = yield from obj.json()
         self.assertEqual(None, result)
 
+    def test_read_form(self):
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
+            Stream(b'foo=bar&foo=baz&boo=zoo\r\n--:--'))
+        result = yield from obj.form()
+        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')],
+                         result)
+
+    def test_read_form_encoding(self):
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
+            Stream('foo=bar&foo=baz&boo=zoo\r\n--:--'.encode('cp1251')))
+        result = yield from obj.form(encoding='cp1251')
+        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')],
+                         result)
+
+    def test_read_form_guess_encoding(self):
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary,
+            {CONTENT_TYPE: 'application/x-www-form-urlencoded; charset=cp1251'},
+            Stream('foo=bar&foo=baz&boo=zoo\r\n--:--'.encode('cp1251')))
+        result = yield from obj.form()
+        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')],
+                         result)
+
+    def test_read_form_while_closed(self):
+        stream = Stream(b'')
+        obj = aiocouchdb.multipart.BodyPartReader(
+            self.boundary,
+            {CONTENT_TYPE: 'application/x-www-form-urlencoded'}, stream)
+        obj._at_eof = True
+        result = yield from obj.form()
+        self.assertEqual(None, result)
+
     def test_release(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
         obj = aiocouchdb.multipart.BodyPartReader(
@@ -569,6 +603,16 @@ class BodyPartWriterTestCase(unittest.TestCase):
                          b' "\\u043c\\u0438\\u0440"}',
                          next(self.part._serialize_json({'привет': 'мир'})))
 
+    def test_serialize_form(self):
+        data = [('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')]
+        self.assertEqual(b'foo=bar&foo=baz&boo=zoo',
+                         next(self.part._serialize_form(data)))
+
+    def test_serialize_form_dict(self):
+        data = {'hello': 'мир'}
+        self.assertEqual(b'hello=%D0%BC%D0%B8%D1%80',
+                         next(self.part._serialize_form(data)))
+
     def test_serialize_multipart(self):
         multipart = aiocouchdb.multipart.MultipartWriter(boundary=':')
         multipart.append('foo-bar-baz')
@@ -756,6 +800,13 @@ class MultipartWriterTestCase(unittest.TestCase):
         self.assertEqual(1, len(self.writer))
         part = self.writer.parts[0]
         self.assertEqual(part.headers[CONTENT_TYPE], 'application/json')
+
+    def test_append_form(self):
+        self.writer.append_form({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
+        self.assertEqual(1, len(self.writer))
+        part = self.writer.parts[0]
+        self.assertEqual(part.headers[CONTENT_TYPE],
+                         'application/x-www-form-urlencoded')
 
     def test_serialize(self):
         self.assertEqual([b''], list(self.writer.serialize()))

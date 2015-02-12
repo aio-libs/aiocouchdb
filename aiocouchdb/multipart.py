@@ -18,7 +18,8 @@ import re
 import uuid
 import warnings
 import zlib
-from urllib.parse import quote, unquote
+from collections import Mapping, Sequence
+from urllib.parse import quote, unquote, urlencode, parse_qsl
 
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multidict import CIMultiDict
@@ -329,6 +330,20 @@ class BodyPartReader(object):
         encoding = encoding or self.get_charset(default='utf-8')
         return json.loads(data.decode(encoding))
 
+    @asyncio.coroutine
+    def form(self, *, encoding=None):
+        """Lke :meth:`read`, but assumes that body parts contains form
+        urlencoded data.
+
+        :param str encoding: Custom form encoding. Overrides specified
+                             in charset param of `Content-Type` header
+        """
+        data = yield from self.read(decode=True)
+        if not data:
+            return None
+        encoding = encoding or self.get_charset(default='utf-8')
+        return parse_qsl(data.rstrip().decode(encoding), encoding=encoding)
+
     def at_eof(self):
         """Returns ``True`` if the boundary was reached or
         ``False`` otherwise.
@@ -551,7 +566,8 @@ class BodyPartWriter(object):
             str: self._serialize_str,
             io.IOBase: self._serialize_io,
             MultipartWriter: self._serialize_multipart,
-            ('application', 'json'): self._serialize_json
+            ('application', 'json'): self._serialize_json,
+            ('application', 'x-www-form-urlencoded'): self._serialize_form
         }
 
     def _fill_headers_with_defaults(self):
@@ -660,6 +676,11 @@ class BodyPartWriter(object):
     def _serialize_json(self, obj):
         *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
         yield json.dumps(obj).encode(params.get('charset', 'utf-8'))
+
+    def _serialize_form(self, obj):
+        if isinstance(obj, Mapping):
+            obj = list(obj.items())
+        return self._serialize_str(urlencode(obj, doseq=True))
 
     def _serialize_default(self, obj):
         raise TypeError('unknown body part type %r' % type(obj))
@@ -798,6 +819,14 @@ class MultipartWriter(object):
         if not headers:
             headers = CIMultiDict()
         headers[CONTENT_TYPE] = 'application/json'
+        return self.append(obj, headers)
+
+    def append_form(self, obj, headers=None):
+        """Helper to append form urlencoded part."""
+        if not headers:
+            headers = CIMultiDict()
+        headers[CONTENT_TYPE] = 'application/x-www-form-urlencoded'
+        assert isinstance(obj, (Sequence, Mapping))
         return self.append(obj, headers)
 
     def serialize(self):
