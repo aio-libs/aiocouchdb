@@ -659,7 +659,6 @@ class BodyPartWriterTestCase(unittest.TestCase):
         part._chunk_size = 6
         stream = part.serialize()
         self.assertEqual(b'CONTENT-TRANSFER-ENCODING: base64\r\n'
-                         b'CONTENT-LENGTH: 14\r\n'
                          b'CONTENT-TYPE: application/octet-stream',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
