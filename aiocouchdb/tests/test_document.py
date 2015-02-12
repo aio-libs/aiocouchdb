@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -33,7 +33,7 @@ class DocumentTestCase(utils.DocumentTestCase):
 
     def test_init_with_id(self):
         res = aiocouchdb.client.Resource(self.url_doc)
-        doc = aiocouchdb.designdoc.DesignDocument(res, docid='foo')
+        doc = aiocouchdb.document.Document(res, docid='foo')
         self.assertEqual(doc.id, 'foo')
 
     def test_init_with_id_from_database(self):
