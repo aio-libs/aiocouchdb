@@ -8,10 +8,12 @@
 #
 
 import json
+import io
 
 import aiocouchdb.client
 import aiocouchdb.database
 import aiocouchdb.document
+import aiocouchdb.multipart
 
 from .test_multipart import Stream
 from . import utils
@@ -312,6 +314,30 @@ class DocumentTestCase(utils.DocumentTestCase):
     def test_update_reject_docid_collision(self):
         with self.assertRaises(ValueError):
             yield from self.doc.update({'_id': 'foo'})
+
+    def test_update_with_atts(self):
+        foo = io.BytesIO(b'foo')
+        bar = b'bar'
+        baz = open(__file__, 'rb')
+
+        with self.response():
+            yield from self.doc.update(
+                {}, atts={'foo': foo,
+                          'bar': bar,
+                          'baz': baz}, rev=self.rev)
+            self.assert_request_called_with(
+                'PUT', *self.request_path(),
+                data=...,
+                headers=...,
+                params={'rev': self.rev})
+
+        with self.response():
+            self.assertTrue((yield from self.doc['foo'].exists()))
+        with self.response():
+            self.assertTrue((yield from self.doc['bar'].exists()))
+        with self.response():
+            self.assertTrue((yield from self.doc['baz'].exists()))
+
 
     def test_delete(self):
         yield from self.doc.delete(self.rev)

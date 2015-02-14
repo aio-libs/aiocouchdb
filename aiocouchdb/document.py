@@ -9,6 +9,7 @@
 
 import asyncio
 import json
+import io
 import uuid
 from collections.abc import MutableMapping
 
@@ -17,12 +18,13 @@ from .attachment import Attachment
 from .client import Resource, HttpStreamResponse
 from .hdrs import (
     ACCEPT,
+    CONTENT_LENGTH,
     CONTENT_TYPE,
     DESTINATION,
     ETAG,
     IF_NONE_MATCH
 )
-from .multipart import MultipartReader
+from .multipart import MultipartReader, MultipartWriter
 
 
 class Document(object):
@@ -298,7 +300,12 @@ class Document(object):
         return DocAttachmentsMultipartReader.from_response(resp)
 
     @asyncio.coroutine
-    def update(self, doc, *, auth=None, batch=None, new_edits=None, rev=None):
+    def update(self, doc,
+               atts=None,
+               auth=None,
+               batch=None,
+               new_edits=None,
+               rev=None):
         """`Updates a document`_ on server.
 
         :param dict doc: Document object. Should implement
@@ -306,6 +313,9 @@ class Document(object):
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
+        :param dict atts: Attachments mapping where keys are represents
+                          attachment name and value is file-like object or
+                          bytes
         :param str batch: Updates in batch mode (asynchronously)
                           This argument accepts only ``"ok"`` value.
         :param bool new_edits: Signs about new document edition. When ``False``
@@ -315,11 +325,19 @@ class Document(object):
 
         :rtype: dict
 
+        .. warning:: Updating document with attachments is not able to use
+                     all the advantages of multipart request due to
+                     `COUCHDB-2295`_ issue, so don't even try to update a
+                     document with several gigabytes attachments with this
+                     method. Put them one-by-one via
+                     :meth:`aiocouchdb.attachment.Attachment.update` method.
+
         .. _Updates a document: http://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
+        .. _COUCHDB-2295: https://issues.apache.org/jira/browse/COUCHDB-2295
         """
         params = dict((key, value)
                       for key, value in locals().items()
-                      if key not in {'self', 'doc', 'auth'} and
+                      if key not in {'self', 'doc', 'auth', 'atts'} and
                          value is not None)
 
         if not isinstance(doc, MutableMapping):
@@ -330,7 +348,37 @@ class Document(object):
                              '%r ; expected: %r. May you want to .copy() it?'
                              % (doc['_id'], self.id))
 
-        resp = yield from self.resource.put(auth=auth, data=doc, params=params)
+        if atts:
+            writer = MultipartWriter('related')
+            doc.setdefault('_attachments', {})
+            for name, att in atts.items():
+                if not isinstance(att, (bytes, io.BytesIO, io.BufferedIOBase)):
+                    raise TypeError('attachment payload should be a source of'
+                                    ' binary data (bytes, BytesIO, file '
+                                    ' opened in binary mode), got %r' % att)
+                part = writer.append(att)
+                part.set_content_disposition('attachment', filename=name)
+                doc['_attachments'][name] = {
+                    'length': int(part.headers[CONTENT_LENGTH]),
+                    'follows': True,
+                    'content_type': part.headers[CONTENT_TYPE]
+                }
+            writer.append_json(doc)
+
+            # CouchDB expects document at the first body part
+            writer.parts.insert(0, writer.parts.pop())
+
+            # workaround of COUCHDB-229., I really sorry for that
+            body = b''.join(writer.serialize())
+
+            resp = yield from self.resource.put(auth=auth,
+                                                data=body,
+                                                headers=writer.headers,
+                                                params=params)
+        else:
+            resp = yield from self.resource.put(auth=auth,
+                                                data=doc,
+                                                params=params)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
