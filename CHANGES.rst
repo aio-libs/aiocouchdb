@@ -1,3 +1,12 @@
+0.7.0 (2015-02-18)
+------------------
+
+- Greatly improved multipart module, added multipart writer
+- Document.update now supports multipart requests to upload
+  multiple attachments in single request
+- Added Proxy Authentication provider
+- Minimal requirements for aiohttp raised up to 0.14.0 version
+
 0.6.0 (2014-11-12)
 ------------------
 
