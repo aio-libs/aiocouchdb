@@ -22,7 +22,7 @@ from .hdrs import (
     ETAG,
     IF_NONE_MATCH
 )
-from .multipart import MultipartBodyReader
+from .multipart import MultipartReader
 
 
 class Document(object):
@@ -389,7 +389,7 @@ class Document(object):
         return (yield from resp.json())
 
 
-class DocAttachmentsMultipartReader(MultipartBodyReader):
+class DocAttachmentsMultipartReader(MultipartReader):
     """Special multipart reader optimized for requesting single document with
     attachments. Matches output with :class:`OpenRevsMultipartReader`."""
 
@@ -410,7 +410,7 @@ class DocAttachmentsMultipartReader(MultipartBodyReader):
         if self._at_eof:
             return None, None
 
-        attsreader = MultipartBodyReader(self.headers, self.content)
+        attsreader = MultipartReader(self.headers, self.content)
         self._last_part = attsreader
         attsreader._unread = reader._unread
 
@@ -419,11 +419,11 @@ class DocAttachmentsMultipartReader(MultipartBodyReader):
         return doc, attsreader
 
 
-class OpenRevsMultipartReader(MultipartBodyReader):
+class OpenRevsMultipartReader(MultipartReader):
     """Special multipart reader optimized for reading document`s open revisions
     with attachments."""
 
-    multipart_reader_cls = MultipartBodyReader
+    multipart_reader_cls = MultipartReader
 
     @asyncio.coroutine
     def next(self):
