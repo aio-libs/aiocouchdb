@@ -17,6 +17,7 @@ import aiocouchdb.errors
 import aiocouchdb.feeds
 import aiocouchdb.v1.database
 import aiocouchdb.v1.server
+import aiocouchdb.v1.security
 
 from . import utils
 
@@ -438,6 +439,18 @@ class DatabaseTestCase(utils.DatabaseTestCase):
         yield from self.db.revs_limit(42)
         self.assert_request_called_with('PUT', self.db.name, '_revs_limit',
                                         data=42)
+
+    def test_security(self):
+        self.assertIsInstance(self.db.security,
+                              aiocouchdb.v1.security.DatabaseSecurity)
+
+    def test_security_custom_class(self):
+        class CustomSecurity(object):
+            def __init__(self, thing):
+                self.resource = thing
+        db = aiocouchdb.v1.database.Database(self.url_db,
+                                             security_class=CustomSecurity)
+        self.assertIsInstance(db.security, CustomSecurity)
 
     def test_temp_view(self):
         mapfun = 'function(doc){ emit(doc._id); }'

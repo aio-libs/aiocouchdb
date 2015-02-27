@@ -33,8 +33,13 @@ class Database(object):
 
     #: Default :class:`~aiocouchdb.v1.document.Document` instance class
     document_class = Document
+
     #: Default :class:`~aiocouchdb.v1.designdoc.DesignDocument` instance class
     design_document_class = DesignDocument
+
+    #: Default :class:`~aiocouchdb.v1.security.DatabaseSecurity` instance class
+    security_class = DatabaseSecurity
+
     #: :class:`Views requesting  helper<aiocouchdb.views.Views>`
     view_class = View
 
@@ -42,6 +47,7 @@ class Database(object):
                  dbname=None,
                  document_class=None,
                  design_document_class=None,
+                 security_class=None,
                  view_class=None):
         if document_class is not None:
             self.document_class = document_class
@@ -49,10 +55,12 @@ class Database(object):
             self.design_document_class = design_document_class
         if view_class is not None:
             self.view_class = view_class
+        if security_class is not None:
+            self.security_class = security_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
-        self._security = DatabaseSecurity(self.resource)
+        self._security = self.security_class(self.resource)
         self._dbname = dbname
 
     def __getitem__(self, docid):
@@ -466,8 +474,8 @@ class Database(object):
 
     @property
     def security(self):
-        """Proxy to the related :class:`~aiocouchdb.v1.security.DatabaseSecurity`
-        instance."""
+        """Proxy to the related
+        :class:`~aiocouchdb.v1.database.Database.security_class` instance."""
         return self._security
 
     @asyncio.coroutine
