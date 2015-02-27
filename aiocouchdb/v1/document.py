@@ -28,6 +28,11 @@ from aiocouchdb.multipart import MultipartReader, MultipartWriter
 from .attachment import Attachment
 
 
+__all__ = (
+    'Document',
+)
+
+
 class Document(object):
     """Implementation of :ref:`CouchDB Document API <api/doc>`."""
 

@@ -26,6 +26,16 @@ from .hdrs import (
 )
 
 
+__all__ = (
+    'HttpRequest',
+    'HttpResponse',
+    'HttpStreamResponse',
+    'Resource',
+    'extract_credentials',
+    'urljoin'
+)
+
+
 # FIXME: workaround of decompressing empty payload.
 # https://github.com/KeepSafe/aiohttp/pull/154
 class HttpPayloadParser(aiohttp.HttpPayloadParser):

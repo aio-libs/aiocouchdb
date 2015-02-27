@@ -22,6 +22,12 @@ from .document import Document
 from .designdoc import DesignDocument
 
 
+__all__ = (
+    'Database',
+    'Security',
+)
+
+
 class Database(object):
     """Implementation of :ref:`CouchDB Database API <api/db>`."""
 

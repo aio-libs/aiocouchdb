@@ -33,6 +33,21 @@ import asyncio
 import aiohttp.errors
 
 
+__all__ = (
+    'HttpErrorException',
+    'BadRequest',
+    'Unauthorized',
+    'Forbidden',
+    'ResourceNotFound',
+    'MethodNotAllowed',
+    'ResourceConflict',
+    'PreconditionFailed',
+    'RequestedRangeNotSatisfiable',
+    'ServerError',
+    'maybe_raise_error'
+)
+
+
 class HttpErrorException(aiohttp.errors.HttpProcessingError):
     """Extension of :exc:`aiohttp.errors.HttpErrorException` for CouchDB related
     errors."""

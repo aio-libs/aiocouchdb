@@ -14,6 +14,18 @@ from aiohttp.helpers import parse_mimetype
 from .hdrs import CONTENT_TYPE
 
 
+__all__ = (
+    'Feed',
+    'JsonFeed',
+    'ViewFeed',
+    'ChangesFeed',
+    'LongPollChangesFeed',
+    'ContinuousChangesFeed',
+    'EventSourceFeed',
+    'EventSourceChangesFeed'
+)
+
+
 class Feed(object):
     """Wrapper over :class:`HttpResponse` content to stream continuous response
     by emitted chunks."""

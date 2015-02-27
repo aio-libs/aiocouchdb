@@ -17,6 +17,13 @@ from .authdb import AuthDatabase
 from .database import Database
 
 
+__all__ = (
+    'Server',
+    'Config',
+    'Session',
+)
+
+
 class Server(object):
     """Implementation of :ref:`CouchDB Server API <api/server>`."""
 

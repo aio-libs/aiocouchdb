@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -10,6 +10,11 @@
 import asyncio
 import json
 from .feeds import ViewFeed
+
+
+__all__ = (
+    'View',
+)
 
 
 class View(object):

@@ -33,6 +33,18 @@ from .hdrs import (
 )
 
 
+__all__ = (
+    'BadContentDispositionHeader',
+    'BadContentDispositionParam',
+    'MultipartReader',
+    'MultipartWriter',
+    'BodyPartReader',
+    'BodyPartWriter',
+    'parse_content_disposition',
+    'content_disposition_filename'
+)
+
+
 CHAR = set(chr(i) for i in range(0, 128))
 CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
 SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',

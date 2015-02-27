@@ -13,6 +13,12 @@ from .database import Database
 from .document import Document
 
 
+__all__ = (
+    'AuthDatabase',
+    'UserDocument',
+)
+
+
 class UserDocument(Document):
     """Represents user document for the :class:`authentication database
     <aiocouchdb.v1.database.AuthDatabase>`."""

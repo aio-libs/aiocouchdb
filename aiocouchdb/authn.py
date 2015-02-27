@@ -24,6 +24,17 @@ from .hdrs import (
 )
 
 
+__all__ = (
+    'BasicAuthProvider',
+    'BasicAuthCredentials',
+    'CookieAuthProvider',
+    'OAuthProvider',
+    'OAuthCredentials',
+    'ProxyAuthProvider',
+    'ProxyAuthCredentials'
+)
+
+
 #: BasicAuth credentials
 BasicAuthCredentials = namedtuple('BasicAuthCredentials', [
     'username', 'password'])

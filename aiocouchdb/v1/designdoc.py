@@ -15,6 +15,11 @@ from aiocouchdb.views import View
 from .document import Document
 
 
+__all__ = (
+    'DesignDocument',
+)
+
+
 class DesignDocument(object):
     """Implementation of :ref:`CouchDB Design Document API <api/ddoc>`."""
 

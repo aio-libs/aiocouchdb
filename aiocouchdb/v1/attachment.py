@@ -21,6 +21,11 @@ from aiocouchdb.hdrs import (
 )
 
 
+__all__ = (
+    'Attachment',
+)
+
+
 class Attachment(object):
     """Implementation of :ref:`CouchDB Attachment API <api/doc/attachment>`."""
 
