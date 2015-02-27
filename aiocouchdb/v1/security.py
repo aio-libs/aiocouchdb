@@ -11,11 +11,11 @@ import asyncio
 
 
 __all__ = (
-    'Security',
+    'DatabaseSecurity',
 )
 
 
-class Security(object):
+class DatabaseSecurity(object):
     """Provides set of methods to work with :ref:`database security API
     <api/db/security>`. Should be used via :attr:`database.security
     <aiocouchdb.v1.database.Database.security>` property."""

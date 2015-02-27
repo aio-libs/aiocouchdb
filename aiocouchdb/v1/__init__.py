@@ -13,4 +13,4 @@ from .database import Database
 from .document import Document
 from .designdoc import DesignDocument
 from .server import Server, Config, Session
-from .security import Security
+from .security import DatabaseSecurity

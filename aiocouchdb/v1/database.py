@@ -20,7 +20,7 @@ from aiocouchdb.views import View
 
 from .document import Document
 from .designdoc import DesignDocument
-from .security import Security
+from .security import DatabaseSecurity
 
 
 __all__ = (
@@ -52,7 +52,7 @@ class Database(object):
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
-        self._security = Security(self.resource)
+        self._security = DatabaseSecurity(self.resource)
         self._dbname = dbname
 
     def __getitem__(self, docid):
@@ -466,7 +466,7 @@ class Database(object):
 
     @property
     def security(self):
-        """Proxy to the related :class:`~aiocouchdb.v1.security.Security`
+        """Proxy to the related :class:`~aiocouchdb.v1.security.DatabaseSecurity`
         instance."""
         return self._security
 

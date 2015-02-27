@@ -11,7 +11,7 @@
 from . import utils
 
 
-class SecurityTestCase(utils.DatabaseTestCase):
+class DatabaseSecurityTestCase(utils.DatabaseTestCase):
 
     def test_security_get(self):
         data = {

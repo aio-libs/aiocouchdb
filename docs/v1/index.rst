@@ -32,7 +32,7 @@ Database
 Security
 --------
 
-.. autoclass:: aiocouchdb.v1.security.Security
+.. autoclass:: aiocouchdb.v1.security.DatabaseSecurity
   :members:
 
 Document
