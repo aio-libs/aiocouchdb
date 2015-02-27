@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -8,17 +8,19 @@
 #
 
 import asyncio
-from .client import Resource
+
+from aiocouchdb.client import Resource
+from aiocouchdb.views import View
+
 from .document import Document
-from .views import View
 
 
 class DesignDocument(object):
     """Implementation of :ref:`CouchDB Design Document API <api/ddoc>`."""
 
-    #: Default :class:`~aiocouchdb.document.Document` instance class.
+    #: Default :class:`~aiocouchdb.v1.document.Document` instance class.
     document_class = Document
-    #: :class:`Views requesting  helper<aiocouchdb.views.Views>`
+    #: :class:`Views requesting  helper <aiocouchdb.views.Views>`
     view_class = View
 
     def __init__(self, url_or_resource, *,
@@ -52,11 +54,12 @@ class DesignDocument(object):
 
     @property
     def doc(self):
-        """Returns :class:`~aiocouchdb.designdoc.DesignDocument.document_class`
+        """Returns
+        :class:`~aiocouchdb.v1.designdoc.DesignDocument.document_class`
         instance to operate with design document as with regular CouchDB
         document.
 
-        :rtype: :class:`~aiocouchdb.document.Document`
+        :rtype: :class:`~aiocouchdb.v1.document.Document`
         """
         return self._document
 
@@ -109,7 +112,7 @@ class DesignDocument(object):
         :param str format: List function output format
 
         For other parameters see
-        :meth:`aiocouchdb.designdoc.DesignDocument.view` method docstring.
+        :meth:`aiocouchdb.v1.designdoc.DesignDocument.view` method docstring.
 
         :rtype: :class:`~aiocouchdb.client.HttpResponse`
         """

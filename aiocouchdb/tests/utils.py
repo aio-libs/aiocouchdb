@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -20,13 +20,8 @@ import uuid as _uuid
 from collections import deque, defaultdict
 
 import aiohttp
-import aiocouchdb.attachment
 import aiocouchdb.client
-import aiocouchdb.database
-import aiocouchdb.designdoc
-import aiocouchdb.document
 import aiocouchdb.errors
-import aiocouchdb.server
 from aiocouchdb.client import urljoin, extract_credentials
 
 
@@ -180,7 +175,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
 class ServerTestCase(TestCase):
 
-    server_class = aiocouchdb.server.Server
+    server_class = None
     url = os.environ.get('AIOCOUCHDB_URL', 'http://localhost:5984')
 
     @asyncio.coroutine
@@ -204,7 +199,7 @@ class ServerTestCase(TestCase):
 
 class DatabaseTestCase(ServerTestCase):
 
-    database_class = aiocouchdb.database.Database
+    database_class = None
 
     def new_dbname(self):
         return dbname(self.id().split('.')[-1])
@@ -238,7 +233,7 @@ class DatabaseTestCase(ServerTestCase):
 
 class DocumentTestCase(DatabaseTestCase):
 
-    document_class = aiocouchdb.document.Document
+    document_class = None
 
     @asyncio.coroutine
     def setup_env(self):
@@ -257,7 +252,7 @@ class DocumentTestCase(DatabaseTestCase):
 
 class DesignDocumentTestCase(DatabaseTestCase):
 
-    designdoc_class = aiocouchdb.designdoc.DesignDocument
+    designdoc_class = None
 
     @asyncio.coroutine
     def setup_env(self):
@@ -282,7 +277,7 @@ class DesignDocumentTestCase(DatabaseTestCase):
 
 class AttachmentTestCase(DocumentTestCase):
 
-    attachment_class = aiocouchdb.attachment.Attachment
+    attachment_class = None
 
     @asyncio.coroutine
     def setup_env(self):

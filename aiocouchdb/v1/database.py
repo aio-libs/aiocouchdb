@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -11,22 +11,23 @@ import asyncio
 import json
 import uuid
 
-from .client import Resource
-from .document import Document
-from .designdoc import DesignDocument
-from .feeds import (
+from aiocouchdb.client import Resource
+from aiocouchdb.feeds import (
     ChangesFeed, LongPollChangesFeed,
     ContinuousChangesFeed, EventSourceChangesFeed
 )
-from .views import View
+from aiocouchdb.views import View
+
+from .document import Document
+from .designdoc import DesignDocument
 
 
 class Database(object):
     """Implementation of :ref:`CouchDB Database API <api/db>`."""
 
-    #: Default :class:`~aiocouchdb.document.Document` instance class
+    #: Default :class:`~aiocouchdb.v1.document.Document` instance class
     document_class = Document
-    #: Default :class:`~aiocouchdb.designdoc.DesignDocument` instance class
+    #: Default :class:`~aiocouchdb.v1.designdoc.DesignDocument` instance class
     design_document_class = DesignDocument
     #: :class:`Views requesting  helper<aiocouchdb.views.Views>`
     view_class = View
@@ -62,7 +63,7 @@ class Database(object):
 
     @asyncio.coroutine
     def doc(self, docid=None, *, auth=None, idfun=uuid.uuid4):
-        """Returns :class:`~aiocouchdb.document.Document` instance against
+        """Returns :class:`~aiocouchdb.v1.document.Document` instance against
         specified document ID.
 
         If document ID wasn't specified, the ``idfun`` function will be used
@@ -78,7 +79,7 @@ class Database(object):
                       Should return ``str`` or other object which could be
                       translated into string
 
-        :rtype: :attr:`aiocouchdb.database.Database.document_class`
+        :rtype: :attr:`aiocouchdb.v1.database.Database.document_class`
         """
         if docid is None:
             docid = str(idfun())
@@ -91,7 +92,7 @@ class Database(object):
 
     @asyncio.coroutine
     def ddoc(self, docid, *, auth=None):
-        """Returns :class:`~aiocouchdb.designdoc.DesignDocument` instance
+        """Returns :class:`~aiocouchdb.v1.designdoc.DesignDocument` instance
         against specified document ID. This ID may startswith with ``_design/``
         prefix and if it's not prefix will be added automatically.
 
@@ -102,7 +103,7 @@ class Database(object):
         :param str docid: Document ID
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :rtype: :attr:`aiocouchdb.database.Database.design_document_class`
+        :rtype: :attr:`aiocouchdb.v1.database.Database.design_document_class`
         """
         if not docid.startswith('_design/'):
             docid = '_design/' + docid
@@ -459,7 +460,7 @@ class Database(object):
 
     @property
     def security(self):
-        """Proxy to the related :class:`~aiocouchdb.database.Security`
+        """Proxy to the related :class:`~aiocouchdb.v1.database.Security`
         instance."""
         return self._security
 
@@ -561,7 +562,7 @@ class Database(object):
 class Security(object):
     """Provides set of methods to work with :ref:`database security API
     <api/db/security>`. Should be used via :attr:`database.security
-    <aiocouchdb.database.Database.security>` property."""
+    <aiocouchdb.v1.database.Database.security>` property."""
 
     def __init__(self, resource):
         self.resource = resource('_security')
@@ -624,7 +625,7 @@ class Security(object):
         return (yield from resp.json())
 
     def update_admins(self, *, auth=None, names=None, roles=None, merge=False):
-        """Helper for :meth:`~aiocouchdb.database.Security.update` method to
+        """Helper for :meth:`~aiocouchdb.v1.database.Security.update` method to
         update only database administrators leaving members as is.
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
@@ -642,7 +643,7 @@ class Security(object):
         return self.update(auth=auth, admins=admins, merge=merge)
 
     def update_members(self, *, auth=None, names=None, roles=None, merge=False):
-        """Helper for :meth:`~aiocouchdb.database.Security.update` method to
+        """Helper for :meth:`~aiocouchdb.v1.database.Security.update` method to
         update only database members leaving administrators as is.
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -10,10 +10,10 @@
 import json
 
 import aiocouchdb.client
-import aiocouchdb.database
-import aiocouchdb.document
-import aiocouchdb.designdoc
 import aiocouchdb.feeds
+import aiocouchdb.v1.database
+import aiocouchdb.v1.document
+import aiocouchdb.v1.designdoc
 
 from aiocouchdb.client import urljoin
 from . import utils
@@ -29,17 +29,17 @@ class DesignDocTestCase(utils.DesignDocumentTestCase):
 
     def test_init_with_resource(self):
         res = aiocouchdb.client.Resource(self.url_ddoc)
-        ddoc = aiocouchdb.designdoc.DesignDocument(res)
+        ddoc = aiocouchdb.v1.designdoc.DesignDocument(res)
         self.assertIsInstance(ddoc.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url_ddoc, ddoc.resource.url)
 
     def test_init_with_id(self):
         res = aiocouchdb.client.Resource(self.url_ddoc)
-        ddoc = aiocouchdb.designdoc.DesignDocument(res, docid='foo')
+        ddoc = aiocouchdb.v1.designdoc.DesignDocument(res, docid='foo')
         self.assertEqual(ddoc.id, 'foo')
 
     def test_init_with_id_from_database(self):
-        db = aiocouchdb.database.Database(urljoin(self.url, 'dbname'),
+        db = aiocouchdb.v1.database.Database(urljoin(self.url, 'dbname'),
                                           dbname='dbname')
         ddoc = yield from db.ddoc('foo')
         self.assertEqual(ddoc.id, '_design/foo')
@@ -53,22 +53,24 @@ class DesignDocTestCase(utils.DesignDocumentTestCase):
 
     def test_ddoc_name(self):
         res = aiocouchdb.client.Resource(self.url_ddoc)
-        ddoc = aiocouchdb.designdoc.DesignDocument(res, docid='_design/bar')
+        ddoc = aiocouchdb.v1.designdoc.DesignDocument(res, docid='_design/bar')
         self.assertEqual(ddoc.name, 'bar')
 
     def test_ddoc_bad_name_because_of_bad_id(self):
         res = aiocouchdb.client.Resource(self.url_ddoc)
-        ddoc = aiocouchdb.designdoc.DesignDocument(res, docid='bar')
+        ddoc = aiocouchdb.v1.designdoc.DesignDocument(res, docid='bar')
         self.assertEqual(ddoc.name, None)
 
     def test_access_to_document_api(self):
-        self.assertIsInstance(self.ddoc.doc, aiocouchdb.document.Document)
+        self.assertIsInstance(self.ddoc.doc, aiocouchdb.v1.document.Document)
 
     def test_access_to_custom_document_api(self):
         class CustomDoc(object):
             def __init__(self, resource, **kwargs):
                 pass
-        ddoc = aiocouchdb.designdoc.DesignDocument('', document_class=CustomDoc)
+        ddoc = aiocouchdb.v1.designdoc.DesignDocument(
+            '',
+            document_class=CustomDoc)
         self.assertIsInstance(ddoc.doc, CustomDoc)
 
     def test_info(self):

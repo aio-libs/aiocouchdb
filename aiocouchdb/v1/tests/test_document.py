@@ -11,11 +11,11 @@ import json
 import io
 
 import aiocouchdb.client
-import aiocouchdb.database
-import aiocouchdb.document
 import aiocouchdb.multipart
+import aiocouchdb.v1.database
+import aiocouchdb.v1.document
 
-from .test_multipart import Stream
+from aiocouchdb.tests.test_multipart import Stream
 from . import utils
 
 
@@ -29,17 +29,17 @@ class DocumentTestCase(utils.DocumentTestCase):
 
     def test_init_with_resource(self):
         res = aiocouchdb.client.Resource(self.url_doc)
-        doc = aiocouchdb.document.Document(res)
+        doc = aiocouchdb.v1.document.Document(res)
         self.assertIsInstance(doc.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url_doc, doc.resource.url)
 
     def test_init_with_id(self):
         res = aiocouchdb.client.Resource(self.url_doc)
-        doc = aiocouchdb.document.Document(res, docid='foo')
+        doc = aiocouchdb.v1.document.Document(res, docid='foo')
         self.assertEqual(doc.id, 'foo')
 
     def test_init_with_id_from_database(self):
-        db = aiocouchdb.database.Database(self.url)
+        db = aiocouchdb.v1.database.Database(self.url)
         doc = yield from db.doc('foo')
         self.assertEqual(doc.id, 'foo')
 
@@ -95,7 +95,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
 
-        doc = aiocouchdb.document.Document(self.url_doc,
+        doc = aiocouchdb.v1.document.Document(self.url_doc,
                                            attachment_class=CustomAttachment)
 
         result = yield from doc.att('attname')
@@ -157,10 +157,10 @@ class DocumentTestCase(utils.DocumentTestCase):
                                             params={'open_revs': 'all'})
         self.assertIsInstance(
             result,
-            aiocouchdb.document.OpenRevsMultipartReader.response_wrapper_cls)
+            aiocouchdb.v1.document.OpenRevsMultipartReader.response_wrapper_cls)
         self.assertIsInstance(
             result.stream,
-            aiocouchdb.document.OpenRevsMultipartReader)
+            aiocouchdb.v1.document.OpenRevsMultipartReader)
 
     def test_get_open_revs_list(self):
         with self.response(headers={
@@ -206,10 +206,10 @@ class DocumentTestCase(utils.DocumentTestCase):
                 params={'attachments': True})
         self.assertIsInstance(
             result,
-            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
+            aiocouchdb.v1.document.DocAttachmentsMultipartReader.response_wrapper_cls)
         self.assertIsInstance(
             result.stream,
-            aiocouchdb.document.DocAttachmentsMultipartReader)
+            aiocouchdb.v1.document.DocAttachmentsMultipartReader)
 
     def test_get_wth_atts_json(self):
         with self.response(headers={
@@ -222,10 +222,10 @@ class DocumentTestCase(utils.DocumentTestCase):
                 params={'attachments': True})
         self.assertIsInstance(
             result,
-            aiocouchdb.document.DocAttachmentsMultipartReader.response_wrapper_cls)
+            aiocouchdb.v1.document.DocAttachmentsMultipartReader.response_wrapper_cls)
         self.assertIsInstance(
             result.stream,
-            aiocouchdb.document.DocAttachmentsMultipartReader)
+            aiocouchdb.v1.document.DocAttachmentsMultipartReader)
 
     def test_get_wth_atts_json_hacks(self):
         jsondoc = json.dumps({'_id': self.doc.id, '_rev': self.rev},
@@ -376,7 +376,7 @@ class DocumentTestCase(utils.DocumentTestCase):
 class OpenRevsMultipartReader(utils.TestCase):
 
     def test_next(self):
-        reader = aiocouchdb.document.OpenRevsMultipartReader(
+        reader = aiocouchdb.v1.document.OpenRevsMultipartReader(
             {'CONTENT-TYPE': 'multipart/mixed;boundary=:'},
             Stream(b'--:\r\n'
                    b'Content-Type: multipart/related;boundary=--:--\r\n'
@@ -422,7 +422,7 @@ class OpenRevsMultipartReader(utils.TestCase):
         self.assertTrue(reader.at_eof())
 
     def test_next_only_doc(self):
-        reader = aiocouchdb.document.OpenRevsMultipartReader(
+        reader = aiocouchdb.v1.document.OpenRevsMultipartReader(
             {'CONTENT-TYPE': 'multipart/mixed;boundary=:'},
             Stream(b'--:\r\n'
                    b'Content-Type: application/json\r\n'

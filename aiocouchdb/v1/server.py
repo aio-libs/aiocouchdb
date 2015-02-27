@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -9,17 +9,18 @@
 
 import asyncio
 
+from aiocouchdb.authn import CookieAuthProvider
+from aiocouchdb.client import Resource
+from aiocouchdb.feeds import EventSourceFeed, JsonFeed
+
 from .authdb import AuthDatabase
-from .authn import CookieAuthProvider
-from .client import Resource
 from .database import Database
-from .feeds import EventSourceFeed, JsonFeed
 
 
 class Server(object):
     """Implementation of :ref:`CouchDB Server API <api/server>`."""
 
-    #: Default :class:`~aiocouchdb.database.Database` instance class
+    #: Default :class:`~aiocouchdb.v1.database.Database` instance class
     database_class = Database
 
     #: Authentication database name
@@ -52,12 +53,12 @@ class Server(object):
     @property
     def authdb(self):
         """Proxy to the :class:`authentication database
-        <aiocouchdb.database.AuthDatabase>` instance."""
+        <aiocouchdb.v1.database.AuthDatabase>` instance."""
         return self._authdb
 
     @asyncio.coroutine
     def db(self, dbname, *, auth=None):
-        """Returns :class:`~aiocouchdb.database.Database` instance against
+        """Returns :class:`~aiocouchdb.v1.database.Database` instance against
         specified database name.
 
         If database isn't accessible for provided auth credentials, this method
@@ -67,7 +68,7 @@ class Server(object):
         :param str dbname: Database name
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :rtype: :attr:`aiocouchdb.server.Server.database_class`
+        :rtype: :attr:`aiocouchdb.v1.server.Server.database_class`
         """
         db = self[dbname]
         resp = yield from db.resource.head(auth=auth)
@@ -117,7 +118,7 @@ class Server(object):
 
     @property
     def config(self):
-        """Proxy to the related :class:`~aiocouchdb.server.Config` instance."""
+        """Proxy to the related :class:`~aiocouchdb.v1.server.Config` instance."""
         return self._config
 
     @asyncio.coroutine
@@ -272,7 +273,8 @@ class Server(object):
 
     @property
     def session(self):
-        """Proxy to the related :class:`~aiocouchdb.server.Session` instance."""
+        """Proxy to the related :class:`~aiocouchdb.v1.server.Session` instance.
+        """
         return self._session
 
     @asyncio.coroutine
@@ -325,7 +327,7 @@ class Server(object):
 
 class Config(object):
     """Implements :ref:`/_config/* <api/config>` API. Should be used via
-    :attr:`server.config <aiocouchdb.server.Server.config>` property."""
+    :attr:`server.config <aiocouchdb.v1.server.Server.config>` property."""
 
     def __init__(self, resource):
         self.resource = resource('_config')
@@ -409,7 +411,8 @@ class Config(object):
 
 class Session(object):
     """Implements :ref:`/_session <api/auth/session>` API.  Should be used
-    via :attr:`server.session <aiocouchdb.server.Server.session>` property."""
+    via :attr:`server.session <aiocouchdb.v1.server.Server.session>` property.
+    """
 
     cookie_auth_provider_class = CookieAuthProvider
 

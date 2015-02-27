@@ -14,9 +14,8 @@ import uuid
 from collections.abc import MutableMapping
 
 from aiohttp.multidict import CIMultiDict
-from .attachment import Attachment
-from .client import Resource, HttpStreamResponse
-from .hdrs import (
+from aiocouchdb.client import Resource, HttpStreamResponse
+from aiocouchdb.hdrs import (
     ACCEPT,
     CONTENT_LENGTH,
     CONTENT_TYPE,
@@ -24,7 +23,9 @@ from .hdrs import (
     ETAG,
     IF_NONE_MATCH
 )
-from .multipart import MultipartReader, MultipartWriter
+from aiocouchdb.multipart import MultipartReader, MultipartWriter
+
+from .attachment import Attachment
 
 
 class Document(object):
@@ -51,8 +52,8 @@ class Document(object):
 
     @asyncio.coroutine
     def att(self, attname, *, auth=None):
-        """Returns :class:`~aiocouchdb.attachment.Attachment` instance against
-        specified attachment.
+        """Returns :class:`~aiocouchdb.v1.attachment.Attachment` instance
+        against specified attachment.
 
         If attachment isn't accessible for auth provided credentials,
         this method raises :exc:`aiocouchdb.errors.HttpErrorException`
@@ -61,7 +62,7 @@ class Document(object):
         :param str attname: Attachment name
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :rtype: :attr:`aiocouchdb.document.Document.attachment_class`
+        :rtype: :attr:`aiocouchdb.v1.document.Document.attachment_class`
         """
         att = self[attname]
         resp = yield from att.resource.head(auth=auth)
@@ -184,10 +185,10 @@ class Document(object):
                       revs=None):
         """Returns document open revisions with their attachments.
 
-        Unlike :func:`get(open_revs=[...]) <aiocouchdb.document.Document.get>`,
-        this method works with :mimetype:`multipart/mixed` response returning
-        multipart reader which is more optimized to handle large data sets with
-        lesser memory footprint.
+        Unlike :func:`get(open_revs=[...])
+        <aiocouchdb.v1.document.Document.get>`, this method works with
+        :mimetype:`multipart/mixed` response returning multipart reader which is
+        more optimized to handle large data sets with lesser memory footprint.
 
         Note, that this method always returns attachments along with leaf
         revisions.
@@ -205,7 +206,7 @@ class Document(object):
         :param bool revs: Includes information about all known revisions in
                           each document
 
-        :rtype: :class:`~aiocouchdb.document.OpenRevsMultipartReader`
+        :rtype: :class:`~aiocouchdb.v1.document.OpenRevsMultipartReader`
         """
         params = dict((key, value)
                       for key, value in locals().items()
@@ -239,7 +240,7 @@ class Document(object):
         """Returns document with attachments.
 
         This method is more optimal than :func:`get(attachments=true)
-        <aiocouchdb.document.Document.get>` since it uses multipart API and
+        <aiocouchdb.v1.document.Document.get>` since it uses multipart API and
         doesn't requires to read all the attachments, extract then from JSON
         document and decode from base64.
 
@@ -260,7 +261,7 @@ class Document(object):
         :param bool revs_info: Includes information about all known revisions
                                and their status
 
-        :rtype: :class:`~aiocouchdb.document.DocAttachmentsMultipartReader`
+        :rtype: :class:`~aiocouchdb.v1.document.DocAttachmentsMultipartReader`
         """
         params = dict((key, value)
                       for key, value in locals().items()
@@ -330,7 +331,7 @@ class Document(object):
                      `COUCHDB-2295`_ issue, so don't even try to update a
                      document with several gigabytes attachments with this
                      method. Put them one-by-one via
-                     :meth:`aiocouchdb.attachment.Attachment.update` method.
+                     :meth:`aiocouchdb.v1.attachment.Attachment.update` method.
 
         .. _Updates a document: http://docs.couchdb.org/en/latest/api/document/common.html#put--db-docid
         .. _COUCHDB-2295: https://issues.apache.org/jira/browse/COUCHDB-2295

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -12,8 +12,8 @@ import hashlib
 import io
 
 import aiocouchdb.client
-import aiocouchdb.attachment
-import aiocouchdb.document
+import aiocouchdb.v1.attachment
+import aiocouchdb.v1.document
 
 from . import utils
 
@@ -29,13 +29,13 @@ class AttachmentTestCase(utils.AttachmentTestCase):
 
     def test_init_with_resource(self):
         res = aiocouchdb.client.Resource(self.url_att)
-        att = aiocouchdb.attachment.Attachment(res)
+        att = aiocouchdb.v1.attachment.Attachment(res)
         self.assertIsInstance(att.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url_att, att.resource.url)
 
     def test_init_with_name(self):
         res = aiocouchdb.client.Resource(self.url_att)
-        att = aiocouchdb.attachment.Attachment(res, name='foo.txt')
+        att = aiocouchdb.v1.attachment.Attachment(res, name='foo.txt')
         self.assertEqual(att.name, 'foo.txt')
 
     def test_init_with_name_from_doc(self):
@@ -125,13 +125,13 @@ class AttachmentTestCase(utils.AttachmentTestCase):
     def test_get(self):
         result = yield from self.attbin.get()
         self.assert_request_called_with('GET', *self.request_path())
-        self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
+        self.assertIsInstance(result, aiocouchdb.v1.attachment.AttachmentReader)
 
     def test_get_rev(self):
         result = yield from self.attbin.get(self.rev)
         self.assert_request_called_with('GET', *self.request_path(),
                                         params={'rev': self.rev})
-        self.assertIsInstance(result, aiocouchdb.attachment.AttachmentReader)
+        self.assertIsInstance(result, aiocouchdb.v1.attachment.AttachmentReader)
 
     def test_get_range(self):
         yield from self.attbin.get(range=slice(12, 24))
@@ -202,7 +202,7 @@ class AttachmentReaderTestCase(utils.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.att = aiocouchdb.attachment.AttachmentReader(self.request)
+        self.att = aiocouchdb.v1.attachment.AttachmentReader(self.request)
 
     def test_close(self):
         self.request.content.at_eof.return_value = False

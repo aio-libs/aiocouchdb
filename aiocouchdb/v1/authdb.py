@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -15,7 +15,7 @@ from .document import Document
 
 class UserDocument(Document):
     """Represents user document for the :class:`authentication database
-    <aiocouchdb.database.AuthDatabase>`."""
+    <aiocouchdb.v1.database.AuthDatabase>`."""
 
     doc_prefix = 'org.couchdb.user:'
 
@@ -31,7 +31,7 @@ class UserDocument(Document):
 
     @asyncio.coroutine
     def register(self, password, *, auth=None, **additional_data):
-        """Helper method over :meth:`aiocouchdb.document.Document.update`
+        """Helper method over :meth:`aiocouchdb.v1.document.Document.update`
         to change a user password.
 
         :param str password: User's password
@@ -51,7 +51,7 @@ class UserDocument(Document):
 
     @asyncio.coroutine
     def update_password(self, password, *, auth=None):
-        """Helper method over :meth:`aiocouchdb.document.Document.update`
+        """Helper method over :meth:`aiocouchdb.v1.document.Document.update`
         to change a user password.
 
         :param str password: New password
@@ -66,7 +66,7 @@ class UserDocument(Document):
 
 class AuthDatabase(Database):
     """Represents system authentication database.
-    Used via :attr:`aiocouchdb.server.Server.authdb`."""
+    Used via :attr:`aiocouchdb.v1.server.Server.authdb`."""
 
     document_class = UserDocument
 

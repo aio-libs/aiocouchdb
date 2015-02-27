@@ -11,8 +11,8 @@ import asyncio
 import base64
 from io import RawIOBase
 
-from .client import Resource, HttpStreamResponse
-from .hdrs import (
+from aiocouchdb.client import Resource, HttpStreamResponse
+from aiocouchdb.hdrs import (
     ACCEPT_RANGES,
     CONTENT_ENCODING,
     CONTENT_TYPE,
@@ -109,7 +109,7 @@ class Attachment(object):
                             or two-element iterable object like :class:`list`
                             etc or just :func:`int`
 
-        :rtype: :class:`~aiocouchdb.attachments.AttachmentReader`
+        :rtype: :class:`~aiocouchdb.v1.attachments.AttachmentReader`
 
         .. _Returns an attachment: http://docs.couchdb.org/en/latest/api/document/attachments.html#get--db-docid-attname
         """

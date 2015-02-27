@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -13,10 +13,10 @@ import random
 import types
 
 import aiocouchdb.client
-import aiocouchdb.database
 import aiocouchdb.errors
 import aiocouchdb.feeds
-import aiocouchdb.server
+import aiocouchdb.v1.database
+import aiocouchdb.v1.server
 
 from . import utils
 
@@ -28,17 +28,17 @@ class DatabaseTestCase(utils.DatabaseTestCase):
 
     def test_init_with_resource(self):
         res = aiocouchdb.client.Resource(self.url_db)
-        db = aiocouchdb.database.Database(res)
+        db = aiocouchdb.v1.database.Database(res)
         self.assertIsInstance(db.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url_db, db.resource.url)
 
     def test_init_with_name(self):
         res = aiocouchdb.client.Resource(self.url_db)
-        db = aiocouchdb.database.Database(res, dbname='foo')
+        db = aiocouchdb.v1.database.Database(res, dbname='foo')
         self.assertEqual(db.name, 'foo')
 
     def test_init_with_name_from_server(self):
-        server = aiocouchdb.server.Server()
+        server = aiocouchdb.v1.server.Server()
         db = yield from server.db('foo')
         self.assertEqual(db.name, 'foo')
 
@@ -354,8 +354,9 @@ class DatabaseTestCase(utils.DatabaseTestCase):
         class CustomDocument(object):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
-        db = aiocouchdb.database.Database(self.url_db,
-                                          document_class=CustomDocument)
+        db = aiocouchdb.v1.database.Database(
+            self.url_db,
+            document_class=CustomDocument)
 
         result = yield from db.doc('docid')
         self.assert_request_called_with('HEAD', self.db.name, 'docid')
@@ -387,8 +388,9 @@ class DatabaseTestCase(utils.DatabaseTestCase):
         class CustomDocument(object):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
-        db = aiocouchdb.database.Database(self.url_db,
-                                          design_document_class=CustomDocument)
+        db = aiocouchdb.v1.database.Database(
+            self.url_db,
+            design_document_class=CustomDocument)
 
         result = yield from db.ddoc('_design/ddoc')
         self.assert_request_called_with('HEAD', self.db.name, '_design', 'ddoc')

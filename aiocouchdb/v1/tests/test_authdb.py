@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -10,7 +10,7 @@
 import asyncio
 import json
 
-import aiocouchdb.authdb
+import aiocouchdb.v1.authdb
 
 from aiocouchdb.client import urljoin
 from . import utils
@@ -21,7 +21,7 @@ class AuthDatabaseTestCase(utils.ServerTestCase):
     def setUp(self):
         super().setUp()
         self.url_db = urljoin(self.url, '_users')
-        self.db = aiocouchdb.authdb.AuthDatabase(self.url_db)
+        self.db = aiocouchdb.v1.authdb.AuthDatabase(self.url_db)
 
     def test_get_doc_with_prefix(self):
         doc = self.db['test']
@@ -36,9 +36,9 @@ class UserDocumentTestCase(utils.ServerTestCase):
     def setUp(self):
         super().setUp()
         self.username = utils.uuid()
-        docid = aiocouchdb.authdb.UserDocument.doc_prefix + self.username
+        docid = aiocouchdb.v1.authdb.UserDocument.doc_prefix + self.username
         self.url_doc = urljoin(self.url, '_users', docid)
-        self.doc = aiocouchdb.authdb.UserDocument(self.url_doc, docid=docid)
+        self.doc = aiocouchdb.v1.authdb.UserDocument(self.url_doc, docid=docid)
 
     def tearDown(self):
         self.loop.run_until_complete(self.teardown_document())
@@ -70,7 +70,7 @@ class UserDocumentTestCase(utils.ServerTestCase):
 
     def test_require_docid(self):
         with self.assertRaises(ValueError):
-            aiocouchdb.authdb.UserDocument(self.url_doc)
+            aiocouchdb.v1.authdb.UserDocument(self.url_doc)
 
     def test_username(self):
         self.assertEqual(self.doc.name, self.username)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Alexander Shorin
+# Copyright (C) 2014-2015 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -12,7 +12,7 @@ import asyncio
 import aiocouchdb.authn
 import aiocouchdb.client
 import aiocouchdb.feeds
-import aiocouchdb.server
+import aiocouchdb.v1.server
 
 from . import utils
 
@@ -24,7 +24,7 @@ class ServerTestCase(utils.ServerTestCase):
 
     def test_init_with_resource(self):
         res = aiocouchdb.client.Resource(self.url)
-        server = aiocouchdb.server.Server(res)
+        server = aiocouchdb.v1.server.Server(res)
         self.assertIsInstance(server.resource, aiocouchdb.client.Resource)
         self.assertEqual(self.url, self.server.resource.url)
 
@@ -56,7 +56,7 @@ class ServerTestCase(utils.ServerTestCase):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
 
-        server = aiocouchdb.server.Server(authdb_class=CustomDatabase)
+        server = aiocouchdb.v1.server.Server(authdb_class=CustomDatabase)
         db = server.authdb
         self.assertFalse(self.request.called)
         self.assertIsInstance(db, server.authdb_class)
@@ -64,11 +64,11 @@ class ServerTestCase(utils.ServerTestCase):
     def test_authdb_name(self):
         self.assertEqual(self.server.authdb.name, '_users')
 
-        server = aiocouchdb.server.Server(authdb_name='_authdb')
+        server = aiocouchdb.v1.server.Server(authdb_name='_authdb')
         self.assertEqual(server.authdb.name, '_authdb')
 
     def test_config(self):
-        self.assertIsInstance(self.server.config, aiocouchdb.server.Config)
+        self.assertIsInstance(self.server.config, aiocouchdb.v1.server.Config)
 
     def test_database(self):
         result = yield from self.server.db('db')
@@ -80,8 +80,8 @@ class ServerTestCase(utils.ServerTestCase):
             def __init__(self, thing, **kwargs):
                 self.resource = thing
 
-        server = aiocouchdb.server.Server(self.url,
-                                          database_class=CustomDatabase)
+        server = aiocouchdb.v1.server.Server(self.url,
+                                             database_class=CustomDatabase)
 
         result = yield from server.db('db')
         self.assert_request_called_with('HEAD', 'db')
@@ -206,7 +206,7 @@ class ServerTestCase(utils.ServerTestCase):
         self.assert_request_called_with('POST', '_restart')
 
     def test_session(self):
-        self.assertIsInstance(self.server.session, aiocouchdb.server.Session)
+        self.assertIsInstance(self.server.session, aiocouchdb.v1.server.Session)
 
     def test_stats(self):
         yield from self.server.stats()

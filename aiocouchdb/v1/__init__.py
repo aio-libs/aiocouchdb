@@ -6,3 +6,9 @@
 # This software is licensed as described in the file LICENSE, which
 # you should have received as part of this distribution.
 #
+
+from .attachment import Attachment
+from .database import Database
+from .document import Document
+from .designdoc import DesignDocument
+from .server import Server
