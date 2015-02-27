@@ -94,7 +94,7 @@ class ServerTestCase(utils.ServerTestCase):
             self.assert_request_called_with('HEAD', 'db')
         self.assertIsInstance(db, self.server.database_class)
 
-    def trigget_db_update(self, db):
+    def trigger_db_update(self, db):
         @asyncio.coroutine
         def task():
             yield from asyncio.sleep(0.1)
@@ -103,7 +103,7 @@ class ServerTestCase(utils.ServerTestCase):
 
     @utils.using_database()
     def test_db_updates(self, db):
-        self.trigget_db_update(db)
+        self.trigger_db_update(db)
 
         with self.response(data=('{"db_name": "%s"}' % db.name).encode()):
             event = yield from self.server.db_updates()
@@ -113,7 +113,7 @@ class ServerTestCase(utils.ServerTestCase):
 
     @utils.using_database()
     def test_db_updates_feed_continuous(self, db):
-        self.trigget_db_update(db)
+        self.trigger_db_update(db)
 
         with self.response(data=('{"db_name": "%s"}' % db.name).encode()):
             feed = yield from self.server.db_updates(feed='continuous',
@@ -133,7 +133,7 @@ class ServerTestCase(utils.ServerTestCase):
 
     @utils.using_database()
     def test_db_updates_feed_eventsource(self, db):
-        self.trigget_db_update(db)
+        self.trigger_db_update(db)
 
         with self.response(data=('data: {"db_name": "%s"}' % db.name).encode()):
             feed = yield from self.server.db_updates(feed='eventsource',
