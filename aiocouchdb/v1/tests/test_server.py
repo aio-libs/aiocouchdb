@@ -69,7 +69,8 @@ class ServerTestCase(utils.ServerTestCase):
         self.assertEqual(server.authdb.name, '_authdb')
 
     def test_config(self):
-        self.assertIsInstance(self.server.config, aiocouchdb.v1.config.Config)
+        self.assertIsInstance(self.server.config,
+                              aiocouchdb.v1.config.ServerConfig)
 
     def test_custom_config(self):
         class CustomConfig(object):

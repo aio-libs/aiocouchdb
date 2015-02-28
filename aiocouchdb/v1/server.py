@@ -14,7 +14,7 @@ from aiocouchdb.client import Resource
 from aiocouchdb.feeds import EventSourceFeed, JsonFeed
 
 from .authdb import AuthDatabase
-from .config import Config
+from .config import ServerConfig
 from .database import Database
 
 
@@ -36,8 +36,8 @@ class Server(object):
     #: Authentication database class
     authdb_class = AuthDatabase
 
-    #: Default :class:`~aiocouchdb.v1.config.Config` instance class
-    config_class = Config
+    #: Default :class:`~aiocouchdb.v1.config.ServerConfig` instance class
+    config_class = ServerConfig
 
     def __init__(self, url_or_resource='http://localhost:5984', *,
                  authdb_class=None,

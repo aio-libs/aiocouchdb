@@ -9,7 +9,7 @@
 
 from .attachment import Attachment
 from .authdb import AuthDatabase, UserDocument
-from .config import Config
+from .config import ServerConfig
 from .database import Database
 from .document import Document
 from .designdoc import DesignDocument

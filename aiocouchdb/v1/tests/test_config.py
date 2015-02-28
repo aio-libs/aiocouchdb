@@ -10,7 +10,7 @@
 from . import utils
 
 
-class ConfigTestCase(utils.ServerTestCase):
+class ServerConfigTestCase(utils.ServerTestCase):
 
     def test_config(self):
         yield from self.server.config.get()

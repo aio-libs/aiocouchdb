@@ -11,11 +11,11 @@ import asyncio
 
 
 __all__ = (
-    'Config',
+    'ServerConfig',
 )
 
 
-class Config(object):
+class ServerConfig(object):
     """Implements :ref:`/_config/* <api/config>` API. Should be used via
     :attr:`server.config <aiocouchdb.v1.server.Server.config>` property."""
 
