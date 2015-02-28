@@ -36,14 +36,20 @@ class Server(object):
     #: Authentication database class
     authdb_class = AuthDatabase
 
+    #: Default :class:`~aiocouchdb.v1.config.Config` instance class
+    config_class = Config
+
     def __init__(self, url_or_resource='http://localhost:5984', *,
                  authdb_class=None,
                  authdb_name=None,
+                 config_class=None,
                  database_class=None):
         if authdb_class is not None:
             self.authdb_class = authdb_class
         if authdb_name is not None:
             self.authdb_name = authdb_name
+        if config_class is not None:
+            self.config_class = config_class
         if database_class is not None:
             self.database_class = database_class
         if isinstance(url_or_resource, str):
@@ -51,7 +57,7 @@ class Server(object):
         self.resource = url_or_resource
         self._authdb = self.authdb_class(self.resource(self.authdb_name),
                                          dbname=self.authdb_name)
-        self._config = Config(self.resource)
+        self._config = self.config_class(self.resource)
         self._session = Session(self.resource)
 
     def __getitem__(self, dbname):
@@ -125,8 +131,8 @@ class Server(object):
 
     @property
     def config(self):
-        """Proxy to the related :class:`~aiocouchdb.v1.config.Config` instance.
-        """
+        """Proxy to the related :class:`~aiocouchdb.v1.server.config_class`
+        instance."""
         return self._config
 
     @asyncio.coroutine

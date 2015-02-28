@@ -71,6 +71,13 @@ class ServerTestCase(utils.ServerTestCase):
     def test_config(self):
         self.assertIsInstance(self.server.config, aiocouchdb.v1.config.Config)
 
+    def test_custom_config(self):
+        class CustomConfig(object):
+            def __init__(self, thing):
+                self.resource = thing
+        server = aiocouchdb.v1.server.Server(config_class=CustomConfig)
+        self.assertIsInstance(server.config, CustomConfig)
+
     def test_database(self):
         result = yield from self.server.db('db')
         self.assert_request_called_with('HEAD', 'db')
