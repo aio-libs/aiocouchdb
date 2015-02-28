@@ -12,6 +12,7 @@ import asyncio
 import aiocouchdb.authn
 import aiocouchdb.client
 import aiocouchdb.feeds
+import aiocouchdb.v1.config
 import aiocouchdb.v1.server
 
 from . import utils
@@ -68,7 +69,7 @@ class ServerTestCase(utils.ServerTestCase):
         self.assertEqual(server.authdb.name, '_authdb')
 
     def test_config(self):
-        self.assertIsInstance(self.server.config, aiocouchdb.v1.server.Config)
+        self.assertIsInstance(self.server.config, aiocouchdb.v1.config.Config)
 
     def test_database(self):
         result = yield from self.server.db('db')
@@ -242,51 +243,6 @@ class ServerTestCase(utils.ServerTestCase):
                                             params={'count': 2})
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
-
-
-class ConfigTestCase(utils.ServerTestCase):
-
-    def test_config(self):
-        yield from self.server.config.get()
-        self.assert_request_called_with('GET', '_config')
-
-    def test_config_get_section(self):
-        yield from self.server.config.get('couchdb')
-        self.assert_request_called_with('GET', '_config', 'couchdb')
-
-    def test_config_get_option(self):
-        yield from self.server.config.get('couchdb', 'uuid')
-        self.assert_request_called_with('GET', '_config', 'couchdb', 'uuid')
-
-    @utils.modify_server('aiocouchdb', 'test', 'relax')
-    def test_config_set_option(self):
-        with self.response(data=b'"relax!"'):
-            result = yield from self.server.config.update(
-                'aiocouchdb', 'test', 'passed')
-            self.assert_request_called_with(
-                'PUT', '_config', 'aiocouchdb', 'test', data='passed')
-        self.assertIsInstance(result, str)
-
-    @utils.modify_server('aiocouchdb', 'test', 'passed')
-    def test_config_del_option(self):
-        with self.response(data=b'"passed"'):
-            result = yield from self.server.config.delete('aiocouchdb', 'test')
-            self.assert_request_called_with('DELETE',
-                                            '_config', 'aiocouchdb', 'test')
-        self.assertIsInstance(result, str)
-
-    def test_config_option_exists(self):
-        with self.response(status=200):
-            result = yield from self.server.config.exists('couchdb', 'uuid')
-            self.assert_request_called_with('HEAD', '_config',
-                                            'couchdb', 'uuid')
-            self.assertTrue(result)
-
-    def test_config_option_not_exists(self):
-        with self.response(status=404):
-            result = yield from self.server.config.exists('foo', 'bar')
-            self.assert_request_called_with('HEAD', '_config', 'foo', 'bar')
-            self.assertFalse(result)
 
 
 class SessionTestCase(utils.ServerTestCase):

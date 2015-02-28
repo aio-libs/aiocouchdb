@@ -9,8 +9,9 @@
 
 from .attachment import Attachment
 from .authdb import AuthDatabase, UserDocument
+from .config import Config
 from .database import Database
 from .document import Document
 from .designdoc import DesignDocument
-from .server import Server, Config, Session
+from .server import Server, Session
 from .security import DatabaseSecurity
