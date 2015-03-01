@@ -13,5 +13,6 @@ from .config import ServerConfig
 from .database import Database
 from .document import Document
 from .designdoc import DesignDocument
-from .server import Server, Session
+from .server import Server
+from .session import Session
 from .security import DatabaseSecurity

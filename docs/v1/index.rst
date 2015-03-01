@@ -17,7 +17,7 @@ Configuration
 Session
 -------
 
-.. autoclass:: aiocouchdb.v1.server.Session
+.. autoclass:: aiocouchdb.v1.session.Session
   :members:
 
 Database

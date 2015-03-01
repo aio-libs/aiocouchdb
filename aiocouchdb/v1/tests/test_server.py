@@ -9,11 +9,11 @@
 
 import asyncio
 
-import aiocouchdb.authn
 import aiocouchdb.client
 import aiocouchdb.feeds
 import aiocouchdb.v1.config
 import aiocouchdb.v1.server
+import aiocouchdb.v1.session
 
 from . import utils
 
@@ -215,7 +215,8 @@ class ServerTestCase(utils.ServerTestCase):
         self.assert_request_called_with('POST', '_restart')
 
     def test_session(self):
-        self.assertIsInstance(self.server.session, aiocouchdb.v1.server.Session)
+        self.assertIsInstance(self.server.session,
+                              aiocouchdb.v1.session.Session)
 
     def test_stats(self):
         yield from self.server.stats()
@@ -251,30 +252,3 @@ class ServerTestCase(utils.ServerTestCase):
                                             params={'count': 2})
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
-
-
-class SessionTestCase(utils.ServerTestCase):
-
-    @utils.with_fixed_admin_party('root', 'relax')
-    def test_open_session(self, root):
-        with self.response(data=b'{"ok": true}',
-                           cookies={'AuthSession': 's3cr1t'}):
-            auth = yield from self.server.session.open('root', 'relax')
-            self.assert_request_called_with('POST', '_session',
-                                            data={'name': 'root',
-                                                  'password': 'relax'})
-        self.assertIsInstance(auth, aiocouchdb.authn.CookieAuthProvider)
-        self.assertIn('AuthSession', auth._cookies)
-
-    def test_session_info(self):
-        with self.response(data=b'{}'):
-            result = yield from self.server.session.info()
-            self.assert_request_called_with('GET', '_session')
-        self.assertIsInstance(result, dict)
-
-    def test_close_session(self):
-        with self.response(data=b'{"ok": true}'):
-            result = yield from self.server.session.close()
-            self.assert_request_called_with('DELETE', '_session')
-        self.assertIsInstance(result, dict)
-
