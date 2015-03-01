@@ -38,11 +38,15 @@ class Server(object):
     #: Default :class:`~aiocouchdb.v1.config.ServerConfig` instance class
     config_class = ServerConfig
 
+    #: Default :class:`~aiocouchdb.v1.session.Session` instance class
+    session_class = Session
+
     def __init__(self, url_or_resource='http://localhost:5984', *,
                  authdb_class=None,
                  authdb_name=None,
                  config_class=None,
-                 database_class=None):
+                 database_class=None,
+                 session_class=None):
         if authdb_class is not None:
             self.authdb_class = authdb_class
         if authdb_name is not None:
@@ -51,13 +55,15 @@ class Server(object):
             self.config_class = config_class
         if database_class is not None:
             self.database_class = database_class
+        if session_class is not None:
+            self.session_class = session_class
         if isinstance(url_or_resource, str):
             url_or_resource = Resource(url_or_resource)
         self.resource = url_or_resource
         self._authdb = self.authdb_class(self.resource(self.authdb_name),
                                          dbname=self.authdb_name)
         self._config = self.config_class(self.resource)
-        self._session = Session(self.resource)
+        self._session = self.session_class(self.resource)
 
     def __getitem__(self, dbname):
         return self.database_class(self.resource(dbname), dbname=dbname)
@@ -286,8 +292,8 @@ class Server(object):
 
     @property
     def session(self):
-        """Proxy to the related :class:`~aiocouchdb.v1.session.Session`
-        instance."""
+        """Proxy to the related
+        :class:`~aiocouchdb.v1.server.Server.session_class` instance."""
         return self._session
 
     @asyncio.coroutine

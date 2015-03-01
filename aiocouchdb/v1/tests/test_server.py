@@ -218,6 +218,13 @@ class ServerTestCase(utils.ServerTestCase):
         self.assertIsInstance(self.server.session,
                               aiocouchdb.v1.session.Session)
 
+    def test_custom_session(self):
+        class CustomSession(object):
+            def __init__(self, thing):
+                self.resource = thing
+        server = aiocouchdb.v1.server.Server(session_class=CustomSession)
+        self.assertIsInstance(server.session, CustomSession)
+
     def test_stats(self):
         yield from self.server.stats()
         self.assert_request_called_with('GET', '_stats')
