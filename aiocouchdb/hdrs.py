@@ -16,7 +16,7 @@ ACCEPT_RANGES = upstr('ACCEPT-RANGES')
 #: http://tools.ietf.org/html/rfc2183
 CONTENT_DISPOSITION = upstr('CONTENT-DISPOSITION')
 
-#: Defines CouchDB Proxy Auth usernmae
+#: Defines CouchDB Proxy Auth username
 X_AUTH_COUCHDB_USERNAME = upstr('X-Auth-CouchDB-UserName')
 #: Defines CouchDB Proxy Auth list of roles separated by a comma
 X_AUTH_COUCHDB_ROLES = upstr('X-Auth-CouchDB-Roles')
