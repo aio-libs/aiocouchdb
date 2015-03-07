@@ -103,7 +103,7 @@ class Attachment(object):
         yield from resp.read()
         return resp.headers.get(ACCEPT_RANGES) == 'bytes'
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pylint: disable=redefined-builtin
     def get(self, rev=None, *, auth=None, range=None):
         """`Returns an attachment`_ reader object.
 
@@ -263,14 +263,14 @@ class AttachmentReader(RawIOBase):
                 if line:
                     acc.append(line)
             return acc
-        n = 0
+        read = 0
         acc = []
         while not self.closed:
             line = yield from self.readline()
             if not line:
                 continue
             acc.append(line)
-            n += len(line)
-            if n >= hint:
+            read += len(line)
+            if read >= hint:
                 break
         return acc

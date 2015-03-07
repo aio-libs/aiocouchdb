@@ -7,7 +7,7 @@
 # you should have received as part of this distribution.
 #
 
-from aiohttp.hdrs import *
+from aiohttp.hdrs import *  # pylint: disable=W0401, W0614
 from aiohttp.multidict import upstr
 
 #: http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.5.html

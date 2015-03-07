@@ -142,8 +142,10 @@ class ServerError(HttpErrorException):
         return super().__str__()
 
 
-HTTP_ERROR_BY_CODE = {err.code: err
-                      for err in HttpErrorException.__subclasses__()}
+HTTP_ERROR_BY_CODE = {
+    err.code: err
+    for err in HttpErrorException.__subclasses__()  # pylint: disable=no-member
+}
 
 
 @asyncio.coroutine

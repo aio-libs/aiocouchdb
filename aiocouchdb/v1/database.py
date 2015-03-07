@@ -187,8 +187,8 @@ class Database(object):
         status = yield from resp.json()
         return status['ok']
 
-    @asyncio.coroutine
-    def all_docs(self, *keys,
+    @asyncio.coroutine  # pylint: disable=W0142, W0612
+    def all_docs(self, *keys,  # pylint: disable=W0613, R0914
                  auth=None,
                  feed_buffer_size=None,
                  att_encoding_info=None,
@@ -249,6 +249,7 @@ class Database(object):
                                         feed_buffer_size=feed_buffer_size,
                                         params=params))
 
+    @asyncio.coroutine
     def bulk_docs(self, docs, *, auth=None, all_or_nothing=None,
                   new_edits=None):
         """:ref:`Updates multiple documents <api/db/bulk_docs>` using a single
@@ -282,7 +283,8 @@ class Database(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
-    def changes(self, *doc_ids,
+    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0622
+    def changes(self, *doc_ids,  # pylint: disable=R0914
                 auth=None,
                 feed_buffer_size=None,
                 att_encoding_info=None,
@@ -478,8 +480,11 @@ class Database(object):
         :class:`~aiocouchdb.v1.database.Database.security_class` instance."""
         return self._security
 
-    @asyncio.coroutine
-    def temp_view(self, map_fun, red_fun=None, language=None, *,
+    @asyncio.coroutine  # pylint: disable=W0142, W0612
+    def temp_view(self, map_fun,  # pylint: disable=R0914
+                  red_fun=None,
+                  language=None,
+                  *,
                   auth=None,
                   feed_buffer_size=None,
                   att_encoding_info=None,

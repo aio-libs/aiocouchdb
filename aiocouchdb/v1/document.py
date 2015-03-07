@@ -127,7 +127,7 @@ class Document(object):
         yield from resp.maybe_raise_error()
         return resp.headers[ETAG].strip('"')
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0613
     def get(self, rev=None, *,
             auth=None,
             att_encoding_info=None,
@@ -168,8 +168,8 @@ class Document(object):
         """
         params = dict((key, value)
                       for key, value in locals().items()
-                      if key not in {'self', 'auth'} and
-                         value is not None)
+                      if (key not in {'self', 'auth'} and
+                          value is not None))
 
         if atts_since is not None:
             params['atts_since'] = json.dumps(atts_since)
@@ -181,7 +181,7 @@ class Document(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pylint: disable=W0142, W0612
     def get_open_revs(self, *open_revs,
                       auth=None,
                       att_encoding_info=None,
@@ -215,8 +215,8 @@ class Document(object):
         """
         params = dict((key, value)
                       for key, value in locals().items()
-                      if key not in {'self', 'auth'} and
-                         value is not None)
+                      if (key not in {'self', 'auth'} and
+                          value is not None))
 
         if atts_since is not None:
             params['atts_since'] = json.dumps(atts_since)
@@ -231,8 +231,8 @@ class Document(object):
         reader = OpenRevsMultipartReader.from_response(resp)
         return reader
 
-    @asyncio.coroutine
-    def get_with_atts(self, rev=None, *,
+    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0613
+    def get_with_atts(self, rev=None, *,  # pylint: disable=R0914
                       auth=None,
                       att_encoding_info=None,
                       atts_since=None,
@@ -270,8 +270,8 @@ class Document(object):
         """
         params = dict((key, value)
                       for key, value in locals().items()
-                      if key not in {'self', 'auth'} and
-                         value is not None)
+                      if (key not in {'self', 'auth'} and
+                          value is not None))
         params['attachments'] = True
 
         if atts_since is not None:
@@ -305,8 +305,8 @@ class Document(object):
 
         return DocAttachmentsMultipartReader.from_response(resp)
 
-    @asyncio.coroutine
-    def update(self, doc,
+    @asyncio.coroutine  # pylint: disable=W0142, W0612
+    def update(self, doc, *,
                atts=None,
                auth=None,
                batch=None,
@@ -343,8 +343,8 @@ class Document(object):
         """
         params = dict((key, value)
                       for key, value in locals().items()
-                      if key not in {'self', 'doc', 'auth', 'atts'} and
-                         value is not None)
+                      if (key not in {'self', 'doc', 'auth', 'atts'} and
+                          value is not None))
 
         if not isinstance(doc, MutableMapping):
             raise TypeError('MutableMapping instance expected, like a dict')

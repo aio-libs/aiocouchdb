@@ -75,7 +75,7 @@ class Server(object):
         return self._authdb
 
     @asyncio.coroutine
-    def db(self, dbname, *, auth=None):
+    def db(self, dbname, *, auth=None):  # pylint: disable=invalid-name
         """Returns :class:`~aiocouchdb.v1.database.Database` instance against
         specified database name.
 
@@ -180,7 +180,7 @@ class Server(object):
         else:
             return (yield from resp.json())
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pylint: disable=W0622
     def log(self, *, bytes=None, offset=None, auth=None):
         """Returns a chunk of data from the tail of :ref:`CouchDB's log
         <api/server/log>` file.
@@ -200,8 +200,8 @@ class Server(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.read()).decode('utf-8')
 
-    @asyncio.coroutine
-    def replicate(self, source, target, *,
+    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0622
+    def replicate(self, source, target, *,  # pylint: disable=R0914
                   auth=None,
                   authobj=None,
                   cancel=None,
@@ -265,8 +265,8 @@ class Server(object):
         """
         params = dict((key, value)
                       for key, value in locals().items()
-                      if key not in {'self', 'source', 'target', 'auth'} and
-                         value is not None)
+                      if (key not in {'self', 'source', 'target', 'auth'} and
+                          value is not None))
 
         if authobj is not None:
             params['auth'] = params.pop('authobj')
@@ -296,7 +296,7 @@ class Server(object):
         :class:`~aiocouchdb.v1.server.Server.session_class` instance."""
         return self._session
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pylint: disable=W0622
     def stats(self, metric=None, *, auth=None, flush=None, range=None):
         """Returns :ref:`server statistics <api/server/stats>`.
 

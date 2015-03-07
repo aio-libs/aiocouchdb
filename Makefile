@@ -2,6 +2,7 @@ PROJECT=aiocouchdb
 PYTHON=`which python`
 PIP=`which pip`
 NOSE=`which nosetests`
+PYLINT=`which pylint`
 VENV=`which virtualenv`
 
 
@@ -48,6 +49,12 @@ check-couchdb:
 # target: cover - Generates coverage report
 cover:
 	${NOSE} --with-coverage --cover-html --cover-erase --cover-package=${PROJECT}
+
+
+.PHONY: pylint
+# target: lint - Runs pylint checks
+pylint:
+	${PYLINT} --rcfile=.pylintrc ${PROJECT}
 
 
 .PHONY: docs

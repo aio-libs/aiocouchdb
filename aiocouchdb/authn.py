@@ -17,7 +17,6 @@ from collections import namedtuple
 from .hdrs import (
     AUTHORIZATION,
     COOKIE,
-    SET_COOKIE,
     X_AUTH_COUCHDB_ROLES,
     X_AUTH_COUCHDB_TOKEN,
     X_AUTH_COUCHDB_USERNAME
