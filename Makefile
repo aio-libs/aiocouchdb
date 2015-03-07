@@ -3,6 +3,7 @@ PYTHON=`which python`
 PIP=`which pip`
 NOSE=`which nosetests`
 PYLINT=`which pylint`
+FLAKE8=`which flake8`
 VENV=`which virtualenv`
 
 
@@ -22,7 +23,7 @@ venv:
 .PHONY: dev
 # target: dev - Setups developer environment
 dev: venv
-	${PIP} install nose coverage pylint sphinx
+	${PIP} install nose coverage pylint sphinx flake8
 	${PYTHON} setup.py develop
 
 
@@ -34,15 +35,19 @@ install:
 
 .PHONY: check
 # target: check - Runs test suite against mocked environment
-check:
+check: flake
 	${NOSE} --with-doctest ${PROJECT}
 
 
 .PHONY: check-couchdb
 # target: check-couchdb - Runs test suite against real CouchDB instance (AIOCOUCHDB_URL="http://localhost:5984")
-check-couchdb:
+check-couchdb: flake
 	AIOCOUCHDB_URL="http://localhost:5984" AIOCOUCHDB_TARGET="couchdb" \
 	${NOSE} --with-doctest ${PROJECT}
+
+
+flake:
+	${FLAKE8} --max-line-length=80 --statistics --exclude=tests --ignore=E501,F403 ${PROJECT}
 
 
 .PHONY: cover

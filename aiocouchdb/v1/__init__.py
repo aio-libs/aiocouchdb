@@ -7,6 +7,8 @@
 # you should have received as part of this distribution.
 #
 
+# flake8: noqa
+
 from .attachment import Attachment
 from .authdb import AuthDatabase, UserDocument
 from .config import ServerConfig
