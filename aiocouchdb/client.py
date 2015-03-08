@@ -317,6 +317,7 @@ def urljoin(base, *path):
 def extract_credentials(url):
     """Extract authentication (user name and password) credentials from the
     given URL.
+
     >>> extract_credentials('http://localhost:5984/_config/')
     ('http://localhost:5984/_config/', None)
     >>> extract_credentials('http://joe:secret@localhost:5984/_config/')
