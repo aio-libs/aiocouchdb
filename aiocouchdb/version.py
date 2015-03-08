@@ -13,3 +13,9 @@ __version__ = '%(version)s%(tag)s%(build)s' % {
     'tag': '-' + __version_info__[3] if __version_info__[3] else '',
     'build': '.' + str(__version_info__[4]) if __version_info__[4] else ''
 }
+
+
+if __name__ == '__main__':
+    import sys
+    sys.stdout.write(__version__)
+    sys.stdout.flush()
