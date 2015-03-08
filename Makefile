@@ -1,10 +1,11 @@
 PROJECT=aiocouchdb
-PYTHON=`which python`
-PIP=`which pip`
-NOSE=`which nosetests`
-PYLINT=`which pylint`
-FLAKE8=`which flake8`
-VENV=`which virtualenv`
+VENV=venv/bin
+PYTHON=${VENV}/python
+PIP=${VENV}/pip
+NOSE=${VENV}/nosetests
+PYLINT=${VENV}/pylint
+FLAKE8=${VENV}/flake8
+SPHINX=${VENV}/sphinx-build
 
 
 .PHONY: help
@@ -14,10 +15,9 @@ help:
 
 
 .PHONY: venv
-# target: venv - Setups virtuanenv
+# target: venv - Setups virtual environment
 venv:
-	${VENV} venv
-	source venv/bin/activate
+	`which python3` -m venv venv
 
 
 .PHONY: dev
@@ -30,7 +30,7 @@ dev: venv
 .PHONY: install
 # target: install - Installs aiocouchdb package
 install:
-	${PYTHON} setup.py install
+	`which python3` setup.py install
 
 
 .PHONY: check
@@ -65,4 +65,4 @@ pylint:
 .PHONY: docs
 # target: docs - Builds Sphinx html docs
 docs:
-	make -C docs -e PYTHONPATH=".." html
+	${SPHINX} -b html -d docs/_build/doctrees docs/ docs/_build/html
