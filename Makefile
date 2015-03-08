@@ -33,6 +33,28 @@ install:
 	`which python3` setup.py install
 
 
+.PHONY: clean
+# target: clean - Removes intermediate and generated files
+clean:
+	rm -rf `find . -name __pycache__`
+	rm -f `find . -type f -name '*.py[co]' `
+	rm -f `find . -type f -name '*.orig' `
+	rm -f `find . -type f -name '*.rej' `
+	rm -f .coverage
+	rm -rf coverage
+	rm -rf build
+	rm -rf cover
+	make -C docs clean
+	python setup.py clean
+
+
+.PHONY: purge
+# target: purge - Removes all unversioned files and resets repository
+purge:
+	git reset --hard HEAD
+	git clean -xdff
+
+
 .PHONY: check
 # target: check - Runs test suite against mocked environment
 check: flake
