@@ -1,0 +1,20 @@
+language: python
+python:
+  - 3.3
+  - 3.4
+
+services:
+  - couchdb
+
+install:
+  - make dev
+
+script:
+  - make check
+  - make check-couchdb
+  - make docs
+
+env:
+  matrix:
+    - PYTHONASYNCIODEBUG=1
+    - PYTHONASYNCIODEBUG=0
