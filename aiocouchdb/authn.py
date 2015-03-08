@@ -90,6 +90,9 @@ class NoAuthProvider(AuthProvider):
     def reset(self):
         pass  # pragma: no cover
 
+    def credentials(self):
+        pass  # pragma: no cover
+
     def set_credentials(self):
         pass  # pragma: no cover
 
