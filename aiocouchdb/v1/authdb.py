@@ -30,6 +30,13 @@ class UserDocument(Document):
         if self._docid is None:
             raise ValueError('docid must be specified for User documents.')
 
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))
+
     @property
     def name(self):
         """Returns username."""
@@ -85,3 +92,10 @@ class AuthDatabase(Database):
         else:
             docid = self.document_class.doc_prefix + docid
             return self.document_class(self.resource(docid), docid=docid)
+
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))

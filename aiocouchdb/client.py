@@ -156,8 +156,8 @@ class Resource(object):
     """HTTP resource representation. Accepts full ``url`` as argument.
 
     >>> res = Resource('http://localhost:5984')
-    >>> res
-    <Resource @ 'http://localhost:5984'>
+    >>> res  # doctest: +ELLIPSIS
+    <aiocouchdb.client.Resource(http://localhost:5984) object at ...>
 
     Able to construct new Resource instance by assemble base URL and path
     sections on call:
@@ -184,7 +184,11 @@ class Resource(object):
                           response_class=self.response_class)
 
     def __repr__(self):
-        return '<{} @ {!r}>'.format(type(self).__name__, self.url)
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.url,
+            hex(id(self)))
 
     def head(self, path=None, **options):
         """Makes HEAD request to the resource. See :meth:`Resource.request`

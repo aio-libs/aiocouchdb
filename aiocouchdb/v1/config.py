@@ -22,6 +22,13 @@ class ServerConfig(object):
     def __init__(self, resource):
         self.resource = resource('_config')
 
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))
+
     @asyncio.coroutine
     def exists(self, section, key, *, auth=None):
         """Checks if :ref:`configuration option <api/config/section/key>`

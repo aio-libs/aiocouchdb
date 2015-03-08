@@ -68,6 +68,13 @@ class Server(object):
     def __getitem__(self, dbname):
         return self.database_class(self.resource(dbname), dbname=dbname)
 
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))
+
     @property
     def authdb(self):
         """Proxy to the :class:`authentication database

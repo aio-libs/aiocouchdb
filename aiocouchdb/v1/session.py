@@ -27,6 +27,13 @@ class Session(object):
     def __init__(self, resource):
         self.resource = resource('_session')
 
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))
+
     @asyncio.coroutine
     def open(self, name, password):
         """Opens session for cookie auth provider and returns the auth provider

@@ -57,8 +57,11 @@ class ResourceTestCase(utils.TestCase):
         self.assert_request_called_with('OPTIONS')
 
     def test_to_str(self):
-        self.assertEqual("<Resource @ '%s'>" % self.url,
-                         str(aiocouchdb.client.Resource(self.url)))
+        res = aiocouchdb.client.Resource(self.url)
+        self.assertEqual(
+            '<aiocouchdb.client.Resource(http://localhost:5984) object at {}>'
+            ''.format(hex(id(res))),
+            str(res))
 
     def test_on_call(self):
         res = aiocouchdb.client.Resource(self.url)

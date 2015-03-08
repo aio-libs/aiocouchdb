@@ -44,6 +44,13 @@ class DesignDocument(object):
     def __getitem__(self, attname):
         return self._document[attname]
 
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))
+
     @property
     def id(self):
         """Returns a document id specified in class constructor."""

@@ -70,6 +70,13 @@ class Database(object):
         else:
             return self.document_class(self.resource(docid), docid=docid)
 
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))
+
     @property
     def name(self):
         """Returns a database name specified in class constructor."""

@@ -35,6 +35,13 @@ class Attachment(object):
         self.resource = url_or_resource
         self._name = name
 
+    def __repr__(self):
+        return '<{}.{}({}) object at {}>'.format(
+            self.__module__,
+            self.__class__.__qualname__,
+            self.resource.url,
+            hex(id(self)))
+
     @property
     def name(self):
         return self._name
