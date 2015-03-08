@@ -88,3 +88,16 @@ pylint:
 # target: docs - Builds Sphinx html docs
 docs:
 	${SPHINX} -b html -d docs/_build/doctrees docs/ docs/_build/html
+
+
+.PHONY: release
+# target: release - Yay new release!
+release: ${PROJECT}/version.py
+	sed -i s/\'dev\'/\'\'/ $<
+	git commit -m "Release `${PYTHON} $<` version" $<
+
+
+.PHONY: pypi
+# target: pypi - Uploads package on PyPI
+pypi:
+	${PYTHON} setup.py sdist register upload
