@@ -53,6 +53,6 @@ class HttpErrorsTestCase(utils.TestCase):
         try:
             yield from aiocouchdb.errors.maybe_raise_error(self.resp)
         except aiocouchdb.errors.HttpErrorException as exc:
-            self.assertEqual('(test) passed', str(exc))
+            self.assertEqual('[test] passed', str(exc))
         else:
             assert False, 'exception expected'

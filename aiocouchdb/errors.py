@@ -61,7 +61,7 @@ class HttpErrorException(aiohttp.errors.HttpProcessingError):
         self.headers = headers
 
     def __str__(self):
-        return self.reason or self.message
+        return '[{}] {}'.format(self.error or 'unknown_error', self.reason)
 
 
 class BadRequest(HttpErrorException):
@@ -69,33 +69,24 @@ class BadRequest(HttpErrorException):
     syntax."""
 
     code = 400
-    message = 'Bad Request'
-
-    def __str__(self):
-        if self.error:
-            return '({}) {}'.format(self.error, self.reason)
-        return super().__str__()
 
 
 class Unauthorized(HttpErrorException):
     """The request requires user authentication."""
 
     code = 401
-    message = 'Unauthorized'
 
 
 class Forbidden(HttpErrorException):
     """The server understood the request, but is refusing to fulfill it."""
 
     code = 403
-    message = 'Forbidden'
 
 
 class ResourceNotFound(HttpErrorException):
     """The server has not found anything matching the Request-URI."""
 
     code = 404
-    message = 'Resource Not Found'
 
 
 class MethodNotAllowed(HttpErrorException):
@@ -103,7 +94,6 @@ class MethodNotAllowed(HttpErrorException):
     the resource identified by the Request-URI."""
 
     code = 405
-    message = 'Method Not Allowed'
 
 
 class ResourceConflict(HttpErrorException):
@@ -111,7 +101,6 @@ class ResourceConflict(HttpErrorException):
     state of the resource."""
 
     code = 409
-    message = 'Resource Conflict'
 
 
 class PreconditionFailed(HttpErrorException):
@@ -119,14 +108,13 @@ class PreconditionFailed(HttpErrorException):
     evaluated to false when it was tested on the server."""
 
     code = 412
-    message = 'Precondition Failed'
 
 
 class RequestedRangeNotSatisfiable(HttpErrorException):
     """The client has asked for a portion of the file, but the server
     cannot supply that portion."""
+
     code = 416
-    message = 'Requested Range Not Satisfiable'
 
 
 class ServerError(HttpErrorException):
@@ -134,12 +122,6 @@ class ServerError(HttpErrorException):
     fulfilling the request."""
 
     code = 500
-    message = 'Server Error'
-
-    def __str__(self):
-        if self.error:
-            return '({}) {}'.format(self.error, self.reason)
-        return super().__str__()
 
 
 HTTP_ERROR_BY_CODE = {
