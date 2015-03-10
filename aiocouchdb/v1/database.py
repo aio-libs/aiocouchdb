@@ -170,14 +170,13 @@ class Database(object):
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :rtype: bool
+        :rtype: dict
 
         .. _Creates a database: http://docs.couchdb.org/en/latest/api/database/common.html#put--db
         """
         resp = yield from self.resource.put(auth=auth)
         yield from resp.maybe_raise_error()
-        status = yield from resp.json()
-        return status['ok']
+        return (yield from resp.json())
 
     @asyncio.coroutine
     def delete(self, *, auth=None):
@@ -185,14 +184,13 @@ class Database(object):
 
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
 
-        :rtype: bool
+        :rtype: dict
 
         .. _Deletes a database: http://docs.couchdb.org/en/latest/api/database/common.html#delete--db
         """
         resp = yield from self.resource.delete(auth=auth)
         yield from resp.maybe_raise_error()
-        status = yield from resp.json()
-        return status['ok']
+        return (yield from resp.json())
 
     @asyncio.coroutine  # pylint: disable=W0142, W0612
     def all_docs(self, *keys,  # pylint: disable=W0613, R0914

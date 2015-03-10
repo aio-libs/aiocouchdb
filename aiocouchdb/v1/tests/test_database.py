@@ -75,15 +75,16 @@ class DatabaseTestCase(utils.DatabaseTestCase):
             try:
                 result = yield from self.db.create()
             except aiocouchdb.errors.PreconditionFailed:
-                result = True
+                # Because we'd created it already during setUp routines
+                result = {'ok': True}
             self.assert_request_called_with('PUT', self.db.name)
-        self.assertTrue(result)
+        self.assertEqual({'ok': True}, result)
 
     def test_delete(self):
         with self.response(data=b'{"ok": true}'):
             result = yield from self.db.delete()
             self.assert_request_called_with('DELETE', self.db.name)
-        self.assertTrue(result)
+        self.assertEqual({'ok': True}, result)
 
     def test_all_docs(self):
         result = yield from self.db.all_docs()
