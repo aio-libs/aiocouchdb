@@ -1,11 +1,10 @@
 PROJECT=aiocouchdb
-VENV=venv/bin
-PYTHON=${VENV}/python
-PIP=${VENV}/pip
-NOSE=${VENV}/nosetests
-PYLINT=${VENV}/pylint
-FLAKE8=${VENV}/flake8
-SPHINX=${VENV}/sphinx-build
+PYTHON=`which python`
+PIP=`which pip`
+NOSE=`which nosetests`
+PYLINT=`which pylint`
+FLAKE8=`which flake8`
+SPHINX=`which sphinx-build`
 
 
 .PHONY: help
@@ -18,6 +17,7 @@ help:
 # target: venv - Setups virtual environment
 venv:
 	`which python3` -m venv venv
+	@echo "Virtuanenv has been created. Don't forget to run . venv/bin/active"
 
 
 .PHONY: dev
