@@ -11,10 +11,15 @@ install:
 
 script:
   - make check
-  - make check-couchdb
   - make docs
 
 env:
   matrix:
-    - PYTHONASYNCIODEBUG=1
     - PYTHONASYNCIODEBUG=0
+      AIOCOUCHDB_TARGET=mock
+    - PYTHONASYNCIODEBUG=1
+      AIOCOUCHDB_TARGET=mock
+    - PYTHONASYNCIODEBUG=0
+      AIOCOUCHDB_TARGET=couchdb
+    - PYTHONASYNCIODEBUG=1
+      AIOCOUCHDB_TARGET=couchdb
