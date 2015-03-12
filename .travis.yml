@@ -6,7 +6,7 @@ python:
 services:
   - couchdb
 
-install:
+before_script:
   - make dev
 
 script:
