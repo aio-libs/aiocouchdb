@@ -50,7 +50,7 @@ class MetaAioTestCase(type):
 class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
     _test_target = TARGET
-    timeout = 5
+    timeout = 10
     url = 'http://localhost:5984'
 
     def setUp(self):
