@@ -96,6 +96,8 @@ class HttpRequest(aiohttp.client.ClientRequest):
     def update_body_from_data(self, data):
         """Encodes ``data`` as JSON if `Content-Type`
         is :mimetype:`application/json`."""
+        if data is None:
+            return
         if self.headers.get(CONTENT_TYPE) == 'application/json':
             if not (isinstance(data, (types.GeneratorType, io.IOBase))):
                 data = json.dumps(data)
