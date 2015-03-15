@@ -337,6 +337,48 @@ class DocumentTestCase(utils.DocumentTestCase):
             with self.response():
                 self.assertTrue((yield from self.doc[attname].exists()))
 
+    def test_update_with_atts_updates_the_doc(self):
+        atts = {
+            'foo': io.BytesIO(b'foo'),
+            'bar': b'bar',
+            'baz': open(__file__, 'rb')
+        }
+
+        doc = {'foo': 'bar', 'bar': 'baz'}
+        with self.response(data=b'{"rev": "1-ABC"}'):
+            resp = yield from self.doc.update(doc, atts=atts, rev=self.rev)
+            self.assert_request_called_with(
+                'PUT', *self.request_path(),
+                data=...,
+                headers=...,
+                params={'rev': self.rev})
+            rev = resp['rev']
+
+        self.assertEqual({
+            'foo': 'bar',
+            'bar': 'baz',
+            '_attachments': {
+                'foo': {
+                    'content_type': 'application/octet-stream',
+                    'length': 3,
+                    'stub': True
+                },
+                'bar': {
+                    'content_type': 'application/octet-stream',
+                    'length': 3,
+                    'stub': True
+                },
+                'baz': {
+                    'content_type': 'text/x-python',
+                    'length': len(open(__file__).read()),
+                    'stub': True
+                }
+            }
+        }, doc)
+
+        with self.response():
+            yield from self.doc.update(doc, rev=rev)
+
     def test_delete(self):
         yield from self.doc.delete(self.rev)
         self.assert_request_called_with('DELETE', *self.request_path(),

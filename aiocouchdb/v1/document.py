@@ -395,6 +395,10 @@ class Document(object):
                                                 data=body,
                                                 headers=writer.headers,
                                                 params=params)
+
+            for info in doc['_attachments'].values():
+                info.pop('follows')
+                info['stub'] = True
         else:
             resp = yield from self.resource.put(auth=auth,
                                                 data=doc,
