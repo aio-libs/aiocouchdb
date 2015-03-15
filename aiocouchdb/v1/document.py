@@ -358,7 +358,7 @@ class Document(object):
 
         if '_id' in doc and doc['_id'] != self.id:
             raise ValueError('Attempt to store document with different ID: '
-                             '%r ; expected: %r. May you want to .copy() it?'
+                             '%r ; expected: %r. May be you want to .copy() it?'
                              % (doc['_id'], self.id))
 
         if atts:
@@ -388,7 +388,7 @@ class Document(object):
             # CouchDB expects document at the first body part
             writer.parts.insert(0, writer.parts.pop())
 
-            # workaround of COUCHDB-229., I really sorry for that
+            # workaround of COUCHDB-2295, I really sorry for that
             body = b''.join(writer.serialize())
 
             resp = yield from self.resource.put(auth=auth,
