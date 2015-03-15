@@ -316,28 +316,26 @@ class DocumentTestCase(utils.DocumentTestCase):
             yield from self.doc.update({'_id': 'foo'})
 
     def test_update_with_atts(self):
-        foo = io.BytesIO(b'foo')
-        bar = b'bar'
-        baz = open(__file__, 'rb')
+        attachments = {
+            'foo': io.BytesIO(b'foo'),
+            'bar': b'bar',
+            'baz': open(__file__, 'rb')
+        }
+        for _ in range(20):
+            name = content = utils.uuid()
+            attachments[name] = content.encode()
 
         with self.response():
-            yield from self.doc.update(
-                {}, atts={'foo': foo,
-                          'bar': bar,
-                          'baz': baz}, rev=self.rev)
+            yield from self.doc.update({}, atts=attachments, rev=self.rev)
             self.assert_request_called_with(
                 'PUT', *self.request_path(),
                 data=...,
                 headers=...,
                 params={'rev': self.rev})
 
-        with self.response():
-            self.assertTrue((yield from self.doc['foo'].exists()))
-        with self.response():
-            self.assertTrue((yield from self.doc['bar'].exists()))
-        with self.response():
-            self.assertTrue((yield from self.doc['baz'].exists()))
-
+        for attname in attachments:
+            with self.response():
+                self.assertTrue((yield from self.doc[attname].exists()))
 
     def test_delete(self):
         yield from self.doc.delete(self.rev)

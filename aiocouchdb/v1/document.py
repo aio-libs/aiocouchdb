@@ -364,7 +364,14 @@ class Document(object):
         if atts:
             writer = MultipartWriter('related')
             doc.setdefault('_attachments', {})
-            for name, att in atts.items():
+            # A little hack to sync the order of attachments definition
+            # between JSON and multipart body parts
+            for name in atts:
+                doc['_attachments'][name] = {}
+            for name, stub in doc['_attachments'].items():
+                if stub:
+                    continue
+                att = atts[name]
                 if not isinstance(att, (bytes, io.BytesIO, io.BufferedIOBase)):
                     raise TypeError('attachment payload should be a source of'
                                     ' binary data (bytes, BytesIO, file '
