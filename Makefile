@@ -23,7 +23,7 @@ venv:
 .PHONY: dev
 # target: dev - Setups developer environment
 dev: venv
-	${PIP} install nose coverage pylint sphinx flake8
+	${PIP} install nose coverage pylint flake8 sphinx
 	${PYTHON} setup.py develop
 
 

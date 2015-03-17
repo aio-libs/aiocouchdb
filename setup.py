@@ -17,15 +17,7 @@ setup_dir = os.path.dirname(__file__)
 mod = imp.load_module(
     'version', *imp.find_module('version', [join(setup_dir, 'aiocouchdb')]))
 
-install_requires = [
-    'aiohttp>=0.14.0'
-]
-
-if sys.version_info >= (3, 4):
-    pass
-elif sys.version_info >= (3, 3):
-    install_requires.append('asyncio>=3.4.1')
-else:
+if sys.version_info < (3, 3):
     raise RuntimeError('aiocouchdb requires Python 3.3+')
 
 long_description = ''.join([
@@ -69,8 +61,19 @@ setup(
     test_suite='nose.collector',
     zip_safe=False,
 
-    install_requires=install_requires,
+    install_requires=[
+        'aiohttp>=0.14.0'
+    ],
     extras_require={
-        'oauth':  ['oauthlib>=0.6.3']
-    }
+        'oauth': [
+            'oauthlib>=0.6.3'
+        ],
+        'docs': [
+            'sphinx>=1.2.3'
+        ]
+    },
+    tests_require=[
+        'flake8>=2.4.0',
+        'nose>=1.3.4'
+    ]
 )
