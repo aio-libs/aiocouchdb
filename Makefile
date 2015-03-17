@@ -1,5 +1,5 @@
 PROJECT=aiocouchdb
-PYTHON=`which python`
+PYTHON=`which python3`
 PIP=`which pip`
 NOSE=`which nosetests`
 PYLINT=`which pylint`
@@ -16,7 +16,7 @@ help:
 .PHONY: venv
 # target: venv - Setups virtual environment
 venv:
-	`which python3` -m venv venv
+	${PYTHON} -m venv venv
 	@echo "Virtuanenv has been created. Don't forget to run . venv/bin/active"
 
 
@@ -30,7 +30,7 @@ dev: venv
 .PHONY: install
 # target: install - Installs aiocouchdb package
 install:
-	`which python3` setup.py install
+	${PYTHON} setup.py install
 
 
 .PHONY: clean
