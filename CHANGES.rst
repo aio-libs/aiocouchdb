@@ -1,3 +1,24 @@
+0.8.0 (2015-03-20)
+------------------
+
+- Source tree was refactored in the way to support multiple major CouchDB
+  versions as like as the other friendly forks
+- Database create and delete methods now return exact the same response as
+  CouchDB sends back
+- Each module now contains __all__ list to normalize their exports
+- API classes and Resource now has nicer __repr__ output
+- Better error messages format
+- Fix function_clause error on attempt to update a document with attachments
+  by using multipart request
+- Document.update doesn't makes document's dict invalid for further requests
+  after multipart one
+- Fixed accidental payload sent with HEAD/GET/DELETE requests which caused
+  connection close from CouchDB side
+- Added integration with Travis CI
+- Code cleaned by following pylint and flake8 notices
+- Added short tutorial for documentation
+- Minor fixes and Makefile improvements
+
 0.7.0 (2015-02-18)
 ------------------
 
