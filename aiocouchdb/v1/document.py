@@ -23,7 +23,7 @@ from aiocouchdb.hdrs import (
     ETAG,
     IF_NONE_MATCH
 )
-from aiocouchdb.multipart import MultipartReader, MultipartWriter
+from aiohttp.multipart import MultipartReader, MultipartWriter
 
 from .attachment import Attachment
 

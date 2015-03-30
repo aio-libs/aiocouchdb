@@ -7,16 +7,29 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 import json
 import io
 
 import aiocouchdb.client
-import aiocouchdb.multipart
 import aiocouchdb.v1.database
 import aiocouchdb.v1.document
 
-from aiocouchdb.tests.test_multipart import Stream
 from . import utils
+
+
+class Stream(object):
+
+    def __init__(self, content):
+        self.content = io.BytesIO(content)
+
+    @asyncio.coroutine
+    def read(self, size=None):
+        return self.content.read(size)
+
+    @asyncio.coroutine
+    def readline(self):
+        return self.content.readline()
 
 
 class DocumentTestCase(utils.DocumentTestCase):
