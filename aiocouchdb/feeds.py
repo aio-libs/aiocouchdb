@@ -46,6 +46,12 @@ class Feed(object):
 
         asyncio.Task(self._loop(), loop=loop)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close(force=True if exc_type else False)
+
     @asyncio.coroutine
     def _loop(self):
         try:
