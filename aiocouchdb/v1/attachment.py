@@ -62,7 +62,7 @@ class Attachment(object):
         if rev is not None:
             params['rev'] = rev
         resp = yield from self.resource.head(auth=auth, params=params)
-        yield from resp.read()
+        yield from resp.release()
         return resp.status == 200
 
     @asyncio.coroutine
@@ -91,7 +91,7 @@ class Attachment(object):
         resp = yield from self.resource.head(auth=auth,
                                              headers={IF_NONE_MATCH: qdigest})
         yield from resp.maybe_raise_error()
-        yield from resp.read()
+        yield from resp.release()
         return resp.status != 304
 
     @asyncio.coroutine
@@ -107,7 +107,7 @@ class Attachment(object):
         if rev is not None:
             params['rev'] = rev
         resp = yield from self.resource.head(auth=auth, params=params)
-        yield from resp.read()
+        yield from resp.release()
         return resp.headers.get(ACCEPT_RANGES) == 'bytes'
 
     @asyncio.coroutine  # pylint: disable=redefined-builtin

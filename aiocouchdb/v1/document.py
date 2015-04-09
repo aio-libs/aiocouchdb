@@ -80,7 +80,7 @@ class Document(object):
         resp = yield from att.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
-        yield from resp.read()
+        yield from resp.release()
         return att
 
     @asyncio.coroutine
@@ -99,7 +99,7 @@ class Document(object):
         if rev is not None:
             params['rev'] = rev
         resp = yield from self.resource.head(auth=auth, params=params)
-        yield from resp.read()
+        yield from resp.release()
         return resp.status == 200
 
     @asyncio.coroutine
@@ -118,6 +118,7 @@ class Document(object):
         resp = yield from self.resource.head(auth=auth,
                                              headers={IF_NONE_MATCH: qrev})
         yield from resp.maybe_raise_error()
+        yield from resp.release()
         return resp.status != 304
 
     @asyncio.coroutine
@@ -132,6 +133,7 @@ class Document(object):
         """
         resp = yield from self.resource.head(auth=auth)
         yield from resp.maybe_raise_error()
+        yield from resp.release()
         return resp.headers[ETAG].strip('"')
 
     @asyncio.coroutine  # pylint: disable=W0142, W0612, W0613

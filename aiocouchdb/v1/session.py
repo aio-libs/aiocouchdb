@@ -48,7 +48,7 @@ class Session(object):
         doc = {'name': name, 'password': password}
         resp = yield from self.resource.post(auth=auth, data=doc)
         yield from resp.maybe_raise_error()
-        yield from resp.read()
+        yield from resp.release()
         return auth
 
     @asyncio.coroutine

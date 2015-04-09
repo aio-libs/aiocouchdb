@@ -108,7 +108,7 @@ class Database(object):
         resp = yield from doc.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
-        yield from resp.read()
+        yield from resp.release()
         return doc
 
     @asyncio.coroutine
@@ -132,7 +132,7 @@ class Database(object):
         resp = yield from ddoc.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
-        yield from resp.read()
+        yield from resp.release()
         return ddoc
 
     @asyncio.coroutine
@@ -147,7 +147,7 @@ class Database(object):
         .. _database exists: http://docs.couchdb.org/en/latest/api/database/common.html#head--db
         """
         resp = yield from self.resource.head(auth=auth)
-        yield from resp.read()
+        yield from resp.release()
         return resp.status == 200
 
     @asyncio.coroutine

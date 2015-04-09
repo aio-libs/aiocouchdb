@@ -129,6 +129,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         resp.content._buffer = bytearray()
         resp.content.at_eof.return_value = False
         resp.content.read.side_effect = side_effect
+        resp.content.readany.side_effect = side_effect
         resp.close = mock.Mock()
 
         return resp
@@ -438,6 +439,8 @@ def populate_database(db, docs_count):
     docs = list(generate_docs(docs_count))
     updates = yield from db.bulk_docs(docs)
     mapping = {doc['_id']: doc for doc in docs}
+    if not updates:
+        return {}
     for update in updates:
         mapping[update['id']]['_rev'] = update['rev']
     return mapping

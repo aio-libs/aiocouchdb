@@ -99,7 +99,7 @@ class Server(object):
         resp = yield from db.resource.head(auth=auth)
         if resp.status != 404:
             yield from resp.maybe_raise_error()
-        yield from resp.read()
+        yield from resp.release()
         return db
 
     @asyncio.coroutine
