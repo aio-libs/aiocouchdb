@@ -174,16 +174,18 @@ class DocumentTestCase(utils.DocumentTestCase):
         self.assertIsInstance(
             result.stream,
             aiocouchdb.v1.document.OpenRevsMultipartReader)
+        yield from result.release()
 
     def test_get_open_revs_list(self):
         with self.response(headers={
             'CONTENT-TYPE': 'multipart/mixed;boundary=:'
         }):
-            yield from self.doc.get_open_revs('1-ABC', '2-CDE')
+            revs = yield from self.doc.get_open_revs('1-ABC', '2-CDE')
             self.assert_request_called_with(
                 'GET', *self.request_path(),
                 headers={'ACCEPT': 'multipart/*'},
                 params={'open_revs': '["1-ABC", "2-CDE"]'})
+            yield from revs.release()
 
     def test_get_open_revs_params(self):
         all_params = {
@@ -197,7 +199,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             with self.response(headers={
                 'CONTENT-TYPE': 'multipart/mixed;boundary=:'
             }):
-                yield from self.doc.get_open_revs(**{key: value})
+                revs = yield from self.doc.get_open_revs(**{key: value})
 
                 if key == 'atts_since':
                     value = json.dumps(value)
@@ -207,6 +209,8 @@ class DocumentTestCase(utils.DocumentTestCase):
                     headers={'ACCEPT': 'multipart/*'},
                     params={key: value,
                             'open_revs': 'all'})
+
+                yield from revs.release()
 
     def test_get_with_atts(self):
         with self.response(
@@ -223,6 +227,7 @@ class DocumentTestCase(utils.DocumentTestCase):
         self.assertIsInstance(
             result.stream,
             aiocouchdb.v1.document.DocAttachmentsMultipartReader)
+        yield from result.release()
 
     def test_get_wth_atts_json(self):
         with self.response(headers={
@@ -239,6 +244,7 @@ class DocumentTestCase(utils.DocumentTestCase):
         self.assertIsInstance(
             result.stream,
             aiocouchdb.v1.document.DocAttachmentsMultipartReader)
+        yield from result.release()
 
     def test_get_wth_atts_json_hacks(self):
         jsondoc = json.dumps({'_id': self.doc.id, '_rev': self.rev},
@@ -263,6 +269,7 @@ class DocumentTestCase(utils.DocumentTestCase):
         self.assertEqual(
             b'Content-Type: application/json\r\n\r\n' + jsondoc,
             b'\r\n'.join(body))
+        yield from result.release()
 
     def test_get_with_atts_params(self):
         all_params = {
@@ -281,7 +288,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             with self.response(headers={
                 'CONTENT-TYPE': 'multipart/related;boundary=:'
             }):
-                yield from self.doc.get_with_atts(**{key: value})
+                revs = yield from self.doc.get_with_atts(**{key: value})
 
                 if key == 'atts_since':
                     value = json.dumps(value)
@@ -290,6 +297,8 @@ class DocumentTestCase(utils.DocumentTestCase):
                     'GET', *self.request_path(),
                     headers={'ACCEPT': 'multipart/*, application/json'},
                     params={key: value, 'attachments': True})
+
+                yield from revs.release()
 
     def test_update(self):
         yield from self.doc.update({}, rev=self.rev)

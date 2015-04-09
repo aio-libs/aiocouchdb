@@ -53,7 +53,6 @@ class DatabaseTestCase(utils.DatabaseTestCase):
         yield from self.db.security.update_members(auth=root, names=['foo'])
         with self.response(status=403):
             result = yield from self.db.exists()
-            yield from self.db.resource.head()
             self.assert_request_called_with('HEAD', self.db.name)
         self.assertFalse(result)
 
@@ -87,14 +86,14 @@ class DatabaseTestCase(utils.DatabaseTestCase):
         self.assertEqual({'ok': True}, result)
 
     def test_all_docs(self):
-        result = yield from self.db.all_docs()
-        self.assert_request_called_with('GET', self.db.name, '_all_docs')
-        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+        with (yield from self.db.all_docs()) as view:
+            self.assert_request_called_with('GET', self.db.name, '_all_docs')
+            self.assertIsInstance(view, aiocouchdb.feeds.ViewFeed)
 
     @utils.run_for('mock')
     def test_all_docs_params(self):
         all_params = {
-            'attachments': False,       
+            'attachments': False,
             'conflicts': True,
             'descending': True,
             'endkey': 'foo',
@@ -117,14 +116,15 @@ class DatabaseTestCase(utils.DatabaseTestCase):
                                             params={key: value})
 
     def test_all_docs_key(self):
-        yield from self.db.all_docs('foo')
-        self.assert_request_called_with('GET', self.db.name, '_all_docs',
-                                        params={'key': '"foo"'})
+        with (yield from self.db.all_docs('foo')):
+            self.assert_request_called_with('GET', self.db.name, '_all_docs',
+                                            params={'key': '"foo"'})
 
     def test_all_docs_keys(self):
-        yield from self.db.all_docs('foo', 'bar', 'baz')
-        self.assert_request_called_with('POST', self.db.name, '_all_docs',
-                                        data={'keys': ('foo', 'bar', 'baz')})
+        with (yield from self.db.all_docs('foo', 'bar', 'baz')):
+            self.assert_request_called_with(
+                'POST', self.db.name, '_all_docs',
+                data={'keys': ('foo', 'bar', 'baz')})
 
     def test_bulk_docs(self):
         yield from self.db.bulk_docs([{'_id': 'foo'}, {'_id': 'bar'}])
@@ -159,9 +159,9 @@ class DatabaseTestCase(utils.DatabaseTestCase):
                                         params={'new_edits': False})
 
     def test_changes(self):
-        result = yield from self.db.changes()
-        self.assertIsInstance(result, aiocouchdb.feeds.ChangesFeed)
-        self.assert_request_called_with('GET', self.db.name, '_changes')
+        with (yield from self.db.changes()) as feed:
+            self.assertIsInstance(feed, aiocouchdb.feeds.ChangesFeed)
+            self.assert_request_called_with('GET', self.db.name, '_changes')
 
     @utils.skip_for('mock')
     def test_changes_reading(self):
@@ -170,29 +170,29 @@ class DatabaseTestCase(utils.DatabaseTestCase):
         for idx in ids:
             yield from self.db[idx].update({})
 
-        feed = yield from self.db.changes()
+        with (yield from self.db.changes()) as feed:
 
-        while True:
-            self.assertTrue(feed.is_active())
-            event = yield from feed.next()
-            if event is None:
-                break
-            self.assertIsInstance(event, dict)
-            self.assertIn(event['id'], ids)
+            while True:
+                self.assertTrue(feed.is_active())
+                event = yield from feed.next()
+                if event is None:
+                    break
+                self.assertIsInstance(event, dict)
+                self.assertIn(event['id'], ids)
 
-        self.assertFalse(feed.is_active())
+            self.assertFalse(feed.is_active())
 
     def test_changes_longpoll(self):
-        result = yield from self.db.changes(feed='longpoll')
-        self.assertIsInstance(result, aiocouchdb.feeds.LongPollChangesFeed)
-        self.assert_request_called_with('GET', self.db.name, '_changes',
-                                        params={'feed': 'longpoll'})
+        with (yield from self.db.changes(feed='longpoll')) as feed:
+            self.assertIsInstance(feed, aiocouchdb.feeds.LongPollChangesFeed)
+            self.assert_request_called_with('GET', self.db.name, '_changes',
+                                            params={'feed': 'longpoll'})
 
     def test_changes_continuous(self):
-        result = yield from self.db.changes(feed='continuous')
-        self.assertIsInstance(result, aiocouchdb.feeds.ContinuousChangesFeed)
-        self.assert_request_called_with('GET', self.db.name, '_changes',
-                                        params={'feed': 'continuous'})
+        with (yield from self.db.changes(feed='continuous')) as feed:
+            self.assertIsInstance(feed, aiocouchdb.feeds.ContinuousChangesFeed)
+            self.assert_request_called_with('GET', self.db.name, '_changes',
+                                            params={'feed': 'continuous'})
 
     @utils.skip_for('mock')
     def test_changes_continuous_reading(self):
@@ -204,23 +204,24 @@ class DatabaseTestCase(utils.DatabaseTestCase):
                 yield from self.db[idx].update({})
         asyncio.Task(task())
 
-        feed = yield from self.db.changes(feed='continuous', timeout=1000)
+        with (yield from self.db.changes(feed='continuous',
+                                         timeout=1000)) as feed:
 
-        while True:
-            self.assertTrue(feed.is_active())
-            event = yield from feed.next()
-            if event is None:
-                break
-            self.assertIsInstance(event, dict)
-            self.assertIn(event['id'], ids)
+            while True:
+                self.assertTrue(feed.is_active())
+                event = yield from feed.next()
+                if event is None:
+                    break
+                self.assertIsInstance(event, dict)
+                self.assertIn(event['id'], ids)
 
-        self.assertFalse(feed.is_active())
+            self.assertFalse(feed.is_active())
 
     def test_changes_eventsource(self):
-        result = yield from self.db.changes(feed='eventsource')
-        self.assertIsInstance(result, aiocouchdb.feeds.EventSourceChangesFeed)
-        self.assert_request_called_with('GET', self.db.name, '_changes',
-                                        params={'feed': 'eventsource'})
+        with (yield from self.db.changes(feed='eventsource')) as feed:
+            self.assertIsInstance(feed, aiocouchdb.feeds.EventSourceChangesFeed)
+            self.assert_request_called_with('GET', self.db.name, '_changes',
+                                            params={'feed': 'eventsource'})
 
     @utils.skip_for('mock')
     def test_changes_eventsource(self):
@@ -232,24 +233,22 @@ class DatabaseTestCase(utils.DatabaseTestCase):
                 yield from self.db[idx].update({})
         asyncio.Task(task())
 
-        feed = yield from self.db.changes(feed='eventsource',
-                                          timeout=1000)
+        with (yield from self.db.changes(feed='eventsource',
+                                         timeout=1000)) as feed:
 
-        while True:
-            self.assertTrue(feed.is_active())
-            event = yield from feed.next()
-            if event is None:
-                break
-            self.assertIsInstance(event, dict)
-            self.assertIn(event['id'], ids)
-
-        # self.assertFalse(feed.is_active()) ???
+            while True:
+                self.assertTrue(feed.is_active())
+                event = yield from feed.next()
+                if event is None:
+                    break
+                self.assertIsInstance(event, dict)
+                self.assertIn(event['id'], ids)
 
     def test_changes_doc_ids(self):
-        yield from self.db.changes('foo', 'bar')
-        self.assert_request_called_with('POST', self.db.name, '_changes',
-                                        data={'doc_ids': ('foo', 'bar')},
-                                        params={'filter': '_doc_ids'})
+        with (yield from self.db.changes('foo', 'bar')):
+            self.assert_request_called_with('POST', self.db.name, '_changes',
+                                            data={'doc_ids': ('foo', 'bar')},
+                                            params={'filter': '_doc_ids'})
 
     def test_changes_assert_filter_doc_ids(self):
         with self.assertRaises(AssertionError):
@@ -262,17 +261,17 @@ class DatabaseTestCase(utils.DatabaseTestCase):
 
         yield from self.db.bulk_docs({'_id': idx} for idx in ids)
 
-        feed = yield from self.db.changes(*filtered_ids)
+        with (yield from self.db.changes(*filtered_ids)) as feed:
 
-        while True:
+            while True:
+                event = yield from feed.next()
+                if event is None:
+                    break
+                self.assertIn(event['id'], filtered_ids)
+
             event = yield from feed.next()
-            if event is None:
-                break
-            self.assertIn(event['id'], filtered_ids)
-
-        event = yield from feed.next()
-        self.assertIsNone(event)
-        self.assertFalse(feed.is_active())
+            self.assertIsNone(event)
+            self.assertFalse(feed.is_active())
 
     @utils.skip_for('mock')
     def test_changes_filter_view(self):
@@ -288,17 +287,18 @@ class DatabaseTestCase(utils.DatabaseTestCase):
             }
         })
 
-        feed = yield from self.db.changes(view='/'.join([ddoc.name, 'test']))
+        view_name = '/'.join([ddoc.name, 'test'])
+        with (yield from self.db.changes(view=view_name)) as feed:
 
-        while True:
+            while True:
+                event = yield from feed.next()
+                if event is None:
+                    break
+                self.assertIn(event['id'], expected)
+
             event = yield from feed.next()
-            if event is None:
-                break
-            self.assertIn(event['id'], expected)
-
-        event = yield from feed.next()
-        self.assertIsNone(event)
-        self.assertFalse(feed.is_active())
+            self.assertIsNone(event)
+            self.assertFalse(feed.is_active())
 
     @utils.run_for('mock')
     def test_changes_params(self):
@@ -455,43 +455,42 @@ class DatabaseTestCase(utils.DatabaseTestCase):
 
     def test_temp_view(self):
         mapfun = 'function(doc){ emit(doc._id); }'
-        result = yield from self.db.temp_view(mapfun)
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun})
-        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+        with (yield from self.db.temp_view(mapfun)) as view:
+            self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                            data={'map': mapfun})
+            self.assertIsInstance(view, aiocouchdb.feeds.ViewFeed)
 
     def test_temp_view_reduce(self):
         mapfun = 'function(doc){ emit(doc._id); }'
         redfun = '_count'
-        result = yield from self.db.temp_view(mapfun, redfun)
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun,
-                                              'reduce': redfun})
-        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+        with (yield from self.db.temp_view(mapfun, redfun)) as view:
+            self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                            data={'map': mapfun,
+                                                  'reduce': redfun})
+            self.assertIsInstance(view, aiocouchdb.feeds.ViewFeed)
 
     def test_temp_view_language(self):
         mapfun = 'function(doc){ emit(doc._id); }'
-        result = yield from self.db.temp_view(mapfun, language='javascript')
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun,
-                                              'language': 'javascript'})
-        self.assertIsInstance(result, aiocouchdb.feeds.ViewFeed)
+        with (yield from self.db.temp_view(mapfun, language='javascript')):
+            self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                            data={'map': mapfun,
+                                                  'language': 'javascript'})
 
     def test_temp_view_startkey_none(self):
         mapfun = 'function(doc){ emit(doc._id); }'
 
-        yield from self.db.temp_view(mapfun, startkey=None)
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun},
-                                        params={'startkey': 'null'})
+        with (yield from self.db.temp_view(mapfun, startkey=None)):
+            self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                            data={'map': mapfun},
+                                            params={'startkey': 'null'})
 
     def test_temp_view_endkey_none(self):
         mapfun = 'function(doc){ emit(doc._id); }'
 
-        yield from self.db.temp_view(mapfun, endkey=None)
-        self.assert_request_called_with('POST', self.db.name, '_temp_view',
-                                        data={'map': mapfun},
-                                        params={'endkey': 'null'})
+        with (yield from self.db.temp_view(mapfun, endkey=None)):
+            self.assert_request_called_with('POST', self.db.name, '_temp_view',
+                                            data={'map': mapfun},
+                                            params={'endkey': 'null'})
 
     @utils.run_for('mock')
     def test_temp_view_params(self):
