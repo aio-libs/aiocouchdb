@@ -122,6 +122,12 @@ class HttpResponse(aiohttp.client.ClientResponse):
 
     flow_control_class = aiohttp.FlowControlChunksQueue
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close(force=True if exc_type else False)
+
     def maybe_raise_error(self):
         """Raises an :exc:`HttpErrorException` if response status code is
         greater or equal `400`."""
