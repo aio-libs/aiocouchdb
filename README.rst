@@ -2,7 +2,7 @@
 aiocouchdb
 ==========
 
-:source: https://github.com/kxepal/aiocouchdb
+:source: https://github.com/aio-libs/aiocouchdb
 :documentation: http://aiocouchdb.readthedocs.org/en/latest/
 :license: BSD
 
@@ -43,5 +43,5 @@ Requirements
 .. _asyncio: https://docs.python.org/3/library/asyncio.html
 .. _oauthlib: https://github.com/idan/oauthlib
 
-.. _open issue: https://github.com/kxepal/aiocouchdb/issues
-.. _send pull request: https://github.com/kxepal/aiocouchdb/pulls
+.. _open issue: https://github.com/aio-libs/aiocouchdb/issues
+.. _send pull request: https://github.com/aio-libs/aiocouchdb/pulls
