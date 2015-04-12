@@ -20,12 +20,6 @@ Feeds
 .. automodule:: aiocouchdb.feeds
   :members:
 
-Multipart
-=========
-
-.. automodule:: aiocouchdb.multipart
-  :members:
-
 Views
 =====
 
