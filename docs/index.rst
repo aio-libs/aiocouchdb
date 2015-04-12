@@ -1,7 +1,7 @@
 Welcome to aiocouchdb's documentation!
 **************************************
 
-:source: https://github.com/kxepal/aiocouchdb
+:source: https://github.com/aio-libs/aiocouchdb
 :documentation: http://aiocouchdb.readthedocs.org/en/latest/
 :license: BSD
 
