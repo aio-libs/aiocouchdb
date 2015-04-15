@@ -151,6 +151,17 @@ class HttpResponse(aiohttp.client.ClientResponse):
 
         return self._content
 
+    @asyncio.coroutine
+    def json(self, *, encoding='utf-8', loads=json.loads):
+        """Reads and decodes JSON response."""
+        if self._content is None:
+            yield from self.read()
+
+        if not self._content.strip():
+            return None
+
+        return loads(self._content.decode(encoding))
+
 
 class HttpStreamResponse(HttpResponse):
     """Like :class:`HttpResponse`, but uses
