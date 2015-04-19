@@ -10,12 +10,6 @@
 from aiohttp.hdrs import *  # pylint: disable=W0401, W0614
 from aiohttp.multidict import upstr
 
-#: http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.5.html
-ACCEPT_RANGES = upstr('ACCEPT-RANGES')
-
-#: http://tools.ietf.org/html/rfc2183
-CONTENT_DISPOSITION = upstr('CONTENT-DISPOSITION')
-
 #: Defines CouchDB Proxy Auth username
 X_AUTH_COUCHDB_USERNAME = upstr('X-Auth-CouchDB-UserName')
 #: Defines CouchDB Proxy Auth list of roles separated by a comma
