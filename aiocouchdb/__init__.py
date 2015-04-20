@@ -14,7 +14,8 @@ from .authn import (
     NoAuthProvider,
     BasicAuthProvider,
     CookieAuthProvider,
-    OAuthProvider
+    OAuthProvider,
+    ProxyAuthProvider
 )
 from .errors import (
     HttpErrorException,

@@ -24,6 +24,8 @@ from .hdrs import (
 
 
 __all__ = (
+    'AuthProvider',
+    'NoAuthProvider',
     'BasicAuthProvider',
     'BasicAuthCredentials',
     'CookieAuthProvider',
