@@ -8,7 +8,9 @@
 #
 
 import abc
+import asyncio
 import base64
+import functools
 import hashlib
 import hmac
 import http.cookies
@@ -68,7 +70,7 @@ class AuthProvider(object, metaclass=abc.ABCMeta):
         raise NotImplementedError  # pragma: no cover
 
     @abc.abstractmethod
-    def sign(self, url, headers):
+    def apply(self, url, headers):
         """Applies authentication routines on further request. Mostly used
         to set right `Authorization` header or cookies to pass the challenge.
 
@@ -85,6 +87,19 @@ class AuthProvider(object, metaclass=abc.ABCMeta):
         """
         raise NotImplementedError  # pragma: no cover
 
+    def wrap(self, request_func):
+        """Wraps request coroutine function to apply the authentication context.
+        """
+        @functools.wraps(request_func)
+        @asyncio.coroutine
+        def wrapper(method, url, headers, **kwargs):
+            self.apply(url, headers)
+            response = yield from request_func(method, url,
+                                               headers=headers, **kwargs)
+            self.update(response)
+            return response
+        return wrapper
+
 
 class NoAuthProvider(AuthProvider):
     """Dummy provider to apply no authentication routines."""
@@ -98,11 +113,14 @@ class NoAuthProvider(AuthProvider):
     def set_credentials(self):
         pass  # pragma: no cover
 
-    def sign(self, url, headers):
+    def apply(self, url, headers):
         pass  # pragma: no cover
 
     def update(self, response):
         pass  # pragma: no cover
+
+    def wrap(self, request_func):
+        return request_func
 
 
 class BasicAuthProvider(AuthProvider):
@@ -140,7 +158,7 @@ class BasicAuthProvider(AuthProvider):
         elif not password:
             raise ValueError("Basic Auth password is missing")
 
-    def sign(self, url, headers):
+    def apply(self, url, headers):
         """Adds BasicAuth header to ``headers``.
 
         :param str url: Request URL
@@ -175,7 +193,7 @@ class CookieAuthProvider(AuthProvider):
         # Reserved for future use.
         pass  # pragma: no cover
 
-    def sign(self, url, headers):
+    def apply(self, url, headers):
         """Adds cookies to provided ``headers``. If ``headers`` already
         contains any cookies, they would be merged with instance ones.
 
@@ -248,7 +266,7 @@ class OAuthProvider(AuthProvider):
             return
         self._credentials = OAuthCredentials(*creds)
 
-    def sign(self, url, headers):
+    def apply(self, url, headers):
         """Adds OAuth1 signature to ``headers``.
 
         :param str url: Request URL
@@ -313,7 +331,7 @@ class ProxyAuthProvider(AuthProvider):
             raise ValueError('Proxy Auth username should have non-empty value')
         self._credentials = ProxyAuthCredentials(username, roles, secret)
 
-    def sign(self, url, headers):
+    def apply(self, url, headers):
         """Adds ProxyAuth credentials to ``headers``.
 
         :param str url: Request URL

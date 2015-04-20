@@ -42,19 +42,19 @@ class BasicAuthProviderTestCase(unittest.TestCase):
         self.assertRaises(ValueError, self.auth.set_credentials, 'name', '')
 
     def test_require_credentials_to_set_auth_header(self):
-        self.assertRaises(ValueError, self.auth.sign, URL, {})
+        self.assertRaises(ValueError, self.auth.apply, URL, {})
 
     def test_set_auth_header(self):
         self.auth.set_credentials('foo', 'bar')
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(AUTHORIZATION, headers)
         self.assertTrue(headers[AUTHORIZATION].startswith('Basic'))
 
     def test_set_auth_header_utf8(self):
         self.auth.set_credentials('foo', 'бар')
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(AUTHORIZATION, headers)
         self.assertTrue(headers[AUTHORIZATION].startswith('Basic'))
 
@@ -65,11 +65,11 @@ class BasicAuthProviderTestCase(unittest.TestCase):
 
     def test_cache_auth_header(self):
         self.auth.set_credentials('foo', 'bar')
-        self.auth.sign(URL, {})
+        self.auth.apply(URL, {})
         self.auth._credentials = None
 
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(AUTHORIZATION, headers)
 
 
@@ -103,19 +103,19 @@ class CookieAuthProviderTestCase(unittest.TestCase):
 
     def test_set_no_cookies(self):
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertNotIn(COOKIE, headers)
 
     def test_set_cookies(self):
         self.auth.update(self.resp)
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(COOKIE, headers)
 
     def test_merge_cookies_on_apply(self):
         self.auth.update(self.resp)
         headers = {COOKIE: 'AuthSession=s3kr1t'}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(COOKIE, headers)
         self.assertEqual('AuthSession=secret', headers[COOKIE])
 
@@ -137,13 +137,13 @@ class OAuthProviderTestCase(unittest.TestCase):
         self.assertEqual(('foo', 'bar', 'baz', 'boo'), self.auth.credentials())
 
     def test_require_credentials_to_set_oauth_header(self):
-        self.assertRaises(ValueError, self.auth.sign, URL, {})
+        self.assertRaises(ValueError, self.auth.apply, URL, {})
 
     def test_set_oauth_header(self):
         self.auth.set_credentials(consumer_key='foo', consumer_secret='bar',
                                   resource_key='baz', resource_secret='boo')
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(AUTHORIZATION, headers)
         self.assertTrue(headers[AUTHORIZATION].startswith('OAuth'))
 
@@ -173,19 +173,19 @@ class ProxyAuthProviderTestCase(unittest.TestCase):
         self.assertRaises(ValueError, self.auth.set_credentials, '')
 
     def test_require_credentials_to_set_auth_header(self):
-        self.assertRaises(ValueError, self.auth.sign, URL, {})
+        self.assertRaises(ValueError, self.auth.apply, URL, {})
 
     def test_set_username_header(self):
         self.auth.set_credentials('username')
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(X_AUTH_COUCHDB_USERNAME, headers)
         self.assertEqual(headers[X_AUTH_COUCHDB_USERNAME], 'username')
 
     def test_set_roles_header(self):
         self.auth.set_credentials('username', roles=['foo', 'bar'])
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(X_AUTH_COUCHDB_USERNAME, headers)
         self.assertEqual(headers[X_AUTH_COUCHDB_USERNAME], 'username')
         self.assertIn(X_AUTH_COUCHDB_ROLES, headers)
@@ -194,7 +194,7 @@ class ProxyAuthProviderTestCase(unittest.TestCase):
     def test_set_token_header(self):
         self.auth.set_credentials('username', secret='s3cr1t')
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertIn(X_AUTH_COUCHDB_USERNAME, headers)
         self.assertEqual(headers[X_AUTH_COUCHDB_USERNAME], 'username')
         self.assertIn(X_AUTH_COUCHDB_TOKEN, headers)
@@ -210,7 +210,7 @@ class ProxyAuthProviderTestCase(unittest.TestCase):
         self.auth.x_auth_username = 'X-Foo'
         self.auth.set_credentials('username')
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertNotIn(X_AUTH_COUCHDB_USERNAME, headers)
         self.assertIn('X-Foo', headers)
         self.assertEqual(headers['X-Foo'], 'username')
@@ -219,7 +219,7 @@ class ProxyAuthProviderTestCase(unittest.TestCase):
         self.auth.x_auth_roles = 'X-Foo'
         self.auth.set_credentials('username', roles=['foo', 'bar'])
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertNotIn(X_AUTH_COUCHDB_ROLES, headers)
         self.assertIn('X-Foo', headers)
         self.assertEqual(headers['X-Foo'], 'foo,bar')
@@ -228,7 +228,7 @@ class ProxyAuthProviderTestCase(unittest.TestCase):
         self.auth.x_auth_token = 'X-Foo'
         self.auth.set_credentials('username', secret='s3cr1t')
         headers = {}
-        self.auth.sign(URL, headers)
+        self.auth.apply(URL, headers)
         self.assertNotIn(X_AUTH_COUCHDB_TOKEN, headers)
         self.assertIn('X-Foo', headers)
         self.assertEqual(headers['X-Foo'],

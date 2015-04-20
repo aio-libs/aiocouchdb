@@ -92,18 +92,6 @@ class ResourceTestCase(utils.TestCase):
         yield from res.request('get')
         self.assertFalse(res.update_auth.called)
 
-    def test_sign_request(self):
-        res = aiocouchdb.client.Resource(self.url)
-        auth = mock.Mock(spec=aiocouchdb.authn.AuthProvider)
-        yield from res.request('get', auth=auth)
-        self.assertTrue(auth.sign.called)
-
-    def test_update_auth(self):
-        res = aiocouchdb.client.Resource(self.url)
-        auth = mock.Mock(spec=aiocouchdb.authn.AuthProvider)
-        yield from res.request('get', auth=auth)
-        self.assertTrue(auth.update.called)
-
     def test_override_request_class(self):
         class Thing(object):
             pass

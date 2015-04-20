@@ -15,6 +15,7 @@ import json
 import types
 import urllib.parse
 
+from .authn import NoAuthProvider
 from .errors import maybe_raise_error
 from .hdrs import (
     ACCEPT,
@@ -269,7 +270,7 @@ class HttpSession(object):
     response_class = HttpResponse
 
     def __init__(self, *, auth=None, connector=None, loop=None):
-        self.auth = auth
+        self.auth = auth or NoAuthProvider()
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -280,7 +281,6 @@ class HttpSession(object):
         else:
             self.connector = connector
 
-    @asyncio.coroutine
     def request(self, method, url, *,
                 allow_redirects=True,
                 auth=None,
@@ -327,29 +327,21 @@ class HttpSession(object):
         request_class = request_class or self.request_class
         response_class = response_class or self.response_class
 
-        if auth is not None:
-            auth.sign(url, headers)
-
-        response = yield from request(method, url,
-                                      allow_redirects=allow_redirects,
-                                      compress=compress,
-                                      connector=self.connector,
-                                      cookies=cookies,
-                                      data=data,
-                                      encoding=encoding,
-                                      expect100=expect100,
-                                      headers=headers,
-                                      max_redirects=max_redirects,
-                                      params=params,
-                                      read_until_eof=read_until_eof,
-                                      request_class=request_class,
-                                      response_class=response_class,
-                                      version=version)
-
-        if auth is not None:
-            auth.update(response)
-
-        return response
+        return auth.wrap(request)(method, url,
+                                  allow_redirects=allow_redirects,
+                                  compress=compress,
+                                  connector=self.connector,
+                                  cookies=cookies,
+                                  data=data,
+                                  encoding=encoding,
+                                  expect100=expect100,
+                                  headers=headers,
+                                  max_redirects=max_redirects,
+                                  params=params,
+                                  read_until_eof=read_until_eof,
+                                  request_class=request_class,
+                                  response_class=response_class,
+                                  version=version)
 
 
 class Resource(object):
