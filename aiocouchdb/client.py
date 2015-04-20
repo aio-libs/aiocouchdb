@@ -15,7 +15,7 @@ import json
 import types
 import urllib.parse
 
-from .authn import NoAuthProvider
+from .authn import AuthProvider, NoAuthProvider
 from .errors import maybe_raise_error
 from .hdrs import (
     ACCEPT,
@@ -270,7 +270,7 @@ class HttpSession(object):
     response_class = HttpResponse
 
     def __init__(self, *, auth=None, connector=None, loop=None):
-        self.auth = auth or NoAuthProvider()
+        self._auth = auth or NoAuthProvider()
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -280,6 +280,31 @@ class HttpSession(object):
             self.connector = aiohttp.TCPConnector(force_close=False, loop=loop)
         else:
             self.connector = connector
+
+    @property
+    def auth(self):
+        """Default :class:`~aiocouchdb.authn.AuthProvider` instance to apply
+        on the requests. By default, :class:`~aiocouchdb.authn.NoAuthProvider`
+        is used assuming that actual provider will get passed with `auth` query
+        parameter on :meth:`request` call, but user may freely override it
+        with your own.
+
+        .. warning::
+
+            Try avoid to use :class:`~aiocouchdb.authn.CookieAuthProvider` here
+            since currently :class:`HttpSession` cannot renew the cookie in case
+            it get expired.
+
+        """
+        return self._auth
+
+    @auth.setter
+    def auth(self, value):
+        if value is None:
+            self._auth = NoAuthProvider()
+        else:
+            assert isinstance(value, AuthProvider)
+            self._auth = value
 
     def request(self, method, url, *,
                 allow_redirects=True,
@@ -321,7 +346,7 @@ class HttpSession(object):
         :returns: :class:`aiocouchdb.client.HttpResponse` instance
         """
 
-        auth = auth or self.auth
+        auth = auth or self._auth
         headers = headers or {}
         params = params or {}
         request_class = request_class or self.request_class
