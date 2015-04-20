@@ -21,14 +21,18 @@ from .hdrs import (
     ACCEPT_ENCODING,
     CONTENT_LENGTH,
     CONTENT_TYPE,
+    LOCATION,
+    METH_GET,
     SEC_WEBSOCKET_KEY1,
-    TRANSFER_ENCODING
+    TRANSFER_ENCODING,
+    URI,
 )
 
 
 __all__ = (
     'HttpRequest',
     'HttpResponse',
+    'HttpSession',
     'HttpStreamResponse',
     'Resource',
     'extract_credentials',
@@ -80,6 +84,91 @@ class HttpPayloadParser(aiohttp.HttpPayloadParser):
         out.feed_eof()
 
 aiohttp.HttpPayloadParser = HttpPayloadParser
+
+
+@asyncio.coroutine
+def request(method, url, *,
+            allow_redirects=True,
+            compress=None,
+            connector=None,
+            cookies=None,
+            data=None,
+            encoding='utf-8',
+            expect100=False,
+            headers=None,
+            loop=None,
+            max_redirects=10,
+            params=None,
+            read_until_eof=True,
+            request_class=None,
+            response_class=None,
+            version=aiohttp.HttpVersion11):
+
+    redirects = 0
+    method = method.upper()
+    connector = connector or aiohttp.TCPConnector(force_close=True, loop=loop)
+    request_class = request_class or HttpRequest
+    response_class = response_class or HttpResponse
+
+    while True:
+        req = request_class(method, url,
+                            compress=compress,
+                            cookies=cookies,
+                            data=data,
+                            encoding=encoding,
+                            expect100=expect100,
+                            headers=headers,
+                            loop=loop,
+                            params=params,
+                            response_class=response_class,
+                            version=version)
+
+        conn = yield from connector.connect(req)
+        try:
+            resp = req.send(conn.writer, conn.reader)
+            try:
+                yield from resp.start(conn, read_until_eof)
+            except:
+                resp.close()
+                conn.close()
+                raise
+        except (aiohttp.HttpProcessingError,
+                aiohttp.ServerDisconnectedError) as exc:
+            raise aiohttp.ClientResponseError() from exc
+        except OSError as exc:
+            raise aiohttp.ClientOSError() from exc
+
+        # redirects
+        if allow_redirects and resp.status in {301, 302, 303, 307}:
+            redirects += 1
+            if max_redirects and redirects >= max_redirects:
+                resp.close(force=True)
+                break
+
+            # For 301 and 302, mimic IE behaviour, now changed in RFC.
+            # Details: https://github.com/kennethreitz/requests/pull/269
+            if resp.status != 307:
+                method = METH_GET
+                data = None
+
+            r_url = (resp.headers.get(LOCATION) or
+                     resp.headers.get(URI))
+
+            scheme = urllib.parse.urlsplit(r_url)[0]
+            if scheme not in ('http', 'https', ''):
+                resp.close(force=True)
+                raise ValueError('Can redirect only to http or https')
+            elif not scheme:
+                r_url = urllib.parse.urljoin(url, r_url)
+
+            url = urllib.parse.urldefrag(r_url)[0]
+            if url:
+                yield from asyncio.async(resp.release(), loop=loop)
+                continue
+
+        break
+
+    return resp
 
 
 class HttpRequest(aiohttp.client.ClientRequest):
@@ -171,6 +260,98 @@ class HttpStreamResponse(HttpResponse):
     flow_control_class = aiohttp.FlowControlStreamReader
 
 
+class HttpSession(object):
+    """HTTP client session which holds default :class:`Authentication Provider
+    <aiocouchdb.authn.AuthProvider>` instance (if any) and :class:`TCP Connector
+    <aiohttp.connector.TCPConnector>`."""
+
+    request_class = HttpRequest
+    response_class = HttpResponse
+
+    def __init__(self, *, auth=None, connector=None, loop=None):
+        self.auth = auth
+
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+
+        if connector is None:
+            self.connector = aiohttp.TCPConnector(force_close=False, loop=loop)
+        else:
+            self.connector = connector
+
+    @asyncio.coroutine
+    def request(self, method, url, *,
+                allow_redirects=True,
+                auth=None,
+                compress=None,
+                cookies=None,
+                data=None,
+                encoding='utf-8',
+                expect100=False,
+                headers=None,
+                max_redirects=10,
+                params=None,
+                read_until_eof=True,
+                request_class=None,
+                response_class=None,
+                version=aiohttp.HttpVersion11):
+        """Makes a HTTP request with applying authentication routines.
+
+        :param str method: Request method
+        :param str url: Requested URL
+
+        :param bool allow_redirects: Whenever to follow redirects
+        :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
+        :param str compress: `Content-Encoding` method
+        :param cookies: Additional :class:`HTTP cookies
+                        <http.cookies.SimpleCookie>`
+        :param data: Payload data
+        :param str encoding: Payload encoding in case if unicode string had
+                             passed
+        :param bool expect100: Whenever HTTP 100 response is expected
+        :param dict headers: Request headers
+        :param int max_redirects: Maximum redirect hops to pass before give up
+        :param dict params: Request query parameters
+        :param bool read_until_eof: Whenever need to read
+        :param request_class: HTTP request maker class
+        :param response_class: HTTP response processor class
+        :param str version: HTTP protocol version
+
+        :returns: :class:`aiocouchdb.client.HttpResponse` instance
+        """
+
+        auth = auth or self.auth
+        headers = headers or {}
+        params = params or {}
+        request_class = request_class or self.request_class
+        response_class = response_class or self.response_class
+
+        if auth is not None:
+            auth.sign(url, headers)
+
+        response = yield from request(method, url,
+                                      allow_redirects=allow_redirects,
+                                      compress=compress,
+                                      connector=self.connector,
+                                      cookies=cookies,
+                                      data=data,
+                                      encoding=encoding,
+                                      expect100=expect100,
+                                      headers=headers,
+                                      max_redirects=max_redirects,
+                                      params=params,
+                                      read_until_eof=read_until_eof,
+                                      request_class=request_class,
+                                      response_class=response_class,
+                                      version=version)
+
+        if auth is not None:
+            auth.update(response)
+
+        return response
+
+
 class Resource(object):
     """HTTP resource representation. Accepts full ``url`` as argument.
 
@@ -185,22 +366,21 @@ class Resource(object):
     >>> assert new_res is not res
     >>> new_res.url
     'http://localhost:5984/foo/bar%2Fbaz'
+
+    Also holds a :class:`HttpSession` instance and shares it with subresources:
+
+    >>> res.session is new_res.session
+    True
     """
 
-    request_class = HttpRequest
-    response_class = HttpResponse
+    session_class = HttpSession
 
-    def __init__(self, url, *, request_class=None, response_class=None):
+    def __init__(self, url, *, session=None):
         self.url = url
-        if request_class is not None:
-            self.request_class = request_class
-        if response_class is not None:
-            self.response_class = response_class
+        self.session = session or self.session_class()
 
     def __call__(self, *path):
-        return type(self)(urljoin(self.url, *path),
-                          request_class=self.request_class,
-                          response_class=self.response_class)
+        return type(self)(urljoin(self.url, *path), session=self.session)
 
     def __repr__(self):
         return '<{}.{}({}) object at {}>'.format(
@@ -244,7 +424,6 @@ class Resource(object):
         for arguments definition."""
         return self.request('OPTIONS', path, **options)
 
-    @asyncio.coroutine
     def request(self, method, path=None, data=None, headers=None, params=None,
                 auth=None, **options):
         """Makes a HTTP request to the resource.
@@ -255,47 +434,19 @@ class Resource(object):
         :param dict headers: Custom HTTP request headers
         :param dict params: Custom HTTP request query parameters
         :param auth: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param options: Additional options for :func:`aiohttp.client.request`
+        :param options: Additional options for :meth:`aiohttp.client.request`
                        function
 
         :returns: :class:`aiocouchdb.client.HttpResponse` instance
         """
         url = urljoin(self.url, path) if path else self.url
-        headers = headers or {}
-        params = params or {}
 
-        if auth is not None:
-            self.apply_auth(auth, url, headers)
-
-        options.setdefault('request_class', self.request_class)
-        options.setdefault('response_class', self.response_class)
-
-        resp = yield from aiohttp.request(method, url,
-                                          data=data,
-                                          headers=headers,
-                                          params=params,
-                                          **options)
-        if auth is not None:
-            self.update_auth(auth, resp)
-
-        return resp
-
-    def apply_auth(self, auth_provider, url, headers):
-        """Applies authentication routines on further request.
-
-        :param auth_provider: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param str url: Request URL
-        :param dict headers: Request headers
-        """
-        auth_provider.sign(url, headers)
-
-    def update_auth(self, auth_provider, response):
-        """Updates authentication provider state from the HTTP response data.
-
-        :param auth_provider: :class:`aiocouchdb.authn.AuthProvider` instance
-        :param response: :class:`aiocouchdb.client.HttpResponse` instance
-        """
-        auth_provider.update(response)
+        return self.session.request(method, url,
+                                    auth=auth,
+                                    data=data,
+                                    headers=headers,
+                                    params=params,
+                                    **options)
 
 
 def urljoin(base, *path):

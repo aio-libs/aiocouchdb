@@ -19,7 +19,6 @@ import unittest.mock as mock
 import uuid as _uuid
 from collections import deque, defaultdict
 
-import aiohttp
 import aiocouchdb.client
 import aiocouchdb.errors
 from aiocouchdb.client import urljoin, extract_credentials
@@ -59,8 +58,8 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
         wraps = None
         if self._test_target != 'mock':
-            wraps = self._request_tracer(aiohttp.request)
-        self._patch = mock.patch('aiohttp.request', wraps=wraps)
+            wraps = self._request_tracer(aiocouchdb.client.request)
+        self._patch = mock.patch('aiocouchdb.client.request', wraps=wraps)
         self.request = self._patch.start()
 
         self._set_response(self.prepare_response())
