@@ -67,11 +67,11 @@ class DocumentTestCase(utils.DocumentTestCase):
                                         params={'rev': self.rev})
         self.assertTrue(result)
 
-    @utils.run_for('mock')
-    def test_exists_forbidden(self):
-        # CouchDB doesn't supports per-document access control unless for
-        # authentication and replicator databases.
-        # We'll test this in real in another suites
+    @utils.with_fixed_admin_party('root', 'relax')
+    def test_exists_forbidden(self, root):
+        with self.response():
+            yield from self.db.security.update_members(names=['foo', 'bar'],
+                                                       auth=root)
         with self.response(status=403):
             result = yield from self.doc.exists()
             self.assert_request_called_with('HEAD', *self.request_path())

@@ -53,8 +53,11 @@ class AttachmentTestCase(utils.AttachmentTestCase):
                                         params={'rev': self.rev})
         self.assertTrue(result)
 
-    @utils.run_for('mock')
-    def test_exists_forbidden(self):
+    @utils.with_fixed_admin_party('root', 'relax')
+    def test_exists_forbidden(self, root):
+        with self.response():
+            yield from self.db.security.update_members(names=['foo', 'bar'],
+                                                       auth=root)
         with self.response(status=403):
             result = yield from self.attbin.exists()
             self.assert_request_called_with('HEAD', *self.request_path())
