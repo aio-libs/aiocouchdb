@@ -181,13 +181,11 @@ class ServerTestCase(utils.ServerTestCase):
     @utils.run_for('mock')
     def test_replicate_kwargs(self):
         all_kwargs = {
-            'authobj': {'oauth': {}},
             'cancel': True,
             'continuous': True,
             'create_target': False,
             'doc_ids': ['foo', 'bar', 'baz'],
             'filter': '_design/filter',
-            'headers': {'X-Foo': 'bar'},
             'proxy': 'http://localhost:8080',
             'query_params': {'test': 'passed'},
             'since_seq': 0,
@@ -204,8 +202,6 @@ class ServerTestCase(utils.ServerTestCase):
         for key, value in all_kwargs.items():
             yield from self.server.replicate('source', 'target',
                                              **{key: value})
-            if key == 'authobj':
-                key = 'auth'
             data = {'source': 'source', 'target': 'target', key: value}
             self.assert_request_called_with('POST', '_replicate', data=data)
 

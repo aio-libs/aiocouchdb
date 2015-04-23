@@ -210,7 +210,6 @@ class Server(object):
     @asyncio.coroutine  # pylint: disable=W0142, W0612, W0622
     def replicate(self, source, target, *,  # pylint: disable=R0914
                   auth=None,
-                  authobj=None,
                   cancel=None,
                   continuous=None,
                   create_target=None,
@@ -238,13 +237,11 @@ class Server(object):
                       (don't confuse with ``authobj`` which belongs to
                       replication options)
 
-        :param dict authobj: Authentication object for the target database
         :param bool cancel: Cancels active replication
         :param bool continuous: Runs continuous replication
         :param bool create_target: Creates target database if it not exists
         :param list doc_ids: List of specific document ids to replicate
         :param str filter: Filter function name
-        :param dict headers: Custom replication request headers
         :param str proxy: Proxy server URL
         :param dict query_params: Custom query parameters for filter function
         :param since_seq: Start replication from specified sequence number
@@ -274,9 +271,6 @@ class Server(object):
                       for key, value in locals().items()
                       if (key not in {'self', 'source', 'target', 'auth'} and
                           value is not None))
-
-        if authobj is not None:
-            params['auth'] = params.pop('authobj')
 
         doc = {'source': source, 'target': target}
         doc.update(params)
