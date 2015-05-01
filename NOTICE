@@ -1,0 +1,5 @@
+This product also includes the following third-party components:
+
+- aiocouchdb/replicator/erlterm.py
+
+  Copyright (c) 2009-2013, Dmitry Vasiliev <dima@hlabs.org>
