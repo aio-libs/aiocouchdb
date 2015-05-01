@@ -189,13 +189,11 @@ def decode(string):
 
 
 def decode_term(string,
-                # Hack to turn globals into locals
-                len=len, tuple=tuple,
                 int4_unpack=_int4_unpack, int2_unpack=_int2_unpack,
                 signed_int4_unpack=_signed_int4_unpack,
                 float_unpack=_float_unpack,
                 double_bytes_unpack=_double_bytes_unpack,
-                int4_byte_unpack=_int4_byte_unpack, Atom=Atom,
+                int4_byte_unpack=_int4_byte_unpack,
                 opaque=OpaqueObject.marker, decode_opaque=OpaqueObject.decode):
     if not string:
         raise IncompleteData(string)
@@ -336,12 +334,6 @@ def encode(term, compressed=False):
 
 
 def encode_term(term,
-                # Hack to turn globals into locals
-                tuple=tuple, len=len, list=list, int=int, type=type,
-                str=str, Atom=Atom, bytes=bytes, map=map, float=float,
-                true=True, false=False, dumps=dumps,
-                PICKLE_PROTOCOL=PICKLE_PROTOCOL,
-                OpaqueObject=OpaqueObject, List=List, ImproperList=ImproperList,
                 char_int4_pack=_char_int4_pack, char_int2_pack=_char_int2_pack,
                 char_signed_int4_pack=_char_signed_int4_pack,
                 char_float_pack=_char_float_pack,
