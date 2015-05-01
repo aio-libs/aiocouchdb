@@ -7,6 +7,7 @@ Welcome to aiocouchdb's documentation!
 
 .. toctree::
     v1/index
+    replicator/index
     common
 
 Getting started
