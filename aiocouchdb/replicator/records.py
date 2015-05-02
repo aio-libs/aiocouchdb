@@ -210,11 +210,12 @@ class ReplicationTask(namedtuple('ReplicationTask', [
         params = locals()
 
         for param, value in params.items():
-            if value is None:
-                continue
-
             if param not in ReplicationTask.__new__.__annotations__:
                 continue
+
+            if value is None:
+                if ReplicationTask.__new__.__kwdefaults__[param] is None:
+                    continue
 
             typespec = ReplicationTask.__new__.__annotations__[param]
             if isinstance(value, typespec):
