@@ -158,14 +158,14 @@ class ReplicationTask(namedtuple('ReplicationTask', [
                 since_seq: (int, str)=None,
                 user_ctx: dict=None,
                 view: str=None,
-                checkpoint_interval: int=None,
-                connection_timeout: int=None,
-                http_connections: int=None,
-                retries_per_request: int=None,
+                checkpoint_interval: int=5,
+                connection_timeout: int=30,
+                http_connections: int=20,
+                retries_per_request: int=10,
                 socket_options: str=None,
-                use_checkpoints: bool=None,
-                worker_batch_size: int=None,
-                worker_processes: int=None):
+                use_checkpoints: bool=True,
+                worker_batch_size: int=500,
+                worker_processes: int=4):
         """Creates a new replication task object based on provided parameters.
 
         :param source: Source database URL str or dict object
