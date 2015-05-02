@@ -4,6 +4,12 @@
 aiocouchdb Replicator API
 =========================
 
+Replicator
+==========
+
+.. autoclass:: aiocouchdb.replicator.manager.ReplicationManager
+  :members:
+
 Records
 =======
 
@@ -16,3 +22,13 @@ Records
   :special-members:
 
 
+Peers Interface
+===============
+
+.. autoclass:: aiocouchdb.replicator.abc.ISourcePeer
+  :members:
+  :inherited-members:
+
+.. autoclass:: aiocouchdb.replicator.abc.ITargetPeer
+  :members:
+  :inherited-members:
