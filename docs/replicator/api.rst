@@ -10,6 +10,9 @@ Replicator
 .. autoclass:: aiocouchdb.replicator.manager.ReplicationManager
   :members:
 
+.. autoclass:: aiocouchdb.replicator.replication.Replication
+  :members:
+
 Records
 =======
 
