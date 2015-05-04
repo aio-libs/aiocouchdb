@@ -15,7 +15,7 @@ import aiocouchdb.errors
 from . import utils
 
 
-class HttpErrorsTestCase(utils.TestCase):
+class HttpErrorsTestCase(utils.ClientTestCase):
 
     def setUp(self):
         super().setUp()

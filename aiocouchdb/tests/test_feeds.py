@@ -13,7 +13,7 @@ import aiocouchdb.feeds
 from . import utils
 
 
-class FeedTestCase(utils.TestCase):
+class FeedTestCase(utils.ClientTestCase):
 
     def test_read_chunks(self):
         resp = self.prepare_response(data=[b'foo\r\n', b'bar\r\n'])
@@ -128,7 +128,7 @@ class FeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
 
-class JsonFeedTestCase(utils.TestCase):
+class JsonFeedTestCase(utils.ClientTestCase):
 
     def test_read_json_chunks(self):
         resp = self.prepare_response(data=[
@@ -154,7 +154,7 @@ class JsonFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
 
-class ViewFeedTestCase(utils.TestCase):
+class ViewFeedTestCase(utils.ClientTestCase):
 
     def test_read_empty_view(self):
         resp = self.prepare_response(data=[
@@ -245,7 +245,7 @@ class ViewFeedTestCase(utils.TestCase):
         self.assertIsNone(feed.update_seq)
 
 
-class EventSourceFeedTestCase(utils.TestCase):
+class EventSourceFeedTestCase(utils.ClientTestCase):
 
     def test_read_event(self):
         resp = self.prepare_response(data=[
@@ -352,7 +352,7 @@ class EventSourceFeedTestCase(utils.TestCase):
         self.assertFalse(feed.is_active())
 
 
-class ChangesFeedTestCase(utils.TestCase):
+class ChangesFeedTestCase(utils.ClientTestCase):
 
     def setUp(self):
         super().setUp()

@@ -48,13 +48,28 @@ class MetaAioTestCase(type):
 
 class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
-    _test_target = TARGET
     timeout = 10
-    url = 'http://localhost:5984'
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def future(self, obj):
+        fut = asyncio.Future(loop=self.loop)
+        fut.set_result(obj)
+        return fut
+
+
+class ClientTestCase(TestCase):
+
+    _test_target = TARGET
+    url = 'http://localhost:5984'
+
+    def setUp(self):
+        super().setUp()
 
         wraps = None
         if self._test_target != 'mock':
@@ -70,7 +85,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
     def tearDown(self):
         self.loop.run_until_complete(self.teardown_env())
         self._patch.stop()
-        self.loop.close()
+        super().tearDown()
 
     @asyncio.coroutine
     def setup_env(self):
@@ -83,11 +98,6 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         sup = super()
         if hasattr(sup, 'teardown_env'):
             yield from sup.teardown_env()
-
-    def future(self, obj):
-        fut = asyncio.Future(loop=self.loop)
-        fut.set_result(obj)
-        return fut
 
     def _request_tracer(self, f):
         @functools.wraps(f)
@@ -175,7 +185,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
                 self.assertEqual(value, call_kwargs[key])
 
 
-class ServerTestCase(TestCase):
+class ServerTestCase(ClientTestCase):
 
     server_class = None
     url = os.environ.get('AIOCOUCHDB_URL', 'http://localhost:5984')

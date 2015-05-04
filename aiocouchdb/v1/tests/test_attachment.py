@@ -199,7 +199,7 @@ class AttachmentTestCase(utils.AttachmentTestCase):
                                         params={'rev': self.rev})
 
 
-class AttachmentReaderTestCase(utils.TestCase):
+class AttachmentReaderTestCase(utils.ClientTestCase):
 
     _test_target = 'mock'
 

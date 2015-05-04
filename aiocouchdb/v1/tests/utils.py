@@ -16,7 +16,8 @@ from aiocouchdb.tests.utils import (
     using_database,
     uuid,
     with_fixed_admin_party,
-    TestCase
+    TestCase,
+    ClientTestCase
 )
 
 from .. import attachment

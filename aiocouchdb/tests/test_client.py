@@ -17,7 +17,7 @@ import aiocouchdb.client
 from . import utils
 
 
-class ResourceTestCase(utils.TestCase):
+class ResourceTestCase(utils.ClientTestCase):
 
     _test_target = 'mock'
 
@@ -107,7 +107,7 @@ class ResourceTestCase(utils.TestCase):
         self.assert_request_called_with('get', response_class=Thing)
 
 
-class HttpRequestTestCase(utils.TestCase):
+class HttpRequestTestCase(utils.ClientTestCase):
 
     _test_target = 'mock'
 
@@ -136,7 +136,7 @@ class HttpRequestTestCase(utils.TestCase):
         self.assertIsInstance(req.body, io.IOBase)
 
 
-class HttpResponseTestCase(utils.TestCase):
+class HttpResponseTestCase(utils.ClientTestCase):
 
     _test_target = 'mock'
 
