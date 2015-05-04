@@ -49,6 +49,18 @@ class IPeer(object, metaclass=abc.ABCMeta):
 class ISourcePeer(IPeer):
     """Source peer interface."""
 
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def get_filter_function_code(self, filter_name: str) -> str:
+        """Returns filter function code that would be applied on changes feed.
+
+        :param str filter_name: Filter function name
+
+        :rtype: str
+        """
+        # We do abstract from knowledge about design documents and the place
+        # where filters are defined there.
+
 
 class ITargetPeer(IPeer):
     """Target peer interface."""
