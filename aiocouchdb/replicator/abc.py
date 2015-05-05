@@ -45,6 +45,17 @@ class IPeer(object, metaclass=abc.ABCMeta):
         :rtype: dict
         """
 
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def get_replication_log(self, docid: str) -> dict:
+        """Returns Replication log document instance by given ID. If document
+        couldn't be found, should return empty dict.
+
+        :param str docid: Replication ID
+
+        :rtype: dict
+        """
+
 
 class ISourcePeer(IPeer):
     """Source peer interface."""

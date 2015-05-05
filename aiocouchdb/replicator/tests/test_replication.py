@@ -71,3 +71,70 @@ class ReplicationTestCase(utils.TestCase):
                 source=self.source,
                 rep_uuid='',
                 protocol_version=10)
+
+    def test_find_replication_logs(self):
+        rep_id = 'replication-id'
+        yield from self.repl.find_replication_logs(
+            rep_id, self.source, self.target)
+
+        self.assertTrue(self.source.get_replication_log)
+        self.assertEqual(((rep_id,), {}),
+                         self.source.get_replication_log.call_args)
+
+        self.assertTrue(self.target.get_replication_log)
+        self.assertEqual(((rep_id,), {}),
+                         self.target.get_replication_log.call_args)
+
+    def test_compare_replication_logs(self):
+        self.assertEqual((self.repl.lowest_seq, []),
+                         self.repl.compare_replication_logs({}, {}))
+
+    def test_compare_empty(self):
+        self.assertEqual((self.repl.lowest_seq, []),
+                         self.repl.compare_replication_logs({}, {}))
+        self.assertEqual((self.repl.lowest_seq, []),
+                         self.repl.compare_replication_logs(
+                             {}, {'history': [], 'session_id': 'test'}))
+        self.assertEqual((self.repl.lowest_seq, []),
+                         self.repl.compare_replication_logs(
+                             {'history': [], 'session_id': 'test'}, {}))
+
+    def test_session_id_match(self):
+        source = {'history': [{}], 'session_id': 'test', 'source_last_seq': 42}
+        target = {'history': [], 'session_id': 'test', 'source_last_seq': 24}
+        self.assertEqual((42, [{}]),
+                         self.repl.compare_replication_logs(source, target))
+
+    def test_compare_replication_history_empty(self):
+        source = {'history': [], 'session_id': 'foo'}
+        target = {'history': [], 'session_id': 'bar'}
+        self.assertEqual((self.repl.lowest_seq, []),
+                         self.repl.compare_replication_logs(source, target))
+
+    def test_compare_replication_history_no_match(self):
+        source = {'history': [{'session_id': 'foo', 'recorded_seq': 42}],
+                  'session_id': 'foo'}
+        target = {'history': [{'session_id': 'bar', 'recorded_seq': 24}],
+                  'session_id': 'bar'}
+        self.assertEqual((self.repl.lowest_seq, []),
+                         self.repl.compare_replication_logs(source, target))
+
+    def test_compare_replication_history_has_match(self):
+        source = {'history': [{'session_id': 'bao', 'recorded_seq': 42},
+                              {'session_id': 'foo', 'recorded_seq': 24}],
+                  'session_id': 'foo'}
+        target = {'history': [{'session_id': 'zao', 'recorded_seq': 84},
+                              {'session_id': 'foo', 'recorded_seq': 34}],
+                  'session_id': 'bar'}
+        self.assertEqual((24, []),
+                         self.repl.compare_replication_logs(source, target))
+
+    def test_compare_replication_history_match_on_target(self):
+        source = {'history': [{'session_id': 'bao', 'recorded_seq': 42},
+                              {'session_id': 'foo', 'recorded_seq': 24}],
+                  'session_id': 'foo'}
+        target = {'history': [{'session_id': 'foo', 'recorded_seq': 34},
+                              {'session_id': 'zao', 'recorded_seq': 14}],
+                  'session_id': 'bar'}
+        self.assertEqual((34, [{'session_id': 'zao', 'recorded_seq': 14}]),
+                         self.repl.compare_replication_logs(source, target))

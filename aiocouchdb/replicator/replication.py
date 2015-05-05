@@ -26,6 +26,8 @@ log = logging.getLogger(__name__)
 class Replication(object):
     """Replication job maker."""
 
+    lowest_seq = 0
+
     def __init__(self,
                  rep_uuid: str,
                  rep_task: ReplicationTask,
@@ -53,9 +55,26 @@ class Replication(object):
         source_info, target_info = yield from self.verify_peers(
             source, target, rep_task.create_target)
 
-        # we'll use rep_id later as well
         rep_id = yield from self.generate_replication_id(
             rep_task, source, self.rep_uuid, self.protocol_version)
+
+        source_log, target_log = yield from self.find_replication_logs(
+            rep_id, source, target)
+        found_seq, history = self.compare_replication_logs(
+            source_log, target_log)
+
+        if found_seq == self.lowest_seq and not rep_task.since_seq:
+            log.debug('No common ancestry -- performing full replication',
+                      extra={'rep_id': rep_id})
+        else:
+            log.debug('Found a common replication record with source_seq %s',
+                      found_seq, extra={'rep_id': rep_id})
+
+        # start_seq will be needed for the further step
+        start_seq = rep_task.since_seq or found_seq
+
+        log.debug('Replication start sequence is %s',
+                  start_seq, extra={'rep_id': rep_id})
 
         raise NotImplementedError
 
@@ -107,3 +126,49 @@ class Replication(object):
             doc_ids=rep_task.doc_ids,
             filter=func_code.strip() if func_code else None,
             query_params=rep_task.query_params)
+
+    @asyncio.coroutine
+    def find_replication_logs(self,
+                              rep_id: str,
+                              source: ISourcePeer,
+                              target: ITargetPeer) -> (dict, dict):
+        """Searches for Replication logs on both source and target peers."""
+        source_doc = yield from source.get_replication_log(rep_id)
+        target_doc = yield from target.get_replication_log(rep_id)
+
+        return source_doc, target_doc
+
+    def compare_replication_logs(self, source: dict, target: dict) -> tuple:
+        """Compares Replication logs in order to find the common history and
+        the last sequence number for the Replication to start from."""
+        # couch_replicator:compare_replication_logs/2
+
+        if not source or not target:
+            return self.lowest_seq, []
+
+        source_session_id = source.get('session_id')
+        target_session_id = target.get('session_id')
+        if source_session_id == target_session_id:
+            # Last recorded session ID for both Source and Target matches.
+            # Hooray! We found it!
+            return (source.get('source_last_seq', self.lowest_seq),
+                    source.get('history', []))
+        else:
+            return self.compare_replication_history(source.get('history', []),
+                                                    target.get('history', []))
+
+    def compare_replication_history(self, source: list, target: list) -> tuple:
+        # couch_replicator:compare_rep_history/2
+
+        if not source or not target:
+            return self.lowest_seq, []
+
+        source_id = source[0].get('session_id')
+        if any(item.get('session_id') == source_id for item in target):
+            return source[0].get('recorded_seq', self.lowest_seq), source[1:]
+
+        target_id = target[0].get('session_id')
+        if any(item.get('session_id') == target_id for item in source[1:]):
+            return target[0].get('recorded_seq', self.lowest_seq), target[1:]
+
+        return self.compare_replication_history(source[1:], target[1:])
