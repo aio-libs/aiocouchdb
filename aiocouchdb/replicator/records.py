@@ -26,9 +26,16 @@ from aiocouchdb.client import extract_credentials
 from aiohttp.multidict import CIMultiDict
 
 __all__ = (
+    'TsSeq',
     'PeerInfo',
     'ReplicationTask',
+    'ReplicationState',
 )
+
+
+class TsSeq(namedtuple('TsSeq', ['ts', 'id'])):
+    """Timestamped (actually not) Sequence ID."""
+    __slots__ = ()
 
 
 class PeerInfo(namedtuple('Peer', ['url', 'headers', 'auth'])):
@@ -257,3 +264,100 @@ class ReplicationTask(namedtuple('ReplicationTask', [
             ', '.join('='.join((key, str(value)))
                       for key, value in zip(self._fields, self)
                       if value is not None))
+
+
+class ReplicationState(namedtuple('ReplicationState', [
+    'rep_task',
+
+    'rep_id',
+    'rep_uuid',
+    'protocol_version',
+    'session_id',
+
+    'source_seq',
+    'start_seq',
+    'committed_seq',
+    'current_through_seq',
+    'highest_seq_done',
+    'seqs_in_progress',
+
+    'replication_start_time',
+    'source_start_time',
+    'target_start_time',
+    'last_checkpoint_made_time',
+
+    'source_log_rev',
+    'target_log_rev',
+    'history',
+])):
+    """Replication state pretty good describes itself by it name - it's a state
+    that Replication process carries on during their lifetime.
+
+    The closes analogy in `couch_replicator` implementation is a `#rep_state{}`_
+    record. However, it has no intention to hold exact the same data.
+
+    Replication state is immutable (almost) object in order to make it easy
+    for sharing while replication is going on without worry about side effects
+    from state update.
+
+    .. _#rep_state{}: https://github.com/apache/couchdb-couch-replicator/blob/master/src/couch_replicator.erl#L47-L81
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, rep_task: ReplicationTask, *,
+                rep_id: str=None,
+                rep_uuid: str=None,
+                protocol_version: int=None,
+                session_id: str=None,
+
+                source_seq=None,
+                start_seq=None,
+                committed_seq=None,
+                current_through_seq=None,
+                highest_seq_done=None,
+                seqs_in_progress: frozenset=None,
+
+                replication_start_time: float=None,
+                source_start_time: str=None,
+                target_start_time: str=None,
+                last_checkpoint_made_time: float=None,
+
+                source_log_rev: str=None,
+                target_log_rev: str=None,
+                history: tuple=None):
+        """Creates a new replication state namedtuple object based on provided
+        :class:`~aiocouchdb.replicator.records.ReplicationTask` and the other
+        parameters.
+
+        :param ReplicationTask rep_task: Replication Task
+        :param str rep_id: Replication ID
+        :param str rep_uuid: Replicator UUID
+        :param int protocol_version: Replication protocol version
+
+        :param source_seq: Source Sequence ID at the moment of
+            the Replication start
+        :param start_seq: Replication start Sequence ID
+        :param committed_seq: Last committed Source Sequence ID to Target
+        :param current_through_seq: Currently processed Sequence ID
+        :param highest_seq_done: Highest Source Sequence ID
+            that is done by workers
+        :param tuple seqs_in_progress: Sequence IDs that are in progress
+
+        :param float replication_start_time: Replication start timestamp
+        :param str source_start_time: Source peer start time
+        :param str target_start_time: Target peer start time
+        :param float last_checkpoint_made_time: Last checkpoint made timestamp
+
+        :param str source_log_rev: Replication log revision on Source side
+        :param str target_log_rev: Replication log revision on Target side
+        :param tuple history: Replication history
+
+        :rtype: ReplicationState
+        """
+        params = locals()
+        return super().__new__(cls, *(params[key] for key in cls._fields))
+
+    def update(self, **kwargs):
+        """Returns a new instance of state with the requested changes."""
+        return self._replace(**kwargs)

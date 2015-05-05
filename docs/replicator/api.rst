@@ -24,6 +24,9 @@ Records
   :members:
   :special-members:
 
+.. autoclass:: aiocouchdb.replicator.records.ReplicationState
+  :members:
+  :special-members:
 
 Peers Interface
 ===============

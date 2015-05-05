@@ -8,11 +8,13 @@
 #
 
 import asyncio
+import datetime
 import logging
+import uuid
 
 from . import replication_id
 from .abc import ISourcePeer, ITargetPeer
-from .records import ReplicationTask
+from .records import ReplicationTask, ReplicationState
 
 
 __all__ = (
@@ -34,18 +36,23 @@ class Replication(object):
                  source_peer_class,
                  target_peer_class, *,
                  protocol_version=3):
-        self.rep_uuid = rep_uuid
-        self.rep_task = rep_task
-        self.protocol_version = protocol_version
         self.source = source_peer_class(rep_task.source)
         self.target = target_peer_class(rep_task.target)
+        self.state = ReplicationState(rep_task,
+                                      rep_uuid=rep_uuid,
+                                      protocol_version=protocol_version)
+
+    @property
+    def id(self) -> str:
+        """Returns Replication ID."""
+        return self.state.rep_id
 
     @asyncio.coroutine
     def start(self):
         """Starts a replication."""
         # couch_replicator:do_init/1
         # couch_replicator:init_state/1
-        rep_task, source, target = self.rep_task, self.source, self.target
+        rep_task, source, target = self.state.rep_task, self.source, self.target
 
         log.info('Starting new replication %s -> %s',
                  rep_task.source.url, rep_task.target.url,
@@ -56,7 +63,7 @@ class Replication(object):
             source, target, rep_task.create_target)
 
         rep_id = yield from self.generate_replication_id(
-            rep_task, source, self.rep_uuid, self.protocol_version)
+            rep_task, source, self.state.rep_uuid, self.state.protocol_version)
 
         source_log, target_log = yield from self.find_replication_logs(
             rep_id, source, target)
@@ -75,6 +82,26 @@ class Replication(object):
 
         log.debug('Replication start sequence is %s',
                   start_seq, extra={'rep_id': rep_id})
+
+        self.state = state = self.state.update(
+            rep_id=rep_id,
+            session_id=uuid.uuid4().hex,
+
+            source_seq=source_info['update_seq'],
+            start_seq=start_seq,
+            committed_seq=start_seq,
+            current_through_seq=start_seq,
+            highest_seq_done=start_seq,
+            seqs_in_progress=tuple(),
+
+            replication_start_time=datetime.datetime.utcnow(),
+            source_start_time=source_info['instance_start_time'],
+            target_start_time=target_info['instance_start_time'],
+
+            source_log_rev=source_log.get('_rev'),
+            target_log_rev=target_log.get('_rev'),
+            history=tuple(history),
+        )
 
         raise NotImplementedError
 
