@@ -77,13 +77,12 @@ class Replication(object):
             log.debug('Found a common replication record with source_seq %s',
                       found_seq, extra={'rep_id': rep_id})
 
-        # start_seq will be needed for the further step
         start_seq = rep_task.since_seq or found_seq
 
         log.debug('Replication start sequence is %s',
                   start_seq, extra={'rep_id': rep_id})
 
-        self.state = state = self.state.update(
+        self.state = rep_state = self.state.update(
             rep_id=rep_id,
             session_id=uuid.uuid4().hex,
 
@@ -102,6 +101,18 @@ class Replication(object):
             target_log_rev=target_log.get('_rev'),
             history=tuple(history),
         )
+
+        max_items = rep_task.worker_processes * rep_task.worker_batch_size * 2
+
+        # we don't support changes queue limitation by byte size while we relay
+        # on asyncio.Queue which only limits items by their amount.
+        # max_size = 100 * 1024 * rep_task.worker_processes
+
+        changes_queue = asyncio.Queue(maxsize=max_items)
+        changes_reader_task = asyncio.async(self.changes_reader_loop(
+            changes_queue, source, rep_task, start_seq))
+        changes_manager_task = asyncio.async(self.changes_manager_loop(
+            changes_queue))
 
         raise NotImplementedError
 
@@ -199,3 +210,55 @@ class Replication(object):
             return target[0].get('recorded_seq', self.lowest_seq), target[1:]
 
         return self.compare_replication_history(source[1:], target[1:])
+
+    @asyncio.coroutine
+    def changes_reader_loop(self,
+                            changes_queue: asyncio.Queue,
+                            source: ISourcePeer,
+                            rep_task: ReplicationTask,
+                            start_seq):
+        # couch_replicator_changes_reader
+        feed = yield from source.changes(
+            continuous=rep_task.continuous,
+            doc_ids=rep_task.doc_ids,
+            filter=rep_task.filter,
+            query_params=rep_task.query_params,
+            since=start_seq,
+            view=rep_task.view)
+        while True:
+            event = yield from feed.next()
+            if event is None:
+                yield from changes_queue.put((None, None))
+                break
+            yield from changes_queue.put(('put_changes', event))
+
+    @asyncio.coroutine
+    def changes_manager_loop(self, changes_queue: asyncio.Queue):
+        # couch_replicator:changes_manager_loop_open/4
+        stack = []
+        no_more_changes = False
+        while True:
+            msg, *args = yield from changes_queue.get()
+            if msg is None:
+                no_more_changes = True
+            elif msg == 'put_changes':
+                # CouchDB has pretty nice couch_work_queue module that allows
+                # to get multiple items with a single call.
+                # asyncio.Queue cannot do that, so we have to use intermediate
+                # list in order to slice it by the worker's batch size.
+                stack.append(args[0])
+            elif msg == 'get_changes':
+                # couch_replicator uses batch size on changes feed reader side.
+                # For aiocouchdb we allow workers to maintain their own one.
+                caller, amount = args
+                if stack:
+                    batch, stack = stack[:amount], stack[amount:]
+                    yield from caller.put(('changes', batch))
+                elif no_more_changes:
+                    # No more changes to be read, no more changes we hold
+                    yield from caller.put(('changes', None))
+                else:
+                    # couch_work_queue:dequeue actually blocks on attempt to
+                    # get anything from empty queue. Suddenly, because of lack
+                    # of queue slicing, we have to send back empty list instead
+                    yield from caller.put(('changes', []))

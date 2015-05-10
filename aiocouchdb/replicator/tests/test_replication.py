@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 #
 
+import asyncio
 from unittest.mock import Mock, MagicMock
 
 from aiocouchdb.tests import utils
@@ -138,3 +139,46 @@ class ReplicationTestCase(utils.TestCase):
                   'session_id': 'bar'}
         self.assertEqual((34, [{'session_id': 'zao', 'recorded_seq': 14}]),
                          self.repl.compare_replication_logs(source, target))
+
+    def test_changes_reader_loop(self):
+        class Changes(object):
+            def __init__(self, items: list):
+                self.items = list(reversed(items))
+
+            @asyncio.coroutine
+            def next(self):
+                if not self.items:
+                    return None
+                return self.items.pop()
+
+        self.source.changes.return_value = self.future(Changes([1, 2, 3, 4, 5]))
+
+        inbox = asyncio.Queue()
+        changes_queue = asyncio.Queue()
+
+        changes_reader = asyncio.async(self.repl.changes_reader_loop(
+            changes_queue=changes_queue,
+            source=self.source,
+            rep_task=self.repl.rep_task,
+            start_seq=21))
+        changes_manager = asyncio.async(self.repl.changes_manager_loop(
+            changes_queue=changes_queue))
+
+        yield from asyncio.sleep(0.1)  # context switch
+
+        self.assertTrue(self.source.changes.called)
+
+        yield from changes_queue.put(('get_changes', inbox, 3))
+        msg, items = yield from inbox.get()
+        self.assertEqual(msg, 'changes')
+        self.assertEqual([1, 2, 3], items)
+
+        yield from changes_queue.put(('get_changes', inbox, 3))
+        msg, items = yield from inbox.get()
+        self.assertEqual(msg, 'changes')
+        self.assertEqual([4, 5], items)
+
+        yield from changes_queue.put(('get_changes', inbox, 20))
+        msg, items = yield from inbox.get()
+        self.assertEqual(msg, 'changes')
+        self.assertEqual(None, items)

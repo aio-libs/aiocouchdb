@@ -18,6 +18,24 @@ __all__ = (
 )
 
 
+class IChangesFeed(object, metaclass=abc.ABCMeta):
+    """Changes feed reader."""
+
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def next(self) -> dict:
+        """Emits the next event from a changes feed. The returned dict object
+        must contain the following fields:
+
+        - **seq** - Sequence ID
+        - **id** (`str`) - Document ID
+        - **changes** (`list` of `dict`) - List of document changes where each
+          element must contain **rev** field (`str`) with the revision value.
+
+        :rtype: dict
+        """
+
+
 class IPeer(object, metaclass=abc.ABCMeta):
 
     def __init__(self, peer_info):
@@ -71,6 +89,17 @@ class ISourcePeer(IPeer):
         """
         # We do abstract from knowledge about design documents and the place
         # where filters are defined there.
+
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def changes(self, *,
+                continuous: bool=False,
+                doc_ids: list=None,
+                filter: str=None,
+                query_params: dict=None,
+                since=None,
+                view: str=None) -> IChangesFeed:
+        """Starts listen changes feed."""
 
 
 class ITargetPeer(IPeer):
