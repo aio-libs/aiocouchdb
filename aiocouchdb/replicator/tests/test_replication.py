@@ -14,6 +14,7 @@ from aiocouchdb.tests import utils
 from .. import abc
 from .. import records
 from .. import replication
+from .. import work_queue
 
 
 class ReplicationTestCase(utils.TestCase):
@@ -153,32 +154,23 @@ class ReplicationTestCase(utils.TestCase):
 
         self.source.changes.return_value = self.future(Changes([1, 2, 3, 4, 5]))
 
-        inbox = asyncio.Queue()
-        changes_queue = asyncio.Queue()
+        changes_queue = work_queue.WorkQueue()
 
         changes_reader = asyncio.async(self.repl.changes_reader_loop(
             changes_queue=changes_queue,
             source=self.source,
             rep_task=self.repl.rep_task,
             start_seq=21))
-        changes_manager = asyncio.async(self.repl.changes_manager_loop(
-            changes_queue=changes_queue))
 
         yield from asyncio.sleep(0.1)  # context switch
 
         self.assertTrue(self.source.changes.called)
 
-        yield from changes_queue.put(('get_changes', inbox, 3))
-        msg, items = yield from inbox.get()
-        self.assertEqual(msg, 'changes')
+        items = yield from changes_queue.get(3)
         self.assertEqual([1, 2, 3], items)
 
-        yield from changes_queue.put(('get_changes', inbox, 3))
-        msg, items = yield from inbox.get()
-        self.assertEqual(msg, 'changes')
+        items = yield from changes_queue.get(3)
         self.assertEqual([4, 5], items)
 
-        yield from changes_queue.put(('get_changes', inbox, 20))
-        msg, items = yield from inbox.get()
-        self.assertEqual(msg, 'changes')
-        self.assertEqual(None, items)
+        items = yield from changes_queue.get(20)
+        self.assertEqual(changes_queue.CLOSED, items)
