@@ -8,6 +8,7 @@
 #
 
 import base64
+import time
 from collections import namedtuple, Sequence
 
 from aiocouchdb.authn import (
@@ -289,6 +290,8 @@ class ReplicationState(namedtuple('ReplicationState', [
     'source_log_rev',
     'target_log_rev',
     'history',
+
+    'timestamp'
 ])):
     """Replication state pretty good describes itself by it name - it's a state
     that Replication process carries on during their lifetime.
@@ -325,7 +328,9 @@ class ReplicationState(namedtuple('ReplicationState', [
 
                 source_log_rev: str=None,
                 target_log_rev: str=None,
-                history: tuple=None):
+                history: tuple=None,
+
+                timestamp: int=0):
         """Creates a new replication state namedtuple object based on provided
         :class:`~aiocouchdb.replicator.records.ReplicationTask` and the other
         parameters.
@@ -353,6 +358,8 @@ class ReplicationState(namedtuple('ReplicationState', [
         :param str target_log_rev: Replication log revision on Target side
         :param tuple history: Replication history
 
+        :param int timestamp: State update timestamp in seconds
+
         :rtype: ReplicationState
         """
         params = locals()
@@ -360,4 +367,5 @@ class ReplicationState(namedtuple('ReplicationState', [
 
     def update(self, **kwargs):
         """Returns a new instance of state with the requested changes."""
+        kwargs['timestamp'] = int(time.time())
         return self._replace(**kwargs)
