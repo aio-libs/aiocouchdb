@@ -74,6 +74,27 @@ class IPeer(object, metaclass=abc.ABCMeta):
         :rtype: dict
         """
 
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def update_replication_log(self, rep_id: str, doc: dict, *,
+                               rev: str=None) -> str:
+        """Updates a document and returns new MVCC revision value back.
+
+        :param str rep_id: Replication ID
+        :param dict doc: Replication Log document
+
+        :rtype: str
+        """
+
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def ensure_full_commit(self) -> str:
+        """Ensures that all changes are flushed on disk. Returns an instance
+        start time.
+
+        :rtype: str
+        """
+
 
 class ISourcePeer(IPeer):
     """Source peer interface."""
