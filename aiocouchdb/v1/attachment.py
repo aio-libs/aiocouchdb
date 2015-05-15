@@ -44,6 +44,7 @@ class Attachment(object):
 
     @property
     def name(self):
+        """Returns attachment name specified in class constructor."""
         return self._name
 
     @asyncio.coroutine
