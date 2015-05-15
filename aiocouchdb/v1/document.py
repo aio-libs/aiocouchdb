@@ -195,6 +195,7 @@ class Document(object):
                       auth=None,
                       att_encoding_info=None,
                       atts_since=None,
+                      latest=None,
                       local_seq=None,
                       revs=None):
         """Returns document open revisions with their attachments.
@@ -216,6 +217,7 @@ class Document(object):
                                        attachments stubs
         :param list atts_since: Includes attachments that was added since
                                 the specified revisions
+        :param bool latest: Ensure latest revision is included in response
         :param bool local_seq: Includes local sequence number in each document
         :param bool revs: Includes information about all known revisions in
                           each document
