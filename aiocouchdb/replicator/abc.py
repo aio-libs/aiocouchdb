@@ -113,6 +113,26 @@ class ISourcePeer(IPeer):
 
     @abc.abstractmethod
     @asyncio.coroutine
+    def open_doc_revs(self,
+                      docid: str,
+                      open_revs: list,
+                      callback_coro, *,
+                      atts_since: list=None,
+                      latest: bool=None,
+                      revs: bool=None):
+        """Returns reader of document revisions with the attachments.
+
+        :param str docid: Document ID
+        :param list open_revs: Fetch specified conflict revisions
+        :param callback_coro: Callback coroutine
+        :param list atts_since: Fetch attachments from the specified revisions
+        :param bool latest: Ensure that the latest revision is included
+                            in response
+        :param bool revs: Include information about all known revisions
+        """
+
+    @abc.abstractmethod
+    @asyncio.coroutine
     def changes(self, *,
                 continuous: bool=False,
                 doc_ids: list=None,
@@ -141,4 +161,31 @@ class ITargetPeer(IPeer):
         :param dict idrevs: Mapping between document id and list of revisions
 
         :rtype dict:
+        """
+
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def update_doc(self, doc: dict, atts) -> Exception:
+        """Updates a document with the attachments. This update may produce
+        a conflict.
+
+        :param dict doc: Document object
+        :param atts: Attachments reader object
+
+        :returns: Exception, that happens on document update, but is not a fatal
+                  one.
+        """
+
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def update_docs(self, docs: list) -> list:
+        """Performs bulk update specified list of documents in non-edit mode in
+        order to create conflicts instead of raising update conflict errors.
+
+        Returns a list of dict objects for documents which failed to update
+        with the related error and reason.
+
+        :param list docs: List of document objects (dicts)
+
+        :rtype: list
         """
