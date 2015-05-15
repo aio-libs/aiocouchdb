@@ -198,7 +198,8 @@ class Document(object):
                       latest=None,
                       local_seq=None,
                       revs=None):
-        """Returns document open revisions with their attachments.
+        """Returns reader for multiple document conflicted revisions with their
+        attachments.
 
         Unlike :func:`get(open_revs=[...])
         <aiocouchdb.v1.document.Document.get>`, this method works with
