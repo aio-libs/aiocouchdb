@@ -12,6 +12,8 @@ import binascii
 import logging
 import os
 
+from collections import defaultdict
+
 from .abc import ISourcePeer, ITargetPeer
 from .work_queue import WorkQueue
 
@@ -69,13 +71,14 @@ class ReplicationWorker(object):
     def start(self):
         """Starts Replication worker."""
         return asyncio.async(self.changes_fetch_loop(
-            self.changes_queue, self.reports_queue, batch_size=self.batch_size
-        ))
+            self.changes_queue, self.reports_queue, self.target,
+            batch_size=self.batch_size))
 
     @asyncio.coroutine
     def changes_fetch_loop(self,
                            changes_queue: WorkQueue,
-                           reports_queue: WorkQueue, *,
+                           reports_queue: WorkQueue,
+                           target: ITargetPeer, *,
                            batch_size: int):
         # couch_replicator_worker:queue_fetch_loop/5
         while True:
@@ -94,3 +97,36 @@ class ReplicationWorker(object):
 
             # Notify checkpoints_loop that we start work on the batch
             yield from reports_queue.put((False, report_seq))
+
+            docid_missing = yield from self.find_missing_revs(target, changes)
+
+            log.debug('Found %d missing revs for %d docs',
+                      sum(map(len, docid_missing.values())), len(docid_missing),
+                      extra={'rep_id': self.rep_id, 'worker_id': self.id})
+
+            yield from reports_queue.put((True, report_seq))
+
+    @asyncio.coroutine
+    def find_missing_revs(self, target: ITargetPeer, changes: list) -> dict:
+        # couch_replicator_worker:find_missing/2
+        # Unlike couch_replicator we also remove duplicate revs from diff
+        # request which may eventually when the same document with the conflicts
+        # had updated multiple times within the same batch slice.
+        docid_revs = defaultdict(list)
+        seen = set()
+        for docinfo in changes:
+            docid = docinfo['id']
+            for change in docinfo['changes']:
+                rev = change['rev']
+                if (docid, rev) in seen:
+                    continue
+                seen.add((docid, rev))
+                docid_revs[docid].append(rev)
+
+        revs_diff = yield from target.revs_diff(docid_revs)
+
+        docid_missing = {}
+        for docid, content in revs_diff.items():
+            docid_missing[docid] = (content['missing'],
+                                    content.get('possible_ancestors', []))
+        return docid_missing

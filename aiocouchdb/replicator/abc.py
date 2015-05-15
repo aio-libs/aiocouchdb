@@ -130,3 +130,15 @@ class ITargetPeer(IPeer):
     @asyncio.coroutine
     def create(self):
         """Creates target database."""
+
+    @abc.abstractmethod
+    @asyncio.coroutine
+    def revs_diff(self, idrevs: dict) -> dict:
+        """Compares given document id to list of revisions mapping with
+        the stored data and returns back same mapping with the revisions that
+        are missed on the peer side.
+
+        :param dict idrevs: Mapping between document id and list of revisions
+
+        :rtype dict:
+        """
