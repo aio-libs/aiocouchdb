@@ -191,6 +191,7 @@ class DocumentTestCase(utils.DocumentTestCase):
         all_params = {
             'att_encoding_info': True,
             'atts_since': ['1-ABC'],
+            'latest': True,
             'local_seq': True,
             'revs': True
         }
