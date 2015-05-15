@@ -13,6 +13,9 @@ Replicator
 .. autoclass:: aiocouchdb.replicator.replication.Replication
   :members:
 
+.. autoclass:: aiocouchdb.replicator.worker.ReplicationWorker
+  :members:
+
 .. autoclass:: aiocouchdb.replicator.work_queue.WorkQueue
   :members:
 

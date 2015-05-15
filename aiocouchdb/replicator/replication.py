@@ -18,6 +18,7 @@ from . import replication_id
 from .abc import ISourcePeer, ITargetPeer
 from .records import ReplicationTask, ReplicationState
 from .work_queue import WorkQueue
+from .worker import ReplicationWorker
 
 
 __all__ = (
@@ -33,6 +34,7 @@ class Replication(object):
 
     lowest_seq = 0
     max_history_entries = 50
+    worker_class = ReplicationWorker
 
     def __init__(self,
                  rep_uuid: str,
@@ -117,7 +119,11 @@ class Replication(object):
 
         reports_queue = WorkQueue()
         checkpoints_loop_task = asyncio.async(self.checkpoints_loop(
-            state, reports_queue, source, target))
+            rep_state, reports_queue, source, target))
+
+        workers = dict(self.spawn_worker(rep_state, source, target,
+                                         changes_queue, reports_queue)
+                       for _ in range(rep_task.worker_processes))
 
         raise NotImplementedError
 
@@ -470,3 +476,20 @@ class Replication(object):
         return '{weekday}, {dt:%d} {month} {dt:%Y %H:%M:%S} GMT'.format(
             weekday=weekdays[utcdt.weekday()], month=months[utcdt.month - 1],
             dt=utcdt)
+
+    def spawn_worker(self,
+                     rep_state: ReplicationState,
+                     source: ISourcePeer,
+                     target: ITargetPeer,
+                     changes_queue: WorkQueue,
+                     reports_queue: WorkQueue) -> (ReplicationWorker,
+                                                   asyncio.Task):
+        rep_task = rep_state.rep_task
+        worker = self.worker_class(rep_state.rep_id,
+                                   source,
+                                   target,
+                                   changes_queue,
+                                   reports_queue,
+                                   batch_size=rep_task.worker_batch_size,
+                                   max_conns=rep_task.http_connections)
+        return worker, worker.start()
