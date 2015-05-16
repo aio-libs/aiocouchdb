@@ -7,19 +7,19 @@
 # you should have received as part of this distribution.
 #
 
-import asyncio
-import bisect
 import datetime
-import functools
 import logging
 import uuid
+
+import asyncio
+import bisect
+import functools
 
 from . import replication_id
 from .abc import ISourcePeer, ITargetPeer
 from .records import ReplicationTask, ReplicationState
 from .work_queue import WorkQueue
 from .worker import ReplicationWorker
-
 
 __all__ = (
     'Replication',
@@ -125,7 +125,11 @@ class Replication(object):
                                          changes_queue, reports_queue)
                        for _ in range(rep_task.worker_processes))
 
-        raise NotImplementedError
+        return asyncio.async(self.tasks_monitor(
+            reports_queue,
+            changes_reader_task,
+            checkpoints_loop_task,
+            workers))
 
     @asyncio.coroutine
     def verify_peers(self, source: ISourcePeer, target: ITargetPeer,
@@ -493,3 +497,71 @@ class Replication(object):
                                    batch_size=rep_task.worker_batch_size,
                                    max_conns=rep_task.http_connections)
         return worker, worker.start()
+
+    @asyncio.coroutine
+    def tasks_monitor(self,
+                      reports_queue: WorkQueue,
+                      changes_reader_loop_task: asyncio.Task,
+                      checkpoints_loop_task: asyncio.Task,
+                      workers: dict) -> ReplicationState:
+        # Basically implementation of
+        # couch_replicator:handle_info({'EXIT', Pid, _}, State)
+        # monitor all the subtasks for their exit status and terminate
+        # replication if things goes wrong
+
+        pending = [changes_reader_loop_task,
+                   checkpoints_loop_task] + list(workers.values())
+        workers_tasks_set = set(workers.values())
+        while True:
+            done, pending = yield from asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED)
+
+            if changes_reader_loop_task.done():
+                if changes_reader_loop_task.exception():
+                    # Changes reader died, that's a critical situation.
+                    exc = changes_reader_loop_task.exception()
+                    log.error('Changes reader died',
+                              exc_info=(exc.__class__, exc, exc.__traceback__),
+                              extra={'rep_id': self.id})
+                    for task in pending:
+                        task.cancel()
+                    raise exc
+
+            if checkpoints_loop_task.done():
+                # Checkpoint loop should not be done here.
+                for task in pending:
+                    task.cancel()
+                if checkpoints_loop_task.exception():
+                    exc = checkpoints_loop_task.exception()
+                    log.error('Checkpoints loop died',
+                              exc_info=(exc.__class__, exc, exc.__traceback__),
+                              extra={'rep_id': self.id})
+                    raise exc
+                else:
+                    log.error('Checkpoint loop unexpectedly stopped',
+                              extra={'rep_id': self.id})
+                    raise RuntimeError('checkpoint loop unexpectedly stopped')
+
+            for worker, worker_task in workers.items():
+                if worker_task.done() and worker_task.exception():
+                    # Could we check if it still possible to make
+                    # a checkpoint before completely crash?
+                    for task in pending:
+                        task.cancel()
+                    exc = worker_task.exception()
+                    log.error('Worker %s died', worker.id,
+                              exc_info=(exc.__class__, exc, exc.__traceback__),
+                              extra={'rep_id': self.id})
+                    raise exc
+
+            if not (workers_tasks_set & pending):
+                # All done, ask to do the last checkpoint
+                reports_queue.close()
+                break
+
+        assert changes_reader_loop_task.done(), \
+            'Why changes reader is still active when all workers are done?'
+
+        # Waiting for the last checkpoint
+        yield from checkpoints_loop_task
+        return self.state
