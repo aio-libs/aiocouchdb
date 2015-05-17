@@ -43,8 +43,14 @@ class Replication(object):
                  source_peer_class,
                  target_peer_class, *,
                  protocol_version=3):
-        self.source = source_peer_class(rep_task.source)
-        self.target = target_peer_class(rep_task.target)
+        self.source = source_peer_class(rep_task.source,
+                                        retries=rep_task.retries_per_request,
+                                        socket_options=rep_task.socket_options,
+                                        timeout=rep_task.connection_timeout)
+        self.target = target_peer_class(rep_task.target,
+                                        retries=rep_task.retries_per_request,
+                                        socket_options=rep_task.socket_options,
+                                        timeout=rep_task.connection_timeout)
         self.state = ReplicationState(rep_task,
                                       rep_uuid=rep_uuid,
                                       protocol_version=protocol_version)

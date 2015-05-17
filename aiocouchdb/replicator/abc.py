@@ -9,6 +9,11 @@
 
 import abc
 import asyncio
+from functools import partial
+from itertools import accumulate, cycle
+from operator import pow
+
+from .records import PeerInfo
 
 
 __all__ = (
@@ -45,7 +50,10 @@ class IChangesFeed(object, metaclass=abc.ABCMeta):
 
 class IPeer(object, metaclass=abc.ABCMeta):
 
-    def __init__(self, peer_info):
+    def __init__(self, peer_info: PeerInfo, *,
+                 retries: int=None,
+                 socket_options=None,
+                 timeout: int=None):
         pass
 
     @abc.abstractmethod
@@ -101,6 +109,43 @@ class IPeer(object, metaclass=abc.ABCMeta):
 
         :rtype: str
         """
+
+    @asyncio.coroutine
+    def retry_if_failed(self,
+                        coro,
+                        retries: int, *,
+                        expected_errors: tuple=(),
+                        max_delay: int=600,
+                        timeout: int=None):
+        """Helper to run coroutine with timeout and retry it again in case
+        of excepted errors. Timeout error is excepted one by default."""
+        expected_errors = expected_errors + (asyncio.TimeoutError,)
+        delay = self.gen_delays(retries, max_delay)
+        while retries:
+            try:
+                return (yield from asyncio.wait_for(coro, timeout=timeout))
+            except expected_errors:
+                if not retries:
+                    raise
+                retries -= 1
+                yield from asyncio.sleep(next(delay))
+
+    @staticmethod
+    def gen_delays(iterations: int, max_delay: int, *, step=partial(pow, 2)):
+        """Cyclically yields a new delay timeout value (int) applying `step`
+        function on each previous value (starts with ``0``) for the number of
+        specified `iterations`. When maximum number of `iterations` is reached,
+        the loop starts over. If produced value is greater than `max_delay`,
+        then `max_delay` will be yielded instead.
+
+        >>> delays = IPeer.gen_delays(5, 15)
+        >>> [next(delays) for _ in range(11)]
+        [1, 4, 8, 15, 15, 1, 4, 8, 15, 15, 1]
+        """
+        # Technically, this function could be used to used for more generic
+        # proposes, but here it works for delay timeouts and only.
+        return cycle(accumulate(range(1, iterations + 1),
+                                lambda _, n: min(step(n), max_delay)))
 
 
 class ISourcePeer(IPeer):
