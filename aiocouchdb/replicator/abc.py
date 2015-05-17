@@ -35,6 +35,13 @@ class IChangesFeed(object, metaclass=abc.ABCMeta):
         :rtype: dict
         """
 
+    @property
+    @abc.abstractmethod
+    def last_seq(self):
+        """Returns last received Sequence ID from the feed. This may not be
+        the same Sequence ID as the last emitted one if changes feed is
+        filtered."""
+
 
 class IPeer(object, metaclass=abc.ABCMeta):
 

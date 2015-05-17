@@ -114,10 +114,10 @@ class Replication(object):
         # max_size = 100 * 1024 * rep_task.worker_processes
 
         changes_queue = WorkQueue(maxsize=max_items)
-        changes_reader_task = asyncio.async(self.changes_reader_loop(
-            changes_queue, source, rep_task, start_seq))
-
         reports_queue = WorkQueue()
+        changes_reader_task = asyncio.async(self.changes_reader_loop(
+            changes_queue, reports_queue, source, rep_task, start_seq))
+
         checkpoints_loop_task = asyncio.async(self.checkpoints_loop(
             rep_state, reports_queue, source, target))
 
@@ -229,6 +229,7 @@ class Replication(object):
     @asyncio.coroutine
     def changes_reader_loop(self,
                             changes_queue: WorkQueue,
+                            reports_queue: WorkQueue,
                             source: ISourcePeer,
                             rep_task: ReplicationTask,
                             start_seq):
@@ -243,6 +244,14 @@ class Replication(object):
         while True:
             event = yield from feed.next()
             if event is None:
+                # Report that feed.last_seq is done regardless if it is actually
+                # processed by any worker - checkpoints_loop will keep working
+                # until all workers will finish their job.
+                # We need such report for case when changes feed is filtered:
+                # workers may not proceed the last seq, but we actually read
+                # until it. No need read it and seqs before it again when we
+                # restart the same replication.
+                yield from reports_queue.put((True, feed.last_seq))
                 changes_queue.close()
                 break
             yield from changes_queue.put(event)
@@ -364,8 +373,11 @@ class Replication(object):
         elif seqs_in_progress[0] == report_seq:
             current_through_seq = seqs_in_progress.pop(0)
         else:
-            seqs_in_progress.pop(bisect.bisect_left(seqs_in_progress,
-                                                    report_seq))
+            index = bisect.bisect_left(seqs_in_progress, report_seq)
+            # We don't want to get out of array boundaries
+            # for the last_seq report
+            if index < len(seqs_in_progress):
+                seqs_in_progress.pop(index)
 
         if not seqs_in_progress:
             # No more seqs in progress, make sure that we make

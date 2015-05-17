@@ -143,9 +143,10 @@ class ReplicationTestCase(utils.TestCase):
                          self.repl.compare_replication_logs(source, target))
 
     def test_changes_reader_loop(self):
-        class Changes(object):
+        class ChangesFeed(abc.IChangesFeed):
             def __init__(self, items: list):
                 self.items = list(reversed(items))
+                self._last_seq = items[-1]
 
             @asyncio.coroutine
             def next(self):
@@ -153,12 +154,19 @@ class ReplicationTestCase(utils.TestCase):
                     return None
                 return self.items.pop()
 
-        self.source.changes.return_value = self.future(Changes([1, 2, 3, 4, 5]))
+            @property
+            def last_seq(self):
+                return self._last_seq
+
+        feed = ChangesFeed([1, 2, 3, 4, 5])
+        self.source.changes.return_value = self.future(feed)
 
         changes_queue = work_queue.WorkQueue()
+        reports_queue = work_queue.WorkQueue()
 
         changes_reader = asyncio.async(self.repl.changes_reader_loop(
             changes_queue=changes_queue,
+            reports_queue=reports_queue,
             source=self.source,
             rep_task=self.repl.state.rep_task,
             start_seq=21))
@@ -175,6 +183,10 @@ class ReplicationTestCase(utils.TestCase):
 
         items = yield from changes_queue.get(20)
         self.assertEqual(changes_queue.CLOSED, items)
+
+        reports = yield from reports_queue.get()
+        self.assertEqual(1, len(reports))
+        self.assertEqual((True, 5), reports[0])
 
     def test_checkpoints_loop_no_reports(self):
         reports_queue = work_queue.WorkQueue()
