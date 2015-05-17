@@ -314,11 +314,11 @@ class ReplicationState(namedtuple('ReplicationState', [
                 protocol_version: int=None,
                 session_id: str=None,
 
-                source_seq=None,
-                start_seq=None,
-                committed_seq=None,
-                current_through_seq=None,
-                highest_seq_done=None,
+                source_seq: TsSeq=None,
+                start_seq: TsSeq=None,
+                committed_seq: TsSeq=None,
+                current_through_seq: TsSeq=None,
+                highest_seq_done: TsSeq=None,
                 seqs_in_progress: frozenset=None,
 
                 replication_start_time: float=None,
@@ -340,12 +340,12 @@ class ReplicationState(namedtuple('ReplicationState', [
         :param str rep_uuid: Replicator UUID
         :param int protocol_version: Replication protocol version
 
-        :param source_seq: Source Sequence ID at the moment of
+        :param TsSeq source_seq: Source Sequence ID at the moment of
             the Replication start
-        :param start_seq: Replication start Sequence ID
-        :param committed_seq: Last committed Source Sequence ID to Target
-        :param current_through_seq: Currently processed Sequence ID
-        :param highest_seq_done: Highest Source Sequence ID
+        :param TsSeq start_seq: Replication start Sequence ID
+        :param TsSeq committed_seq: Last committed Source Sequence ID to Target
+        :param TsSeq current_through_seq: Currently processed Sequence ID
+        :param TsSeq highest_seq_done: Highest Source Sequence ID
             that is done by workers
         :param tuple seqs_in_progress: Sequence IDs that are in progress
 

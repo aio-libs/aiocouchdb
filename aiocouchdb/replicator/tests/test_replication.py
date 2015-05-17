@@ -152,7 +152,7 @@ class ReplicationTestCase(utils.TestCase):
             def next(self):
                 if not self.items:
                     return None
-                return self.items.pop()
+                return {'seq': self.items.pop()}
 
             @property
             def last_seq(self):
@@ -169,24 +169,29 @@ class ReplicationTestCase(utils.TestCase):
             reports_queue=reports_queue,
             source=self.source,
             rep_task=self.repl.state.rep_task,
-            start_seq=21))
+            start_seq=records.TsSeq(0, 14)))
 
         yield from asyncio.sleep(0.1)  # context switch
 
         self.assertTrue(self.source.changes.called)
 
         items = yield from changes_queue.get(3)
-        self.assertEqual([1, 2, 3], items)
+        self.assertEqual([(records.TsSeq(1, 1), {'seq': 1}),
+                          (records.TsSeq(2, 2), {'seq': 2}),
+                          (records.TsSeq(3, 3), {'seq': 3})],
+                         items)
 
         items = yield from changes_queue.get(3)
-        self.assertEqual([4, 5], items)
+        self.assertEqual([(records.TsSeq(4, 4), {'seq': 4}),
+                          (records.TsSeq(5, 5), {'seq': 5})],
+                         items)
 
         items = yield from changes_queue.get(20)
         self.assertEqual(changes_queue.CLOSED, items)
 
         reports = yield from reports_queue.get()
         self.assertEqual(1, len(reports))
-        self.assertEqual((True, 5), reports[0])
+        self.assertEqual((True, records.TsSeq(6, 5)), reports[0])
 
     def test_checkpoints_loop_no_reports(self):
         reports_queue = work_queue.WorkQueue()
@@ -206,7 +211,7 @@ class ReplicationTestCase(utils.TestCase):
         checkpoints_loop = asyncio.async(self.new_checkpoints_loop(
             reports_queue, checkpoint_interval=0.1, use_checkpoints=False))
 
-        yield from reports_queue.put((True, 1))
+        yield from reports_queue.put((True, records.TsSeq(1, 1)))
         yield from asyncio.sleep(0.5)
 
         self.assertFalse(self.repl.do_checkpoint.called)
@@ -218,9 +223,9 @@ class ReplicationTestCase(utils.TestCase):
         checkpoints_loop = asyncio.async(self.new_checkpoints_loop(
             reports_queue, checkpoint_interval=0.1))
 
-        yield from reports_queue.put((False, 1))
-        yield from reports_queue.put((False, 2))
-        yield from reports_queue.put((True, 2))
+        yield from reports_queue.put((False, records.TsSeq(1, 1)))
+        yield from reports_queue.put((False, records.TsSeq(2, 2)))
+        yield from reports_queue.put((True, records.TsSeq(2, 2)))
 
         yield from asyncio.sleep(0.5)
 
@@ -229,11 +234,12 @@ class ReplicationTestCase(utils.TestCase):
         if checkpoints_loop.done():
             raise checkpoints_loop.exception()
 
-        yield from reports_queue.put((True, 1))
+        yield from reports_queue.put((True, records.TsSeq(1, 1)))
         yield from asyncio.sleep(1)
 
         self.assertTrue(self.repl.do_checkpoint.called)
-        self.assertEqual(2, self.repl.do_checkpoint.call_args[1]['seq'])
+        self.assertEqual(records.TsSeq(2, 2),
+                         self.repl.do_checkpoint.call_args[1]['seq'])
 
     def test_checkpoints_loop_do_the_last_checkpoint_on_close_if_possible(self):
         reports_queue = work_queue.WorkQueue()
@@ -242,14 +248,15 @@ class ReplicationTestCase(utils.TestCase):
         checkpoints_loop = asyncio.async(self.new_checkpoints_loop(
             reports_queue, checkpoint_interval=10))
 
-        yield from reports_queue.put((True, 2))
+        yield from reports_queue.put((True, records.TsSeq(2, 2)))
 
         reports_queue.close()
 
         yield from asyncio.sleep(0.01)
 
         self.assertTrue(self.repl.do_checkpoint.called)
-        self.assertEqual(2, self.repl.do_checkpoint.call_args[1]['seq'])
+        self.assertEqual(records.TsSeq(2, 2),
+                         self.repl.do_checkpoint.call_args[1]['seq'])
 
     def test_ensure_full_commit(self):
         self.source.ensure_full_commit.return_value = self.future('42')
@@ -293,15 +300,16 @@ class ReplicationTestCase(utils.TestCase):
             source_log_rev='0-',
             target_log_rev='0-',
             replication_start_time=datetime.datetime.now(),
+            committed_seq=records.TsSeq(0, 0)
         )
 
         rep_state = yield from self.repl.record_checkpoint(
-            self.source, self.target, 42, rep_state)
+            self.source, self.target, records.TsSeq(24, [1, 'abc']), rep_state)
 
         self.assertEqual(1, len(rep_state.history))
         self.assertEqual('ssid', rep_state.history[0]['session_id'])
-        self.assertEqual(42, rep_state.history[0]['recorded_seq'])
-        self.assertEqual(42, rep_state.committed_seq)
+        self.assertEqual([1, 'abc'], rep_state.history[0]['recorded_seq'])
+        self.assertEqual((24, [1, 'abc']), rep_state.committed_seq)
 
         self.assertTrue(self.source.update_replication_log.called)
         self.assertTrue(self.target.update_replication_log.called)
@@ -313,7 +321,7 @@ class ReplicationTestCase(utils.TestCase):
                              reports_queue, *,
                              checkpoint_interval=5,
                              use_checkpoints=True):
-        committed_seq = self.repl.lowest_seq
+        committed_seq = records.TsSeq(0, self.repl.lowest_seq)
         return self.repl.checkpoints_loop(
             reports_queue,
             checkpoint_interval=checkpoint_interval,

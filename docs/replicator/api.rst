@@ -34,6 +34,10 @@ Records
   :members:
   :special-members:
 
+.. autoclass:: aiocouchdb.replicator.records.TsSeq
+  :members:
+  :special-members:
+
 Peers Interface
 ===============
 

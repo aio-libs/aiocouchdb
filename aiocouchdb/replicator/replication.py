@@ -8,6 +8,7 @@
 #
 
 import datetime
+import itertools
 import logging
 import uuid
 
@@ -17,7 +18,7 @@ import functools
 
 from . import replication_id
 from .abc import ISourcePeer, ITargetPeer
-from .records import ReplicationTask, ReplicationState
+from .records import ReplicationTask, ReplicationState, TsSeq
 from .work_queue import WorkQueue
 from .worker import ReplicationWorker
 
@@ -82,10 +83,10 @@ class Replication(object):
             log.debug('Found a common replication record with source_seq %s',
                       found_seq, extra={'rep_id': rep_id})
 
-        start_seq = rep_task.since_seq or found_seq
+        start_seq = TsSeq(0, rep_task.since_seq or found_seq)
 
         log.debug('Replication start sequence is %s',
-                  start_seq, extra={'rep_id': rep_id})
+                  start_seq.id, extra={'rep_id': rep_id})
 
         self.state = rep_state = self.state.update(
             rep_id=rep_id,
@@ -232,16 +233,25 @@ class Replication(object):
                             reports_queue: WorkQueue,
                             source: ISourcePeer,
                             rep_task: ReplicationTask,
-                            start_seq):
+                            start_seq: TsSeq):
         # couch_replicator_changes_reader
+
         feed = yield from source.changes(
             continuous=rep_task.continuous,
             doc_ids=rep_task.doc_ids,
             filter=rep_task.filter,
             query_params=rep_task.query_params,
-            since=start_seq,
+            since=start_seq.id,
             view=rep_task.view)
-        while True:
+        # couch_replicator uses couch_replication:changes_manager_loop_open/4
+        # to mark requested _batches_ with ordered numbers. Here we use
+        # different approach to avoid having own changes_manager_loop (once
+        # there was the one) as it makes solution more complicated by marking
+        # all changes.
+        #
+        # Counter starts with greater than start_seq TS value in order to avoid
+        # comparison default lowest seq value with the first received one.
+        for ts in itertools.count(start_seq.ts + 1):
             event = yield from feed.next()
             if event is None:
                 # Report that feed.last_seq is done regardless if it is actually
@@ -251,10 +261,17 @@ class Replication(object):
                 # workers may not proceed the last seq, but we actually read
                 # until it. No need read it and seqs before it again when we
                 # restart the same replication.
-                yield from reports_queue.put((True, feed.last_seq))
+                #
+                # couch_replicator_changes_reader uses own TS counter  for
+                # the last_seq which always lower than those what reported by
+                # workers. Not sure if it's bug or not.
+                yield from reports_queue.put((True, TsSeq(ts, feed.last_seq)))
                 changes_queue.close()
                 break
-            yield from changes_queue.put(event)
+            # We form TsSeq here in order to isolate workers from knowledge
+            # about TsSeq thing.
+            seq = TsSeq(ts, event['seq'])
+            yield from changes_queue.put((seq, event))
 
     @asyncio.coroutine
     def checkpoints_loop(self,
@@ -337,7 +354,7 @@ class Replication(object):
 
     def handle_worker_report_seq(self,
                                  rep_state: ReplicationState,
-                                 report_seq,
+                                 report_seq: TsSeq,
                                  seqs_in_progress: list) -> ReplicationState:
         # handle_call({report_seq, Seq, ...}, From, State)
         seqs_in_progress.insert(bisect.bisect(seqs_in_progress, report_seq),
@@ -348,11 +365,11 @@ class Replication(object):
         log.debug('Seqs in progress: %s', seqs_in_progress,
                   extra={'rep_id': rep_state.rep_id})
 
-        return rep_state.update(seqs_in_progress=frozenset(seqs_in_progress))
+        return rep_state.update(seqs_in_progress=tuple(seqs_in_progress))
 
     def handle_worker_report_seq_done(self,
                                       rep_state: ReplicationState,
-                                      report_seq,
+                                      report_seq: TsSeq,
                                       seqs_in_progress: list
                                       ) -> ReplicationState:
         # handle_call({report_seq_done, Seq, ...}, From, State)
@@ -465,7 +482,7 @@ class Replication(object):
             'history': (self.new_history_entry(rep_state),) + prev_history,
             'replication_id_version': rep_state.protocol_version,
             'session_id': rep_state.session_id,
-            'source_last_seq': rep_state.current_through_seq
+            'source_last_seq': rep_state.current_through_seq.id
         }
 
     def new_history_entry(self, rep_state: ReplicationState) -> dict:
@@ -474,12 +491,12 @@ class Replication(object):
         return {
             # required
             'session_id': rep_state.session_id,
-            'recorded_seq': rep_state.current_through_seq,
+            'recorded_seq': rep_state.current_through_seq.id,
             # misc
             'start_time': self.format_time(rep_state.replication_start_time),
             'end_time': self.format_time(datetime.datetime.utcnow()),
-            'start_last_seq': rep_state.committed_seq,
-            'end_last_seq': rep_state.current_through_seq,
+            'start_last_seq': rep_state.committed_seq.id,
+            'end_last_seq': rep_state.current_through_seq.id,
             # TODO: add stats
         }
 
