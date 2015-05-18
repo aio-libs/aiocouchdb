@@ -242,13 +242,15 @@ class Replication(object):
                             start_seq: TsSeq):
         # couch_replicator_changes_reader
 
-        feed = yield from source.changes(
+        inbox = asyncio.Queue(maxsize=changes_queue.maxsize)
+        changes_task = asyncio.async(source.changes(
+            inbox,
             continuous=rep_task.continuous,
             doc_ids=rep_task.doc_ids,
             filter=rep_task.filter,
             query_params=rep_task.query_params,
             since=start_seq.id,
-            view=rep_task.view)
+            view=rep_task.view))
         # couch_replicator uses couch_replication:changes_manager_loop_open/4
         # to mark requested _batches_ with ordered numbers. Here we use
         # different approach to avoid having own changes_manager_loop (once
@@ -258,9 +260,19 @@ class Replication(object):
         # Counter starts with greater than start_seq TS value in order to avoid
         # comparison default lowest seq value with the first received one.
         for ts in itertools.count(start_seq.ts + 1):
-            event = yield from feed.next()
+            inbox_get = asyncio.async(inbox.get())
+            if not changes_task.done():
+                yield from asyncio.wait([changes_task, inbox_get],
+                                        return_when=asyncio.FIRST_COMPLETED)
+            if changes_task.done():
+                if changes_task.exception():
+                    # Assume that ISource.changes implementation had done
+                    # everything to fix the problem, but failed.
+                    # So we have too.
+                    raise changes_task.exception()
+            seq, event = yield from inbox_get
             if event is None:
-                # Report that feed.last_seq is done regardless if it is actually
+                # Report about the last seq regardless if it is actually
                 # processed by any worker - checkpoints_loop will keep working
                 # until all workers will finish their job.
                 # We need such report for case when changes feed is filtered:
@@ -271,13 +283,12 @@ class Replication(object):
                 # couch_replicator_changes_reader uses own TS counter  for
                 # the last_seq which always lower than those what reported by
                 # workers. Not sure if it's bug or not.
-                yield from reports_queue.put((True, TsSeq(ts, feed.last_seq)))
+                yield from reports_queue.put((True, TsSeq(ts, seq)))
                 changes_queue.close()
                 break
             # We form TsSeq here in order to isolate workers from knowledge
             # about TsSeq thing.
-            seq = TsSeq(ts, event['seq'])
-            yield from changes_queue.put((seq, event))
+            yield from changes_queue.put((TsSeq(ts, seq), event))
 
     @asyncio.coroutine
     def checkpoints_loop(self,

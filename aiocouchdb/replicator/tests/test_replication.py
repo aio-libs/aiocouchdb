@@ -143,23 +143,13 @@ class ReplicationTestCase(utils.TestCase):
                          self.repl.compare_replication_logs(source, target))
 
     def test_changes_reader_loop(self):
-        class ChangesFeed(abc.IChangesFeed):
-            def __init__(self, items: list):
-                self.items = list(reversed(items))
-                self._last_seq = items[-1]
+        @asyncio.coroutine
+        def side_effect(queue, *args, **kwargs):
+            for i in range(1, 6):
+                yield from queue.put((i, {'seq': i}))
+            yield from queue.put((i, None))
 
-            @asyncio.coroutine
-            def next(self):
-                if not self.items:
-                    return None
-                return {'seq': self.items.pop()}
-
-            @property
-            def last_seq(self):
-                return self._last_seq
-
-        feed = ChangesFeed([1, 2, 3, 4, 5])
-        self.source.changes.return_value = self.future(feed)
+        self.source.changes.side_effect = side_effect
 
         changes_queue = work_queue.WorkQueue()
         reports_queue = work_queue.WorkQueue()
