@@ -16,6 +16,7 @@ from collections import defaultdict
 from functools import partial
 
 from .abc import ISourcePeer, ITargetPeer
+from .records import ReplicationStats
 from .work_queue import WorkQueue
 
 
@@ -64,6 +65,7 @@ class ReplicationWorker(object):
         self.max_conns = max_conns
         self._id = binascii.hexlify(os.urandom(4)).decode()
         self._rep_id = rep_id
+        self._stats = defaultdict(int)
 
     @property
     def id(self) -> str:
@@ -104,8 +106,10 @@ class ReplicationWorker(object):
                       len(changes), seqs[0], seqs[-1],
                       extra={'rep_id': self.rep_id, 'worker_id': self.id})
 
+            self._stats.clear()
             # Notify checkpoints_loop that we start work on the batch
-            yield from reports_queue.put((False, report_seq))
+            stats = ReplicationStats().update(**self._stats)
+            yield from reports_queue.put((False, report_seq, stats))
 
             docid_missing = yield from self.find_missing_revs(target, changes)
 
@@ -118,7 +122,8 @@ class ReplicationWorker(object):
                 yield from self.remote_process_batch(
                     source, target, docid_missing, max_conns=max_conns)
 
-            yield from reports_queue.put((True, report_seq))
+            stats = ReplicationStats().update(**self._stats)
+            yield from reports_queue.put((True, report_seq, stats))
 
     @asyncio.coroutine
     def find_missing_revs(self, target: ITargetPeer, changes: list) -> dict:
@@ -136,11 +141,13 @@ class ReplicationWorker(object):
                     continue
                 seen.add((docid, rev))
                 docid_revs[docid].append(rev)
+                self._stats['missing_checked'] += 1
 
         revs_diff = yield from target.revs_diff(docid_revs)
 
         docid_missing = {}
         for docid, content in revs_diff.items():
+            self._stats['missing_found'] += len(content['missing'])
             docid_missing[docid] = (content['missing'],
                                     content.get('possible_ancestors', []))
         return docid_missing
@@ -251,6 +258,7 @@ class ReplicationWorker(object):
         if reader.exception():
             return
         assert reader.result is not None, 'that should not be'
+        self._stats['docs_read'] += 1
         outbox.put_nowait(reader.result())
 
     def handle_reader_error(self,
@@ -332,7 +340,8 @@ class ReplicationWorker(object):
                       if 'stub' not in att) / 1024 / 1024,
                   extra={'rep_id': self.rep_id, 'worker_id': self.id})
 
-        yield from target.update_doc(doc, atts)
+        err = yield from target.update_doc(doc, atts)
+        self._stats['doc_write_failures' if err else 'docs_written'] += 1
 
     @asyncio.coroutine
     def update_docs(self, target: ITargetPeer, docs: list):
@@ -340,4 +349,6 @@ class ReplicationWorker(object):
         log.debug('Flushing batch of %d docs', len(docs),
                   extra={'rep_id': self.rep_id, 'worker_id': self.id})
 
-        yield from target.update_docs(docs)
+        errs = yield from target.update_docs(docs)
+        self._stats['docs_written'] += len(docs) - len(errs)
+        self._stats['doc_write_failures'] += len(errs)

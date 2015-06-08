@@ -30,6 +30,7 @@ __all__ = (
     'TsSeq',
     'PeerInfo',
     'ReplicationTask',
+    'ReplicationStats',
     'ReplicationState',
 )
 
@@ -267,6 +268,37 @@ class ReplicationTask(namedtuple('ReplicationTask', [
                       if value is not None))
 
 
+class ReplicationStats(namedtuple('ReplicationStats', [
+    # rep_stats record from couch_replicator_stats
+    'missing_checked',
+    'missing_found',
+    'docs_read',
+    'docs_written',
+    'doc_write_failures',
+    # misc
+    'timestamp'
+])):
+    """Replication runtime statistics."""
+
+    __slots__ = ()
+
+    def __new__(cls):
+        data = {field: 0 for field in cls._fields}
+        data['timestamp'] = time.time()
+        return super().__new__(cls, **data)
+
+    def merge(self, other: 'ReplicationStats') -> 'ReplicationStats':
+        """Returns a new instance of stats with the requested changes."""
+        return self.update(**{field: (v1 + v2)
+                              for field, (v1, v2) in zip(self._fields,
+                                                         zip(self, other))})
+
+    def update(self, **kwargs) -> 'ReplicationStats':
+        """Returns a new instance of stats with the requested changes."""
+        kwargs['timestamp'] = int(time.time())
+        return self._replace(**kwargs)
+
+
 class ReplicationState(namedtuple('ReplicationState', [
     'rep_task',
 
@@ -290,6 +322,8 @@ class ReplicationState(namedtuple('ReplicationState', [
     'source_log_rev',
     'target_log_rev',
     'history',
+
+    'stats',
 
     'timestamp'
 ])):
@@ -330,6 +364,8 @@ class ReplicationState(namedtuple('ReplicationState', [
                 target_log_rev: str=None,
                 history: tuple=None,
 
+                stats: ReplicationStats=None,
+
                 timestamp: int=0):
         """Creates a new replication state namedtuple object based on provided
         :class:`~aiocouchdb.replicator.records.ReplicationTask` and the other
@@ -358,10 +394,13 @@ class ReplicationState(namedtuple('ReplicationState', [
         :param str target_log_rev: Replication log revision on Target side
         :param tuple history: Replication history
 
+        :param ReplicationStats stats: Replication statistics
+
         :param int timestamp: State update timestamp in seconds
 
         :rtype: ReplicationState
         """
+        stats = stats or ReplicationStats()
         params = locals()
         return super().__new__(cls, *(params[key] for key in cls._fields))
 

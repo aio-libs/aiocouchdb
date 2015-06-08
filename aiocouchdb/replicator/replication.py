@@ -18,7 +18,7 @@ import functools
 
 from . import replication_id
 from .abc import ISourcePeer, ITargetPeer
-from .records import ReplicationTask, ReplicationState, TsSeq
+from .records import ReplicationTask, ReplicationState, ReplicationStats, TsSeq
 from .work_queue import WorkQueue
 from .worker import ReplicationWorker
 
@@ -112,6 +112,8 @@ class Replication(object):
             source_log_rev=source_log.get('_rev'),
             target_log_rev=target_log.get('_rev'),
             history=tuple(history),
+
+            stats=ReplicationStats(),
         )
 
         max_items = rep_task.worker_processes * rep_task.worker_batch_size * 2
@@ -283,7 +285,8 @@ class Replication(object):
                 # couch_replicator_changes_reader uses own TS counter  for
                 # the last_seq which always lower than those what reported by
                 # workers. Not sure if it's bug or not.
-                yield from reports_queue.put((True, TsSeq(ts, seq)))
+                stats = ReplicationStats()
+                yield from reports_queue.put((True, TsSeq(ts, seq), stats))
                 changes_queue.close()
                 break
             # We form TsSeq here in order to isolate workers from knowledge
@@ -332,13 +335,16 @@ class Replication(object):
 
                     return
 
-                for is_done, report_seq in reports:
+                for is_done, report_seq, worker_stats in reports:
                     if is_done:
                         rep_state = self.handle_worker_report_seq_done(
                             rep_state, report_seq, seqs_in_progress)
+                        rep_state = rep_state.update(
+                            stats=rep_state.stats.merge(worker_stats))
                     else:
                         rep_state = self.handle_worker_report_seq(
                             rep_state, report_seq, seqs_in_progress)
+
                     self.state = rep_state
 
                 get_reports = asyncio.async(reports_queue.get_all())
@@ -514,7 +520,12 @@ class Replication(object):
             'end_time': self.format_time(datetime.datetime.utcnow()),
             'start_last_seq': rep_state.committed_seq.id,
             'end_last_seq': rep_state.current_through_seq.id,
-            # TODO: add stats
+            # stats
+            'missing_checked': rep_state.stats.missing_checked,
+            'missing_found': rep_state.stats.missing_found,
+            'docs_read': rep_state.stats.docs_read,
+            'docs_written': rep_state.stats.docs_written,
+            'doc_write_failures': rep_state.stats.doc_write_failures,
         }
 
     @staticmethod
