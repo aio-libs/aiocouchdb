@@ -57,7 +57,7 @@ purge:
 
 .PHONY: check
 # target: check - Runs test suite against mocked environment
-check: flake
+check: flake pylint-errors
 	${NOSE} --with-doctest ${PROJECT}
 
 
@@ -79,9 +79,15 @@ cover:
 
 
 .PHONY: pylint
-# target: lint - Runs pylint checks
+# target: pylint - Runs pylint checks
 pylint:
 	${PYLINT} --rcfile=.pylintrc ${PROJECT}
+
+
+.PHONY: pylint-errors
+# target: pylint-errors - Reports about pylint errors
+pylint-errors:
+	${PYLINT} --rcfile=.pylintrc -E ${PROJECT}
 
 
 .PHONY: docs

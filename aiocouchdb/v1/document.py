@@ -53,7 +53,7 @@ class Document(object):
     def __repr__(self):
         return '<{}.{}({}) object at {}>'.format(
             self.__module__,
-            self.__class__.__qualname__,
+            self.__class__.__qualname__,  # pylint: disable=no-member
             self.resource.url,
             hex(id(self)))
 
@@ -136,7 +136,7 @@ class Document(object):
         yield from resp.release()
         return resp.headers[ETAG].strip('"')
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0613
+    @asyncio.coroutine
     def get(self, rev=None, *,
             auth=None,
             att_encoding_info=None,
@@ -190,7 +190,7 @@ class Document(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612
+    @asyncio.coroutine
     def get_open_revs(self, *open_revs,
                       auth=None,
                       att_encoding_info=None,
@@ -243,8 +243,8 @@ class Document(object):
         reader = OpenRevsMultipartReader.from_response(resp)
         return reader
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0613
-    def get_with_atts(self, rev=None, *,  # pylint: disable=R0914
+    @asyncio.coroutine
+    def get_with_atts(self, rev=None, *,
                       auth=None,
                       att_encoding_info=None,
                       atts_since=None,
@@ -317,7 +317,7 @@ class Document(object):
 
         return DocAttachmentsMultipartReader.from_response(resp)
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612
+    @asyncio.coroutine
     def update(self, doc, *,
                atts=None,
                auth=None,
@@ -487,7 +487,8 @@ class DocAttachmentsMultipartReader(MultipartReader):
         if self._at_eof:
             return None, None
 
-        attsreader = MultipartReader(self.headers, self.content)
+        attsreader = MultipartReader(self.headers,
+                                     self.content)  # pylint: disable=no-member
         self._last_part = attsreader
         attsreader._unread = reader._unread
 

@@ -26,7 +26,7 @@ class DatabaseSecurity(object):
     def __repr__(self):
         return '<{}.{}({}) object at {}>'.format(
             self.__module__,
-            self.__class__.__qualname__,
+            self.__class__.__qualname__,  # pylint: disable=no-member
             self.resource.url,
             hex(id(self)))
 

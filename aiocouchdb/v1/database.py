@@ -73,7 +73,7 @@ class Database(object):
     def __repr__(self):
         return '<{}.{}({}) object at {}>'.format(
             self.__module__,
-            self.__class__.__qualname__,
+            self.__class__.__qualname__,  # pylint: disable=no-member
             self.resource.url,
             hex(id(self)))
 
@@ -192,8 +192,8 @@ class Database(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612
-    def all_docs(self, *keys,  # pylint: disable=W0613, R0914
+    @asyncio.coroutine
+    def all_docs(self, *keys,
                  auth=None,
                  feed_buffer_size=None,
                  att_encoding_info=None,
@@ -288,8 +288,8 @@ class Database(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0622
-    def changes(self, *doc_ids,  # pylint: disable=R0914
+    @asyncio.coroutine
+    def changes(self, *doc_ids,
                 auth=None,
                 feed_buffer_size=None,
                 att_encoding_info=None,
@@ -485,8 +485,8 @@ class Database(object):
         :class:`~aiocouchdb.v1.database.Database.security_class` instance."""
         return self._security
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612
-    def temp_view(self, map_fun,  # pylint: disable=R0914
+    @asyncio.coroutine
+    def temp_view(self, map_fun,
                   red_fun=None,
                   language=None,
                   *,

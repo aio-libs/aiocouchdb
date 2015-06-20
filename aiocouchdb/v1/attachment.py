@@ -38,7 +38,7 @@ class Attachment(object):
     def __repr__(self):
         return '<{}.{}({}) object at {}>'.format(
             self.__module__,
-            self.__class__.__qualname__,
+            self.__class__.__qualname__,  # pylint: disable=no-member
             self.resource.url,
             hex(id(self)))
 
@@ -111,7 +111,7 @@ class Attachment(object):
         yield from resp.release()
         return resp.headers.get(ACCEPT_RANGES) == 'bytes'
 
-    @asyncio.coroutine  # pylint: disable=redefined-builtin
+    @asyncio.coroutine
     def get(self, rev=None, *, auth=None, range=None):
         """`Returns an attachment`_ reader object.
 

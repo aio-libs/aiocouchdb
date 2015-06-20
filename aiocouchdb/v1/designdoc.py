@@ -47,7 +47,7 @@ class DesignDocument(object):
     def __repr__(self):
         return '<{}.{}({}) object at {}>'.format(
             self.__module__,
-            self.__class__.__qualname__,
+            self.__class__.__qualname__,  # pylint: disable=no-member
             self.resource.url,
             hex(id(self)))
 
@@ -87,8 +87,8 @@ class DesignDocument(object):
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0622
-    def list(self,      # pylint: disable=W0613, R0914
+    @asyncio.coroutine
+    def list(self,
              list_name,
              view_name=None,
              *keys,
@@ -182,7 +182,7 @@ class DesignDocument(object):
             method, auth=auth, data=data, params=params, headers=headers)
         return resp
 
-    @asyncio.coroutine  # pylint: disable=W0622
+    @asyncio.coroutine
     def show(self, show_name, docid=None, *,
              auth=None, method=None, headers=None, data=None, params=None,
              format=None):
@@ -256,8 +256,8 @@ class DesignDocument(object):
                                                        headers=headers)
         return resp
 
-    @asyncio.coroutine  # pylint: disable=W0142, W0612, W0622
-    def view(self,      # pylint: disable=W0613, R0914
+    @asyncio.coroutine
+    def view(self,
              view_name,
              *keys,
              auth=None,

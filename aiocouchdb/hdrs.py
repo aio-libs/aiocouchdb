@@ -7,7 +7,7 @@
 # you should have received as part of this distribution.
 #
 
-from aiohttp.hdrs import *  # pylint: disable=W0401, W0614
+from aiohttp.hdrs import *
 from aiohttp.multidict import upstr
 
 #: Defines CouchDB Proxy Auth username
