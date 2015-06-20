@@ -33,7 +33,7 @@ class Feed(object):
     #: Limits amount of items feed would fetch and keep for further iteration.
     buffer_size = 0
 
-    def __init__(self, resp, *, loop=None, buffer_size=buffer_size):
+    def __init__(self, resp, *, loop=None, buffer_size=0):
         self._active = True
         self._exc = None
         self._queue = asyncio.Queue(maxsize=buffer_size or self.buffer_size,
