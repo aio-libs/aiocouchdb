@@ -496,7 +496,10 @@ class Replication(object):
             history=source_log['history'],
             last_checkpoint_made_time=datetime.datetime.utcnow(),
             source_log_rev=source_rev,
-            target_log_rev=target_rev
+            target_log_rev=target_rev,
+            stats=rep_state.stats.update(
+                checkpoints_success=rep_state.stats.checkpoints_success + 1
+            ),
         )
 
     def new_replication_log(self, rep_state: ReplicationState) -> dict:

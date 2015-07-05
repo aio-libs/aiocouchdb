@@ -275,6 +275,8 @@ class ReplicationStats(namedtuple('ReplicationStats', [
     'docs_read',
     'docs_written',
     'doc_write_failures',
+    # other stats
+    'checkpoints_success',
     # misc
     'timestamp'
 ])):
