@@ -269,22 +269,24 @@ class Database(object):
 
         :rtype: list
         """
-        def chunkify(docs, all_or_nothing):
+        def chunkify(docs, all_or_nothing, new_edits):
             # stream docs one by one to reduce footprint from jsonifying all
             # of them in single shot. useful when docs is generator of docs
+            first_chunk = b'{'
             if all_or_nothing is True:
-                yield b'{"all_or_nothing": true, "docs": ['
-            else:
-                yield b'{"docs": ['
+                first_chunk += b'"all_or_nothing": true, '
+            if new_edits is False:
+                first_chunk += b'"new_edits": false, '
+            first_chunk += b'"docs": ['
+            yield first_chunk
             idocs = iter(docs)
             yield json.dumps(next(idocs)).encode('utf-8')
             for doc in idocs:
                 yield b',' + json.dumps(doc).encode('utf-8')
             yield b']}'
-        params = {} if new_edits is None else {'new_edits': new_edits}
-        chunks = chunkify(docs, all_or_nothing)
+        chunks = chunkify(docs, all_or_nothing, new_edits)
         resp = yield from self.resource.post(
-            '_bulk_docs', auth=auth, data=chunks, params=params)
+            '_bulk_docs', auth=auth, data=chunks)
         yield from resp.maybe_raise_error()
         return (yield from resp.json())
 
