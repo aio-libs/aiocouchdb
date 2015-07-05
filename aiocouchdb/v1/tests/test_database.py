@@ -156,7 +156,7 @@ class DatabaseTestCase(utils.DatabaseTestCase):
         yield from self.db.bulk_docs([{'_id': 'foo'}], new_edits=False)
         self.assert_request_called_with('POST', self.db.name, '_bulk_docs',
                                         data=Ellipsis,
-                                        params={'new_edits': False})
+                                        params={})
 
     def test_changes(self):
         with (yield from self.db.changes()) as feed:
