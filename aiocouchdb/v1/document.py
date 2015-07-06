@@ -236,7 +236,7 @@ class Document(object):
         params['open_revs'] = json.dumps(open_revs) if open_revs else 'all'
 
         resp = yield from self.resource.get(auth=auth,
-                                            headers={ACCEPT: 'multipart/*'},
+                                            headers={ACCEPT: 'multipart/mixed'},
                                             params=params,
                                             response_class=HttpStreamResponse)
         yield from resp.maybe_raise_error()
@@ -291,7 +291,7 @@ class Document(object):
 
         resp = yield from self.resource.get(
             auth=auth,
-            headers={ACCEPT: 'multipart/*, application/json'},
+            headers={ACCEPT: 'multipart/related, application/json'},
             params=params,
             response_class=HttpStreamResponse)
 
