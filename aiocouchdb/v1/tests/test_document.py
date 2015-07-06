@@ -165,9 +165,10 @@ class DocumentTestCase(utils.DocumentTestCase):
             'CONTENT-TYPE': 'multipart/mixed;boundary=:'
         }):
             result = yield from self.doc.get_open_revs()
-            self.assert_request_called_with('GET', *self.request_path(),
-                                            headers={'ACCEPT': 'multipart/*'},
-                                            params={'open_revs': 'all'})
+            self.assert_request_called_with(
+                'GET', *self.request_path(),
+                headers={'ACCEPT': 'multipart/mixed'},
+                params={'open_revs': 'all'})
         self.assertIsInstance(
             result,
             aiocouchdb.v1.document.OpenRevsMultipartReader.response_wrapper_cls)
@@ -183,7 +184,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             revs = yield from self.doc.get_open_revs('1-ABC', '2-CDE')
             self.assert_request_called_with(
                 'GET', *self.request_path(),
-                headers={'ACCEPT': 'multipart/*'},
+                headers={'ACCEPT': 'multipart/mixed'},
                 params={'open_revs': '["1-ABC", "2-CDE"]'})
             yield from revs.release()
 
@@ -207,7 +208,7 @@ class DocumentTestCase(utils.DocumentTestCase):
 
                 self.assert_request_called_with(
                     'GET', *self.request_path(),
-                    headers={'ACCEPT': 'multipart/*'},
+                    headers={'ACCEPT': 'multipart/mixed'},
                     params={key: value,
                             'open_revs': 'all'})
 
@@ -220,7 +221,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             result = yield from self.doc.get_with_atts()
             self.assert_request_called_with(
                 'GET', *self.request_path(),
-                headers={'ACCEPT': 'multipart/*, application/json'},
+                headers={'ACCEPT': 'multipart/related, application/json'},
                 params={'attachments': True})
         self.assertIsInstance(
             result,
@@ -237,7 +238,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             result = yield from self.doc.get_with_atts()
             self.assert_request_called_with(
                 'GET', *self.request_path(),
-                headers={'ACCEPT': 'multipart/*, application/json'},
+                headers={'ACCEPT': 'multipart/related, application/json'},
                 params={'attachments': True})
         self.assertIsInstance(
             result,
@@ -258,7 +259,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             result = yield from self.doc.get_with_atts()
             self.assert_request_called_with(
                 'GET', *self.request_path(),
-                headers={'ACCEPT': 'multipart/*, application/json'},
+                headers={'ACCEPT': 'multipart/related, application/json'},
                 params={'attachments': True})
 
         resp = result.resp
@@ -296,7 +297,7 @@ class DocumentTestCase(utils.DocumentTestCase):
 
                 self.assert_request_called_with(
                     'GET', *self.request_path(),
-                    headers={'ACCEPT': 'multipart/*, application/json'},
+                    headers={'ACCEPT': 'multipart/related, application/json'},
                     params={key: value, 'attachments': True})
 
                 yield from revs.release()
