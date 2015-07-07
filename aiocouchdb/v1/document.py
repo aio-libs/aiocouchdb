@@ -368,11 +368,15 @@ class Document(object):
 
         if atts:
             writer = MultipartWriter('related')
+            writer.append_json(doc)
+
             doc.setdefault('_attachments', {})
+
             # A little hack to sync the order of attachments definition
             # between JSON and multipart body parts
             for name in atts:
                 doc['_attachments'][name] = {}
+
             for name, stub in doc['_attachments'].items():
                 if stub:
                     continue
@@ -388,17 +392,15 @@ class Document(object):
                     'follows': True,
                     'content_type': part.headers[CONTENT_TYPE]
                 }
-            writer.append_json(doc)
 
-            # CouchDB expects document at the first body part
-            writer.parts.insert(0, writer.parts.pop())
+            writer.parts[0].headers[CONTENT_LENGTH] = \
+                str(len(json.dumps(doc).encode('utf-8')))
 
-            # workaround of COUCHDB-2295, I really sorry for that
-            body = b''.join(writer.serialize())
+            # workaround of COUCHDB-2295
+            writer.headers[CONTENT_LENGTH] = str(writer.calc_content_length())
 
             resp = yield from self.resource.put(auth=auth,
-                                                data=body,
-                                                headers=writer.headers,
+                                                data=writer,
                                                 params=params)
 
             for info in doc['_attachments'].values():
