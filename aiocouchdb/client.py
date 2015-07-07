@@ -28,6 +28,7 @@ from .hdrs import (
     TRANSFER_ENCODING,
     URI,
 )
+from .multipart import MultipartWriter
 
 
 __all__ = (
@@ -189,9 +190,14 @@ class HttpRequest(aiohttp.client.ClientRequest):
         if data is None:
             return
         if self.headers.get(CONTENT_TYPE) == 'application/json':
-            if not (isinstance(data, (types.GeneratorType, io.IOBase))):
+            non_json_types = (types.GeneratorType, io.IOBase, MultipartWriter)
+            if not (isinstance(data, non_json_types)):
                 data = json.dumps(data)
-        return super().update_body_from_data(data)
+
+        rv = super().update_body_from_data(data)
+        if isinstance(data, MultipartWriter) and CONTENT_LENGTH in self.headers:
+            self.chunked = False
+        return rv
 
     def update_path(self, params):
         if isinstance(params, dict):
