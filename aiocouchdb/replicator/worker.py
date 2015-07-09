@@ -9,6 +9,7 @@
 
 import asyncio
 import binascii
+import json
 import logging
 import os
 
@@ -291,11 +292,11 @@ class ReplicationWorker(object):
         return acc
 
     @asyncio.coroutine
-    def remote_doc_handler(self, doc: dict, atts, *, acc, target):
+    def remote_doc_handler(self, doc: bytearray, atts, *, acc, target):
         # couch_replicator_worker:remote_doc_handler/2
         if atts is None:
             # remote_doc_handler({ok, #doc{atts = []}}, Acc)
-            acc.append(doc)
+            acc.append(json.loads(doc.decode()))
         else:
             # remote_doc_handler({ok, Doc}, Acc)
             # Immediately flush document with attachments received from a remote
@@ -330,15 +331,19 @@ class ReplicationWorker(object):
                 batch[:] = []
 
     @asyncio.coroutine
-    def update_doc(self, target: ITargetPeer, doc: dict, atts):
+    def update_doc(self, target: ITargetPeer, doc: bytearray, atts):
         # couch_replicator_worker:flush_doc/2
 
-        log.debug('Flushing doc %s with attachments (%f MiB)',
-                  doc['_id'],
-                  sum(att['length']
-                      for att in doc['_attachments'].values()
-                      if 'stub' not in att) / 1024 / 1024,
-                  extra={'rep_id': self.rep_id, 'worker_id': self.id})
+        if log.isEnabledFor(logging.DEBUG):
+            docobj = json.loads(doc.decode())
+            log.debug('Flushing doc %s with %d attachment(s) (%f MiB)',
+                      docobj['_id'],
+                      sum(1 for att in docobj['_attachments'].values()
+                          if att.get('follows') is True),
+                      sum(att['length']
+                          for att in docobj['_attachments'].values()
+                          if att.get('follows') is True) / 1024 / 1024,
+                      extra={'rep_id': self.rep_id, 'worker_id': self.id})
 
         err = yield from target.update_doc(doc, atts)
         self._stats['doc_write_failures' if err else 'docs_written'] += 1

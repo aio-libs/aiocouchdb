@@ -509,9 +509,11 @@ class OpenRevsMultipartReader(MultipartReader):
     multipart_reader_cls = MultipartReader
 
     @asyncio.coroutine
-    def next(self):
+    def next(self, *, decode_doc=True):
         """Emits a tuple of document object (:class:`dict`) and multipart reader
         of the followed attachments (if any).
+
+        :param bool decode_doc: If document object need to be decoded from JSON
 
         :rtype: tuple
         """
@@ -522,8 +524,8 @@ class OpenRevsMultipartReader(MultipartReader):
 
         if isinstance(reader, self.multipart_reader_cls):
             part = yield from reader.next()
-            doc = yield from part.json()
+            doc = yield from (part.json() if decode_doc else part.read())
         else:
-            doc = yield from reader.json()
+            doc = yield from (reader.json() if decode_doc else reader.read())
 
         return doc, reader

@@ -192,11 +192,11 @@ class ITargetPeer(IPeer):
 
     @abc.abstractmethod
     @asyncio.coroutine
-    def update_doc(self, doc: dict, atts) -> Exception:
+    def update_doc(self, doc: bytearray, atts) -> Exception:
         """Updates a document with the attachments. This update may produce
         a conflict.
 
-        :param dict doc: Document object
+        :param bytearray doc: Document JSON binary data
         :param atts: Attachments reader object
 
         :returns: Exception, that happens on document update, but is not a fatal
