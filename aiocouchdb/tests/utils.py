@@ -121,6 +121,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         queue = deque(data if isinstance(data, list) else [data])
 
         resp = aiocouchdb.client.HttpResponse('', '')
+        resp._post_init(self.loop)
         resp.status = status
         resp.headers = headers
         resp.cookies = cookies
