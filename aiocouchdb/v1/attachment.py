@@ -29,9 +29,9 @@ __all__ = (
 class Attachment(object):
     """Implementation of :ref:`CouchDB Attachment API <api/doc/attachment>`."""
 
-    def __init__(self, url_or_resource, *, name=None):
+    def __init__(self, url_or_resource, *, name=None, loop=None):
         if isinstance(url_or_resource, str):
-            url_or_resource = Resource(url_or_resource)
+            url_or_resource = Resource(url_or_resource, loop=loop)
         self.resource = url_or_resource
         self._name = name
 

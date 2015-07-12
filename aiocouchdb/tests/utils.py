@@ -130,7 +130,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         resp.content.at_eof.return_value = False
         resp.content.read.side_effect = side_effect
         resp.content.readany.side_effect = side_effect
-        resp.close = mock.Mock()
+        resp.close = mock.Mock(side_effect=resp.close)
 
         return resp
 
@@ -149,6 +149,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
 
         self._set_response(resp)
         yield resp
+        resp.close()
         self._set_response(self.prepare_response())
 
     def _set_response(self, resp):
@@ -182,7 +183,7 @@ class ServerTestCase(TestCase):
     @asyncio.coroutine
     def setup_env(self):
         self.url, creds = extract_credentials(self.url)
-        self.server = self.server_class(self.url)
+        self.server = self.server_class(self.url, loop=self.loop)
         if creds is not None:
             self.cookie = yield from self.server.session.open(*creds)
         else:
@@ -210,7 +211,8 @@ class DatabaseTestCase(ServerTestCase):
         yield from super().setup_env()
         dbname = self.new_dbname()
         self.url_db = urljoin(self.url, dbname)
-        self.db = self.database_class(self.url_db, dbname=dbname)
+        self.db = self.database_class(
+            self.url_db, dbname=dbname, loop=self.loop)
         yield from self.setup_database(self.db)
 
     @asyncio.coroutine
@@ -241,7 +243,8 @@ class DocumentTestCase(DatabaseTestCase):
         yield from super().setup_env()
         docid = uuid()
         self.url_doc = urljoin(self.db.resource.url, docid)
-        self.doc = self.document_class(self.url_doc, docid=docid)
+        self.doc = self.document_class(
+            self.url_doc, docid=docid, loop=self.loop)
         yield from self.setup_document(self.doc)
 
     @asyncio.coroutine
@@ -260,7 +263,8 @@ class DesignDocumentTestCase(DatabaseTestCase):
         yield from super().setup_env()
         docid = '_design/' + uuid()
         self.url_ddoc = urljoin(self.db.resource.url, *docid.split('/'))
-        self.ddoc = self.designdoc_class(self.url_ddoc, docid=docid)
+        self.ddoc = self.designdoc_class(
+            self.url_ddoc, docid=docid, loop=self.loop)
         yield from self.setup_document(self.ddoc)
 
     @asyncio.coroutine

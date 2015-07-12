@@ -38,11 +38,14 @@ class Document(object):
 
     attachment_class = Attachment
 
-    def __init__(self, url_or_resource, *, docid=None, attachment_class=None):
+    def __init__(self, url_or_resource, *,
+                 attachment_class=None,
+                 docid=None,
+                 loop=None):
         if attachment_class is not None:
             self.attachment_class = attachment_class
         if isinstance(url_or_resource, str):
-            url_or_resource = Resource(url_or_resource)
+            url_or_resource = Resource(url_or_resource, loop=loop)
         self.resource = url_or_resource
         self._docid = docid
 

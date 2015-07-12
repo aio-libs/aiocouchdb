@@ -46,6 +46,7 @@ class Server(object):
                  authdb_name=None,
                  config_class=None,
                  database_class=None,
+                 loop=None,
                  session_class=None):
         if authdb_class is not None:
             self.authdb_class = authdb_class
@@ -58,7 +59,7 @@ class Server(object):
         if session_class is not None:
             self.session_class = session_class
         if isinstance(url_or_resource, str):
-            url_or_resource = Resource(url_or_resource)
+            url_or_resource = Resource(url_or_resource, loop=loop)
         self.resource = url_or_resource
         self._authdb = self.authdb_class(self.resource(self.authdb_name),
                                          dbname=self.authdb_name)

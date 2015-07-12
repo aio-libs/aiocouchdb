@@ -31,11 +31,12 @@ class DesignDocument(object):
     def __init__(self, url_or_resource, *,
                  docid=None,
                  document_class=None,
+                 loop=None,
                  view_class=None):
         if document_class is not None:
             self.document_class = document_class
         if isinstance(url_or_resource, str):
-            url_or_resource = Resource(url_or_resource)
+            url_or_resource = Resource(url_or_resource, loop=loop)
         if view_class is not None:
             self.view_class = view_class
         self.resource = url_or_resource
