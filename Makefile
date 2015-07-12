@@ -68,6 +68,29 @@ check-couchdb: flake
 	${NOSE} --with-doctest ${PROJECT}
 
 
+.PHONY: distcheck
+# target: distcheck - Checks if project is ready to ship
+distcheck: distcheck-clean distcheck-33 distcheck-34
+
+distcheck-clean:
+	rm -rf distcheck
+
+distcheck-33:
+	mkdir -p distcheck
+	virtualenv --python=python3.3 distcheck/venv-3.3
+	distcheck/venv-3.3/bin/python setup.py install
+	distcheck/venv-3.3/bin/python setup.py test
+	AIOCOUCHDB_URL="http://localhost:5984" AIOCOUCHDB_TARGET="couchdb" \
+		distcheck/venv-3.3/bin/python setup.py test
+
+distcheck-34:
+	mkdir -p distcheck
+	python3.4 -m venv distcheck/venv-3.4
+	distcheck/venv-3.4/bin/python setup.py install
+	distcheck/venv-3.4/bin/python setup.py test
+	AIOCOUCHDB_URL="http://localhost:5984" AIOCOUCHDB_TARGET="couchdb" \
+		distcheck/venv-3.4/bin/python setup.py test
+
 flake:
 	${FLAKE8} --max-line-length=80 --statistics --exclude=tests --ignore=E501,F403 ${PROJECT}
 
