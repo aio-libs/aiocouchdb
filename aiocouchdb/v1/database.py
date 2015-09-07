@@ -47,6 +47,7 @@ class Database(object):
                  dbname=None,
                  document_class=None,
                  design_document_class=None,
+                 loop=None,
                  security_class=None,
                  view_class=None):
         if document_class is not None:
@@ -58,7 +59,7 @@ class Database(object):
         if security_class is not None:
             self.security_class = security_class
         if isinstance(url_or_resource, str):
-            url_or_resource = Resource(url_or_resource)
+            url_or_resource = Resource(url_or_resource, loop=loop)
         self.resource = url_or_resource
         self._security = self.security_class(self.resource)
         self._dbname = dbname

@@ -321,6 +321,7 @@ class HttpSession(object):
                 encoding='utf-8',
                 expect100=False,
                 headers=None,
+                loop=None,
                 max_redirects=10,
                 params=None,
                 read_until_eof=True,
@@ -342,6 +343,7 @@ class HttpSession(object):
                              passed
         :param bool expect100: Whenever HTTP 100 response is expected
         :param dict headers: Request headers
+        :param loop: AsyncIO event loop instance
         :param int max_redirects: Maximum redirect hops to pass before give up
         :param dict params: Request query parameters
         :param bool read_until_eof: Whenever need to read
@@ -367,6 +369,7 @@ class HttpSession(object):
                                   encoding=encoding,
                                   expect100=expect100,
                                   headers=headers,
+                                  loop=loop or self._loop,
                                   max_redirects=max_redirects,
                                   params=params,
                                   read_until_eof=read_until_eof,
@@ -398,12 +401,15 @@ class Resource(object):
 
     session_class = HttpSession
 
-    def __init__(self, url, *, session=None):
+    def __init__(self, url, *, loop=None, session=None):
+        self._loop = loop
         self.url = url
         self.session = session or self.session_class()
 
     def __call__(self, *path):
-        return type(self)(urljoin(self.url, *path), session=self.session)
+        return type(self)(urljoin(self.url, *path),
+                          loop=self._loop,
+                          session=self.session)
 
     def __repr__(self):
         return '<{}.{}({}) object at {}>'.format(
@@ -469,6 +475,7 @@ class Resource(object):
                                     data=data,
                                     headers=headers,
                                     params=params,
+                                    loop=options.pop('loop', self._loop),
                                     **options)
 
 
