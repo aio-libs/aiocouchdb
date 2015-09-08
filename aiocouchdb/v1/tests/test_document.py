@@ -231,7 +231,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             aiocouchdb.v1.document.DocAttachmentsMultipartReader)
         yield from result.release()
 
-    def test_get_wth_atts_json(self):
+    def test_get_with_atts_json(self):
         with self.response(headers={
             'CONTENT-TYPE': 'application/json'
         }):
@@ -248,7 +248,7 @@ class DocumentTestCase(utils.DocumentTestCase):
             aiocouchdb.v1.document.DocAttachmentsMultipartReader)
         yield from result.release()
 
-    def test_get_wth_atts_json_hacks(self):
+    def test_get_with_atts_json_hacks(self):
         jsondoc = json.dumps({'_id': self.doc.id, '_rev': self.rev},
                              sort_keys=True).replace(' ', '').encode()
 
