@@ -66,14 +66,14 @@ setup(
     ],
     extras_require={
         'oauth': [
-            'oauthlib>=0.6.3'
+            'oauthlib==1.0.3'
         ],
         'docs': [
-            'sphinx>=1.2.3'
+            'sphinx==1.3.1'
         ]
     },
     tests_require=[
-        'flake8>=2.4.0',
-        'nose>=1.3.4'
+        'flake8==2.4.1',
+        'nose==1.3.7'
     ]
 )
