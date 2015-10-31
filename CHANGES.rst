@@ -1,3 +1,22 @@
+0.9.0 (2015-10-31)
+------------------
+
+- First release in aio-libs organization (:
+- Add context managers for response and feeds objects to release connection
+  when work with them is done
+- Use own way to handle JSON responses that doesn't involves chardet usage
+- Add HTTPSession object that helps to apply the same auth credentials and
+  TCP connector for the all further requests made with it
+- aiocouchdb now uses own request module which is basically fork of aiohttp one
+- AuthProviders API upgraded for better workflow
+- Fix _bulk_docs request with new_edit
+- Workaround COUCHDB-2295 by calculating multipart request body
+- Allow to pass event loop explicitly to every major objects
+- Fix parameters for Server.replicate method
+- Minor fixes for docstrings
+- Quite a lot of changes in Makefile commands for better life
+- Minimal requirements for aiohttp raised up to 0.17.4 version
+
 0.8.0 (2015-03-20)
 ------------------
 
