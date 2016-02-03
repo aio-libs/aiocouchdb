@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -233,7 +233,7 @@ class OAuthProvider(AuthProvider):
 
     def __init__(self, *, consumer_key=None, consumer_secret=None,
                  resource_key=None, resource_secret=None):
-        from oauthlib import oauth1
+        from oauthlib import oauth1  # pylint: disable=import-error
         self._oauth1 = oauth1
         self.set_credentials(consumer_key=consumer_key,
                              consumer_secret=consumer_secret,

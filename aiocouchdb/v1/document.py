@@ -311,8 +311,7 @@ class Document(object):
             resp.content._buffer.extend(
                 b'--' + boundary.encode('latin1') + b'\r\n'
                 b'Content-Type: application/json\r\n'
-                b'\r\n'
-                + data.rstrip() + b'\r\n'
+                b'\r\n' + data.rstrip() + b'\r\n'
                 b'--' + boundary.encode('latin1') + b'--\r\n'
             )
 

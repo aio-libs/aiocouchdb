@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -54,17 +54,16 @@ class View(object):
     @staticmethod
     def prepare_params(params):
         json_params = {'key', 'keys', 'startkey', 'endkey'}
-        params = dict(
-            (key, value)
-            for key, value in params.items()
-            if (key in json_params and value is not Ellipsis)
-            or (key not in json_params and value is not None))
-
-        # CouchDB requires these params have valid JSON value
-        for param in json_params:
-            if param in params:
-                params[param] = json.dumps(params[param])
-        return params
+        result = {}
+        for key, value in params.items():
+            if key in json_params:
+                if value is Ellipsis:
+                    continue
+                value = json.dumps(value)
+            elif value is None:
+                continue
+            result[key] = value
+        return result
 
     @staticmethod
     def handle_keys_param(params, data):

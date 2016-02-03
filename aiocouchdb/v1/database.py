@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -352,8 +352,7 @@ class Database(object):
         params.update((key, value)
                       for key, value in locals().items()
                       if key not in {'self', 'doc_ids', 'auth', 'headers',
-                                     'params'}
-                      and value is not None)
+                                     'params'} and value is not None)
 
         if doc_ids:
             data = {'doc_ids': doc_ids}
