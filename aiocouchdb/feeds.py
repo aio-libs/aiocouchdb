@@ -140,13 +140,18 @@ class ViewFeed(Feed):
         if chunk is None:
             return chunk
         chunk = chunk.decode(self._encoding).strip('\r\n,')
-        if chunk.startswith('{"total_rows"'):
-            chunk += ']}'
+        if "total_rows" in chunk:
+            # couchdb 1.x (and 2.x?)
+            if chunk.startswith('{'):
+                chunk += ']}'
+            # couchbase sync gateway 1.x
+            elif chunk.endswith('}'):
+                chunk = '{' + chunk
             event = json.loads(chunk)
             self._total_rows = event['total_rows']
             self._offset = event.get('offset')
             return (yield from self.next())
-        elif chunk.startswith(('{"rows"', ']}')):
+        elif chunk.startswith(('{"rows"', ']')):
             return (yield from self.next())
         elif not chunk:
             return (yield from self.next())
