@@ -1,3 +1,11 @@
+0.9.1 (2016-02-03)
+------------------
+
+- Read views and changes feeds line by line, not by chunks.
+  This fixes #8 and #9 issues.
+- Deprecate Python 3.3 support. 0.10 will be 3.4.1+ only.
+
+
 0.9.0 (2015-10-31)
 ------------------
 
