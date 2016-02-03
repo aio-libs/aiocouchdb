@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -35,7 +35,6 @@ __all__ = (
     'HttpRequest',
     'HttpResponse',
     'HttpSession',
-    'HttpStreamResponse',
     'Resource',
     'extract_credentials',
     'urljoin'
@@ -216,8 +215,6 @@ class HttpResponse(aiohttp.client.ClientResponse):
     flow control which fits the best to handle chunked responses.
     """
 
-    flow_control_class = aiohttp.FlowControlChunksQueue
-
     def __enter__(self):
         return self
 
@@ -257,14 +254,6 @@ class HttpResponse(aiohttp.client.ClientResponse):
             return None
 
         return loads(self._content.decode(encoding))
-
-
-class HttpStreamResponse(HttpResponse):
-    """Like :class:`HttpResponse`, but uses
-    :class:`~aiohttp.streams.FlowControlStreamReader` to handle nicely large
-    non-chunked data streams."""
-
-    flow_control_class = aiohttp.FlowControlStreamReader
 
 
 class HttpSession(object):

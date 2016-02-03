@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -32,6 +32,7 @@ class Feed(object):
 
     #: Limits amount of items feed would fetch and keep for further iteration.
     buffer_size = 0
+    _ignore_heartbeats = True
 
     def __init__(self, resp, *, loop=None, buffer_size=0):
         self._active = True
@@ -56,8 +57,10 @@ class Feed(object):
     def _loop(self):
         try:
             while not self._resp.content.at_eof() and self._active:
-                chunk = yield from self._resp.content.read()
-                if not chunk or chunk == b'\n':  # ignore heartbeats
+                chunk = yield from self._resp.content.readline()
+                if not chunk:
+                    continue
+                if chunk == b'\n' and self._ignore_heartbeats:
                     continue
                 yield from self._queue.put(chunk)
         except Exception as exc:
@@ -145,6 +148,8 @@ class ViewFeed(Feed):
             return (yield from self.next())
         elif chunk.startswith(('{"rows"', ']}')):
             return (yield from self.next())
+        elif not chunk:
+            return (yield from self.next())
         else:
             return json.loads(chunk)
 
@@ -171,19 +176,30 @@ class EventSourceFeed(Feed):
     .. _EventSource: http://www.w3.org/TR/eventsource/
     """
 
+    _ignore_heartbeats = False
+
     @asyncio.coroutine
     def next(self):
         """Emits decoded EventSource event.
 
         :rtype: dict
         """
-        chunk = (yield from super().next())
-        if chunk is None:
-            return chunk
-        chunk = chunk.decode(self._encoding)
+        lines = []
+        while True:
+            chunk = (yield from super().next())
+            if chunk is None:
+                if lines:
+                    break
+                return
+            if chunk == b'\n':
+                if lines:
+                    break
+                continue
+            chunk = chunk.decode(self._encoding).strip()
+            lines.append(chunk)
         event = {}
         data = event['data'] = []
-        for line in chunk.splitlines():
+        for line in lines:
             if not line:
                 break
             if line.startswith(':'):
@@ -249,9 +265,20 @@ class ChangesFeed(Feed):
         chunk = yield from super().next()
         if chunk is None:
             return chunk
-        if chunk.startswith((b'{"results"', b'\n]')):
+        if chunk.startswith((b'{"results"', b'],\n')):
             return (yield from self.next())
-        event = json.loads(chunk.strip(b',').decode(self._encoding))
+        if chunk == b',\r\n':
+            return (yield from self.next())
+        if chunk.startswith(b'"last_seq":'):
+            chunk = b'{' + chunk
+        try:
+            event = json.loads(chunk.strip(b',\r\n').decode(self._encoding))
+        except:
+            print('>>>', chunk)
+            raise
+        if 'last_seq' in event:
+            self._last_seq = event['last_seq']
+            return (yield from self.next())
         self._last_seq = event['seq']
         return event
 

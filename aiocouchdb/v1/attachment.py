@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -11,7 +11,7 @@ import asyncio
 import base64
 from io import RawIOBase
 
-from aiocouchdb.client import Resource, HttpStreamResponse
+from aiocouchdb.client import Resource
 from aiocouchdb.hdrs import (
     ACCEPT_RANGES,
     CONTENT_ENCODING,
@@ -141,8 +141,7 @@ class Attachment(object):
             headers[RANGE] = 'bytes={}-{}'.format(start or 0, stop)
         resp = yield from self.resource.get(auth=auth,
                                             headers=headers,
-                                            params=params,
-                                            response_class=HttpStreamResponse)
+                                            params=params)
         yield from resp.maybe_raise_error()
         return AttachmentReader(resp)
 

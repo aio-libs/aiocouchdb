@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -103,22 +103,29 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
                          err=None,
                          headers=None,
                          status=200):
-        def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
-            if queue:
-                resp.content.at_eof.return_value = False
-                fut.set_result(queue.popleft())
-            elif err:
-                fut.set_exception(err)
-            else:
-                resp.content.at_eof.return_value = True
-                fut.set_result(b'')
-            return fut
+        def make_side_effect(queue):
+            def side_effect(*args, **kwargs):
+                fut = asyncio.Future(loop=self.loop)
+                if queue:
+                    resp.content.at_eof.return_value = False
+                    fut.set_result(queue.popleft())
+                elif err:
+                    fut.set_exception(err)
+                else:
+                    resp.content.at_eof.return_value = True
+                    fut.set_result(b'')
+                return fut
+            return side_effect
         headers = headers or {}
         headers.setdefault('CONTENT-TYPE', 'application/json')
         cookies = cookies or {}
 
-        queue = deque(data if isinstance(data, list) else [data])
+        if isinstance(data, list):
+            chunks_queue = deque(data)
+            lines_queue = deque((b''.join(data)).splitlines(keepends=True))
+        else:
+            chunks_queue = deque([data])
+            lines_queue = deque(data.splitlines(keepends=True))
 
         resp = aiocouchdb.client.HttpResponse('', '')
         resp._post_init(self.loop)
@@ -128,8 +135,9 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         resp.content = unittest.mock.Mock()
         resp.content._buffer = bytearray()
         resp.content.at_eof.return_value = False
-        resp.content.read.side_effect = side_effect
-        resp.content.readany.side_effect = side_effect
+        resp.content.read.side_effect = make_side_effect(chunks_queue)
+        resp.content.readany.side_effect = make_side_effect(chunks_queue)
+        resp.content.readline.side_effect = make_side_effect(lines_queue)
         resp.close = mock.Mock(side_effect=resp.close)
 
         return resp

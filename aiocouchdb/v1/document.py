@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Alexander Shorin
+# Copyright (C) 2014-2016 Alexander Shorin
 # All rights reserved.
 #
 # This software is licensed as described in the file LICENSE, which
@@ -14,7 +14,7 @@ import uuid
 from collections.abc import MutableMapping
 
 from aiohttp.multidict import CIMultiDict
-from aiocouchdb.client import Resource, HttpStreamResponse
+from aiocouchdb.client import Resource
 from aiocouchdb.hdrs import (
     ACCEPT,
     CONTENT_LENGTH,
@@ -240,8 +240,7 @@ class Document(object):
 
         resp = yield from self.resource.get(auth=auth,
                                             headers={ACCEPT: 'multipart/mixed'},
-                                            params=params,
-                                            response_class=HttpStreamResponse)
+                                            params=params)
         yield from resp.maybe_raise_error()
         reader = OpenRevsMultipartReader.from_response(resp)
         return reader
@@ -295,8 +294,7 @@ class Document(object):
         resp = yield from self.resource.get(
             auth=auth,
             headers={ACCEPT: 'multipart/related, application/json'},
-            params=params,
-            response_class=HttpStreamResponse)
+            params=params)
 
         yield from resp.maybe_raise_error()
 
