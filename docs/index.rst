@@ -9,6 +9,34 @@ Welcome to aiocouchdb's documentation!
     v1/index
     common
 
+asyncio 101
+===========
+
+Using this library assumes knowledge of the ``asyncio`` module of the Python 3 standard library.
+
+In particular, this means rolling and managing your event loop. To avoid
+repetition and because implementations will vary depending on your needs, the 
+examples below do not include such wrapper code. If needed, read
+`asyncio's documentation <https://docs.python.org/3/library/asyncio.html>`_ and 
+read a few articles on the subject. Then, here is an example of the simplest
+``asyncio`` context you may build, applied to simply using
+:meth:`Server.info() <aiocouchdb.v1.server.Server.info>`.
+
+.. code:: python
+
+    import asyncio
+    import aiocouchdb
+
+    server = aiocouchdb.Server()
+
+    @asyncio.coroutine
+    def get_info():
+        inf = yield from server.info()
+        print(inf)
+
+    asyncio.get_event_loop().run_until_complete(get_info())
+
+
 Getting started
 ===============
 
